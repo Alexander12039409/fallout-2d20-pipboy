@@ -106,7 +106,7 @@ function applySessionDb(db) {
 function applySessionMap(map) {
     if (!Array.isArray(map)) return;
     customPOIs = map.slice();
-    if (typeof renderAllPOIs === 'function') renderAllPOIs();
+    try { if (typeof renderAllPOIs === 'function') renderAllPOIs(); } catch (e) { console.warn('session map', e); }
 }
 
 function setPlayerGateStatus(text, asError) {
@@ -142,13 +142,13 @@ function renderPlayerHub() {
                 '<div class="hub-char-info">УР ' + escapeHub(ch.lvl || 1) + ' · ' + escapeHub(ch.origin || 'Выживший') + ' · HP ' + cur + '/' + max + '</div>' +
                 '<div class="hub-char-hp"><span style="width:' + pct + '%"></span></div></div>';
         }).join('');
-        const addBtn = '<button class="term-btn" type="button" onclick="event.stopPropagation(); playerAddCharToSession(\'' + sess.id + '\')">+ НОВЫЙ ПЕРСОНАЖ</button>';
+        const addBtn = '<button class="term-btn" type="button" onclick="event.stopPropagation(); playerAddCharToSession(\'' + sess.id + '\')">СОЗДАТЬ ПЕРСОНАЖА</button>';
         return '<div class="hub-session' + open + '" data-sid="' + sess.id + '">' +
             '<div class="hub-session-head" onclick="toggleHubSession(\'' + sess.id + '\')">' +
             '<div><div class="hub-session-code">' + escapeHub(sess.id) + '</div>' +
             '<div class="hub-session-meta">' + count + ' перс.</div></div>' +
             '<div class="hub-session-chevron">▶</div></div>' +
-            '<div class="hub-session-body">' + (cards || '<div class="player-hub-empty">Нет персонажей</div>') + addBtn + '</div></div>';
+            '<div class="hub-session-body">' + (cards || '<div class="player-hub-empty">В этом столе пока нет вашего персонажа</div>') + addBtn + '</div></div>';
     }).join('');
 }
 
@@ -168,7 +168,8 @@ function togglePlayerJoinForm() {
     }
 }
 
-function showPlayerHub() {
+function showPlayerHub(opts) {
+    const keepSession = !!(opts && opts.keepSession);
     if (typeof closeSysMenu === 'function') closeSysMenu();
     else if (typeof closeNavDrawer === 'function') closeNavDrawer();
     window.__unlockedCharId = null;
@@ -183,8 +184,8 @@ function showPlayerHub() {
         if (v.id !== 'view-characters') v.classList.remove('active');
     });
     if (typeof setFooterGeoVisible === 'function') setFooterGeoVisible(false);
-    if (typeof PipSession !== 'undefined' && PipSession.sessionId) PipSession.disconnect();
-    setPlayerGateStatus('ТЕРМИНАЛ ИГРОКА');
+    if (!keepSession && typeof PipSession !== 'undefined' && PipSession.sessionId) PipSession.disconnect();
+    if (!keepSession) setPlayerGateStatus('ТЕРМИНАЛ ИГРОКА');
     renderPlayerHub();
 }
 
@@ -193,10 +194,15 @@ function playerExitToHub() {
         saveActiveCharLive();
         activeCharId = null;
     }
-    showPlayerHub();
+    showPlayerHub({ keepSession: true });
 }
 
 function enterPlayerPlay() {
+    const drawer = document.getElementById('char-drawer');
+    if (!drawer || !drawer.classList.contains('open')) {
+        showPlayerHub({ keepSession: true });
+        return;
+    }
     const already = document.body.classList.contains('player-playing');
     document.body.classList.remove('player-hub', 'player-gated', 'player-autolink', 'nav-open', 'sys-open');
     document.body.classList.add('player-playing');
@@ -222,12 +228,26 @@ function setPlayUrl(sessionId) {
     } catch (e) {}
 }
 
-async function playerCreateAndOpenChar(sessionId) {
-    const char = blankSessionChar('Выживший');
+async function enterPlayerSession(sessionId, statusText) {
+    const id = String(sessionId || '').trim().toUpperCase();
+    if (!id) throw new Error('Нет кода сессии');
+    setPlayerGateStatus(statusText || ('Стол ' + id));
+    await ensurePlayerSession(id);
+    hubUpsertSession(id);
+    hubExpandedId = id;
+    setPlayUrl(id);
+    showPlayerHub({ keepSession: true });
+    setPlayerGateStatus('Стол ' + id + ' · создайте персонажа или откройте свой лист');
+}
+
+async function playerCreateAndOpenChar(sessionId, name, pin) {
+    const sid = String(sessionId || (PipSession && PipSession.sessionId) || '').toUpperCase();
+    const char = blankSessionChar(name || 'Выживший');
+    if (pin) char.pin = pin;
     PipSession.state.characters[char.id] = Object.assign({}, char);
-    await PipSession.pushCharNow(char, '');
-    try { localStorage.setItem('pipboy_claim_' + sessionId, JSON.stringify({ id: char.id, pin: '' })); } catch (e) {}
-    hubRememberChar(Object.assign({}, char, { _hubSession: sessionId }), '');
+    await PipSession.pushCharNow(char, pin || '');
+    try { localStorage.setItem('pipboy_claim_' + sid, JSON.stringify({ id: char.id, pin: pin || '' })); } catch (e) {}
+    hubRememberChar(Object.assign({}, char, { _hubSession: sid }), pin || '');
     window.__unlockedCharId = char.id;
     if (typeof openChar === 'function') openChar(char.id);
 }
@@ -236,31 +256,57 @@ async function playerJoinFromLobby() {
     const raw = (document.getElementById('player-join-code') && document.getElementById('player-join-code').value.trim()) || '';
     const id = raw.toUpperCase();
     if (!id) {
-        setPlayerGateStatus('ВВЕДИТЕ КОД СЕССИИ', true);
+        setPlayerGateStatus('Введите код стола', true);
         return;
     }
-    setPlayerGateStatus('ВХОД…');
     try {
-        await ensurePlayerSession(id);
-        hubUpsertSession(id);
-        setPlayUrl(id);
-        await playerCreateAndOpenChar(id);
+        await enterPlayerSession(id, 'Подключаюсь к ' + id + '…');
     } catch (err) {
-        setPlayerGateStatus((err && err.message) || 'СЕССИЯ НЕ НАЙДЕНА', true);
+        setPlayerGateStatus((err && err.message) || 'Стол не найден', true);
         showPlayerHub();
     }
 }
 
 async function playerAddCharToSession(sessionId) {
-    setPlayerGateStatus('СОЗДАНИЕ ПЕРСОНАЖА…');
     try {
         await ensurePlayerSession(sessionId);
         hubUpsertSession(sessionId);
         setPlayUrl(sessionId);
-        await playerCreateAndOpenChar(sessionId);
+        openCreateSessionChar();
     } catch (err) {
-        setPlayerGateStatus((err && err.message) || 'НЕ УДАЛОСЬ СОЗДАТЬ', true);
+        setPlayerGateStatus((err && err.message) || 'Не удалось открыть стол', true);
     }
+}
+
+function openCreateSessionChar() {
+    if (typeof PipSession === 'undefined' || !PipSession.sessionId) {
+        setPlayerGateStatus('Сначала откройте стол', true);
+        return;
+    }
+    const modal = document.getElementById('session-char-modal');
+    if (!modal) {
+        playerCreateAndOpenChar(PipSession.sessionId);
+        return;
+    }
+    const name = document.getElementById('session-char-name');
+    const pin = document.getElementById('session-char-pin');
+    if (name) name.value = '';
+    if (pin) pin.value = '';
+    modal.classList.add('active');
+    if (name) name.focus();
+}
+
+function confirmCreateSessionChar() {
+    if (typeof PipSession === 'undefined' || !PipSession.sessionId) return;
+    const name = (document.getElementById('session-char-name') && document.getElementById('session-char-name').value.trim()) || 'Выживший';
+    const pin = (document.getElementById('session-char-pin') && document.getElementById('session-char-pin').value.trim()) || '';
+    const modal = document.getElementById('session-char-modal');
+    if (modal) modal.classList.remove('active');
+    setPlayerGateStatus('Создаю персонажа…');
+    playerCreateAndOpenChar(PipSession.sessionId, name, pin).catch(err => {
+        setPlayerGateStatus((err && err.message) || 'Не удалось создать', true);
+        showPlayerHub({ keepSession: true });
+    });
 }
 
 async function playerOpenHubChar(sessionId, charId) {
@@ -274,12 +320,12 @@ async function playerOpenHubChar(sessionId, charId) {
         await playerOpenChar(charId);
     } catch (err) {
         setPlayerGateStatus((err && err.message) || 'СЕССИЯ НЕ НАЙДЕНА', true);
-        showPlayerHub();
+        showPlayerHub({ keepSession: !!(PipSession && PipSession.sessionId) });
     }
 }
 
 function enterPlayerApp() {
-    showPlayerHub();
+    showPlayerHub({ keepSession: true });
 }
 
 function wirePipSession() {
@@ -313,7 +359,7 @@ function wirePipSession() {
     PipSession.onCharDelete = function (id) {
         if (typeof activeCharId !== 'undefined' && activeCharId === id) {
             activeCharId = null;
-            showPlayerHub();
+            showPlayerHub({ keepSession: true });
         }
         if (typeof renderChars === 'function') renderChars();
     };
@@ -332,23 +378,15 @@ function wirePipSession() {
         if (sid && codeInp) codeInp.value = sid;
         if (sid) migrateOldClaim(sid);
         renderPlayerHub();
-        if (sid && !hubHasSession(sid)) {
-            setPlayerGateStatus('ВХОД В СЕССИЮ ' + sid + '…');
-            const form = document.getElementById('player-gate-form');
-            if (form) form.hidden = true;
-            PipSession.connect(PipSession.defaultUrl(), sid, '').then(() => {
-                hubUpsertSession(sid);
-                return playerCreateAndOpenChar(sid);
-            }).catch(() => {
-                setPlayerGateStatus('СЕССИЯ НЕ НАЙДЕНА', true);
+        if (sid) {
+            enterPlayerSession(sid, 'Подключаюсь к ' + sid + '…').catch((err) => {
+                setPlayerGateStatus((err && err.message) || 'Стол не найден', true);
                 const form2 = document.getElementById('player-gate-form');
                 if (form2) form2.hidden = false;
             });
             return;
         }
-        if (sid) hubExpandedId = sid;
-        renderPlayerHub();
-        setPlayerGateStatus('ВЫБЕРИТЕ ПЕРСОНАЖА ИЛИ НОВУЮ СЕССИЮ');
+        setPlayerGateStatus('Введите код стола или откройте ссылку мастера');
         return;
     }
 }
@@ -357,6 +395,41 @@ function updateSessionUi() {
     const live = typeof PipSession !== 'undefined' && !!PipSession.sessionId;
     const footer = document.getElementById('session-status-label');
     if (footer && !live) footer.textContent = '';
+}
+
+let pinModalResolver = null;
+function askPinModal() {
+    return new Promise((resolve) => {
+        const modal = document.getElementById('pin-modal');
+        const inp = document.getElementById('pin-modal-input');
+        const err = document.getElementById('pin-modal-err');
+        if (err) err.textContent = '';
+        if (inp) inp.value = '';
+        if (!modal) {
+            resolve(window.prompt('PIN персонажа (если задан):', ''));
+            return;
+        }
+        pinModalResolver = resolve;
+        modal.classList.add('active');
+        if (inp) {
+            inp.onkeydown = (e) => { if (e.key === 'Enter') submitPinModal(); };
+            inp.focus();
+        }
+    });
+}
+function cancelPinModal() {
+    const modal = document.getElementById('pin-modal');
+    if (modal) modal.classList.remove('active');
+    if (pinModalResolver) pinModalResolver(null);
+    pinModalResolver = null;
+}
+function submitPinModal() {
+    const inp = document.getElementById('pin-modal-input');
+    const modal = document.getElementById('pin-modal');
+    if (modal) modal.classList.remove('active');
+    const val = inp ? inp.value : '';
+    if (pinModalResolver) pinModalResolver(val);
+    pinModalResolver = null;
 }
 
 async function playerOpenChar(id) {
@@ -378,7 +451,7 @@ async function playerOpenChar(id) {
         window.__unlockedCharId = id;
         openChar(id);
     } catch (err) {
-        const typed = prompt('PIN персонажа (если задан):', '');
+        const typed = await askPinModal();
         if (typed === null) return;
         try {
             await PipSession.unlockChar(id, typed);
@@ -387,7 +460,8 @@ async function playerOpenChar(id) {
             window.__unlockedCharId = id;
             openChar(id);
         } catch (e2) {
-            alert('Неверный PIN или нет доступа.');
+            setPlayerGateStatus('Неверный PIN', true);
+            showPlayerHub({ keepSession: true });
         }
     }
 }
@@ -416,11 +490,6 @@ function playerShowPanel(panel) {
     if (panel === 'inv') switchCharTab('inv');
     else if (panel === 'notes') switchCharTab('notes');
     else switchCharTab('perks');
-}
-
-function confirmCreateSessionChar() {
-    if (typeof PipSession === 'undefined' || !PipSession.sessionId) return;
-    playerCreateAndOpenChar(PipSession.sessionId);
 }
 
 if (document.readyState === 'loading') {

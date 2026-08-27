@@ -305,7 +305,7 @@ function renderSessionCharGrid() {
         addCard.onclick = () => { if (typeof openCreateSessionChar === 'function') openCreateSessionChar(); };
     } else {
         addCard.innerHTML = '<div style="font-size: 2rem;">+</div><div>ПЕРСОНАЖ В СЕССИЮ</div>';
-        addCard.onclick = () => { if (typeof createSessionChar === 'function') createSessionChar(); };
+        addCard.onclick = () => { if (typeof openCreateSessionChar === 'function') openCreateSessionChar(); else if (typeof createSessionChar === 'function') createSessionChar(); };
     }
     host.appendChild(addCard);
 }
@@ -346,7 +346,6 @@ function openChar(id) {
     const char = findChar(id);
     if (!char) return;
     activeCharId = id;
-    if (PIP_MODE === 'player' && typeof enterPlayerPlay === 'function') enterPlayerPlay();
     const titleEl = document.getElementById('cs-editor-title');
     if (titleEl) titleEl.textContent = (char['cs-name'] || 'ПЕРСОНАЖ');
     document.querySelectorAll('#char-drawer .term-input, #char-drawer .term-textarea, #char-drawer .cs-skill-val').forEach(el => {
@@ -356,8 +355,10 @@ function openChar(id) {
         const el = document.getElementById(key);
         if(el) el.value = char[key];
     }
-    document.getElementById('char-drawer').classList.add('open');
-    document.getElementById('view-characters').classList.add('sheet-open');
+    const drawer = document.getElementById('char-drawer');
+    const vc = document.getElementById('view-characters');
+    if (drawer) drawer.classList.add('open');
+    if (vc) vc.classList.add('sheet-open');
     const scrollBody = document.querySelector('#char-drawer .cs-scroll-body');
     if (scrollBody) scrollBody.scrollTop = 0;
     if (char.inventory) char.inventory.forEach(it => { if (typeof normalizeArmorItem === 'function' && isArmorItem(it)) normalizeArmorItem(it); });
@@ -366,6 +367,7 @@ function openChar(id) {
     applyEquippedArmor(char, false);
     switchCharTab('perks'); renderInventoryAndPerks(char);
     document.querySelectorAll('#char-drawer .term-textarea').forEach(ta => { autoResize.call(ta); });
+    if (PIP_MODE === 'player' && typeof enterPlayerPlay === 'function') enterPlayerPlay();
     if (PIP_MODE === 'player') {
         const keepPanel = document.body.getAttribute('data-player-panel');
         if (keepPanel && keepPanel !== 'main' && typeof playerShowPanel === 'function') playerShowPanel(keepPanel);
@@ -1285,9 +1287,14 @@ function openDrawerForPoi(poi) {
 function renderAllPOIs() {
     if (typeof L === 'undefined') { updateMasterStatus(); return; }
     Object.values(renderLayers).forEach(layer => map.removeLayer(layer)); renderLayers = {};
-    customPOIs.forEach(poi => {
+    (customPOIs || []).forEach(poi => {
+        const lat = Number(poi && poi.lat);
+        const lng = Number(poi && poi.lng);
+        if (!isFinite(lat) || !isFinite(lng)) return;
         const descText = poi.desc || 'Нет данных';
-        const marker = L.marker([poi.lat, poi.lng], { icon: getIcon(poi.type) }).addTo(map);
+        let marker;
+        try { marker = L.marker([lat, lng], { icon: getIcon(poi.type) }).addTo(map); }
+        catch (e) { return; }
         const shortDesc = descText.length > 60 ? descText.substring(0, 60) + '...' : descText;
         marker.bindTooltip(`<b>${poi.title}</b><br><span style="opacity:0.7; font-size: 0.85em; display: inline-block; margin-top: 4px; line-height: 1.15;">${shortDesc}</span>`, { className: 'pip-tooltip', direction: 'auto', offset: [0, -15] });
         marker.on('click', (e) => { L.DomEvent.stopPropagation(e); const el = marker.getElement(); if(el) { el.classList.remove('animating'); void el.offsetWidth; el.classList.add('animating'); setTimeout(() => el.classList.remove('animating'), 200); } if (isRulerActive) { handleRulerPointClick(marker.getLatLng()); } else { openDrawerForPoi(poi); } });

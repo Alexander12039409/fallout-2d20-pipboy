@@ -520,6 +520,23 @@ button, .nav-item, .char-card, .icon-btn { -webkit-tap-highlight-color: rgba(20,
 #session-status-label { opacity: 0.85; font-size: 0.9rem; }
 #session-status-label.is-live { color: var(--pip-green); }
 .session-help { font-size: 1rem; line-height: 1.4; text-transform: none; opacity: 0.85; margin-bottom: 12px; }
+.session-join-key { min-height: 96px; text-transform: none; font-size: 1rem; margin: 8px 0 10px; }
+.session-file-btn { display: inline-block; text-align: center; cursor: pointer; margin-bottom: 8px; }
+.session-copy-status { min-height: 1.2em; margin-top: 8px; font-size: 0.95rem; text-transform: none; opacity: 0.9; }
+.session-live-code { font-size: 1.35rem; letter-spacing: 2px; margin: 8px 0 12px; }
+.session-field-label { opacity: 0.75; font-size: 0.95rem; text-transform: none; margin: 8px 0 6px; }
+body.player-playing .char-right-drawer,
+body.player-playing #char-drawer {
+    right: 0 !important;
+    left: 0;
+    width: 100%;
+    max-width: none;
+    border-left: none;
+    transform: none !important;
+    height: 100%;
+    max-height: none;
+    visibility: visible;
+}
 
 /* ==========================================================================
    АДАПТИВ
@@ -939,23 +956,26 @@ body.player-mode[data-player-panel="notes"] #tab-notes,
 body.player-mode[data-player-panel="main"] #tab-perks {
     display: flex !important;
 }
+body.player-hub {
+    display: flex;
+}
 body.player-hub .header,
 body.player-hub .main-content,
 body.player-hub .footer {
     display: none !important;
 }
-.player-hub {
+#player-hub {
     display: none;
     position: absolute;
     inset: 0;
-    z-index: 40;
+    z-index: 50;
     flex-direction: column;
     align-items: center;
     padding: 18px 18px 22px;
     background: radial-gradient(circle, rgba(20,254,20,0.08) 0%, transparent 62%);
 }
-body.player-hub .player-hub { display: flex; }
-body.player-playing .player-hub { display: none !important; }
+body.player-hub #player-hub { display: flex; }
+body.player-playing #player-hub { display: none !important; }
 .player-hub-logo {
     width: min(56%, 280px);
     max-height: 22%;

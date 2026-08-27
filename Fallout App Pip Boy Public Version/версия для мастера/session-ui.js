@@ -10,30 +10,23 @@ function blankSessionChar(name) {
 }
 
 function createSessionChar() {
-    if (typeof PipSession === 'undefined' || !PipSession.sessionId) {
-        alert('Сначала создайте или откройте сессию.');
-        return;
-    }
-    const name = prompt('Имя персонажа сессии:', 'Выживший');
-    if (name === null) return;
-    const char = blankSessionChar(name.trim() || 'Выживший');
-    PipSession.state.characters[char.id] = char;
-    PipSession.pushCharNow(char).then(() => {
-        window.__unlockedCharId = char.id;
-        renderChars();
-        openChar(char.id);
-    }).catch(err => alert(err.message || 'Не удалось создать'));
+    openCreateSessionChar();
 }
 
 function openCreateSessionChar() {
-    const modal = document.getElementById('session-char-modal');
-    if (modal) {
-        document.getElementById('session-char-name').value = '';
-        document.getElementById('session-char-pin').value = '';
-        modal.classList.add('active');
+    if (typeof PipSession === 'undefined' || !PipSession.sessionId) {
+        const sm = document.getElementById('session-modal');
+        if (sm) sm.classList.add('active');
         return;
     }
-    createSessionChar();
+    const modal = document.getElementById('session-char-modal');
+    if (!modal) return;
+    const name = document.getElementById('session-char-name');
+    const pin = document.getElementById('session-char-pin');
+    if (name) name.value = '';
+    if (pin) pin.value = '';
+    modal.classList.add('active');
+    if (name) name.focus();
 }
 
 function confirmCreateSessionChar() {
@@ -62,7 +55,7 @@ function applySessionDb(db) {
 function applySessionMap(map) {
     if (!Array.isArray(map)) return;
     customPOIs = map.slice();
-    if (typeof renderAllPOIs === 'function') renderAllPOIs();
+    try { if (typeof renderAllPOIs === 'function') renderAllPOIs(); } catch (e) { console.warn('session map', e); }
 }
 
 function setPlayerGateStatus(text, asError) {
@@ -130,11 +123,12 @@ function wirePipSession() {
         return;
     }
     if (PIP_MODE === 'master') {
-        if (sid && masterKey) {
-            PipSession.connect(PipSession.defaultUrl(), sid, masterKey).then(() => {
+        const parsed = PipSession.parseMasterKey(location.href);
+        if (parsed && parsed.sessionId && parsed.masterToken) {
+            PipSession.connect(PipSession.defaultUrl(), parsed.sessionId, parsed.masterToken).then(() => {
                 updateSessionUi();
                 renderChars();
-            }).catch(err => alert(err.message || 'Не удалось открыть сессию'));
+            }).catch(err => setSessionStatus(err.message || 'Не удалось открыть сессию', true));
             return;
         }
         PipSession.tryRestore().then(ok => { updateSessionUi(); if (ok) renderChars(); });
@@ -146,83 +140,181 @@ function updateSessionUi() {
     const link = document.getElementById('session-play-link');
     const code = document.getElementById('session-code-val');
     const box = document.getElementById('session-live-box');
+    const idle = document.getElementById('session-idle-box');
+    const join = document.getElementById('session-join-box');
     if (code) code.textContent = live ? PipSession.sessionId : '—';
     if (link) link.value = live ? PipSession.playUrl() : '';
-    const masterLink = document.getElementById('session-master-link');
-    if (masterLink) masterLink.value = live ? (PipSession.masterUrl() || '') : '';
     if (box) box.hidden = !live;
+    if (idle) idle.hidden = live;
+    if (join && live) join.hidden = true;
     const btn = document.getElementById('btn-session');
     if (btn) btn.classList.toggle('is-live', live && PipSession.connected);
     const footer = document.getElementById('session-status-label');
     if (footer && !live) footer.textContent = '';
     const block = document.getElementById('session-block');
     if (block && PIP_MODE !== 'player') block.hidden = !live;
+    refreshMasterKeyDownload();
 }
 
-async function playerJoinFromLobby() {
-    const id = (document.getElementById('player-join-code') && document.getElementById('player-join-code').value.trim()) || '';
-    if (!id) {
-        setPlayerGateStatus('ВВЕДИТЕ КОД СЕССИИ', true);
-        return;
+function setSessionStatus(text, asError) {
+    const el = document.getElementById('session-modal-status') || document.getElementById('session-join-status') || document.getElementById('session-copy-status');
+    if (!el) return;
+    el.textContent = text || '';
+    el.style.color = asError ? 'var(--pip-red, #fe1414)' : '';
+}
+
+function showMasterJoinForm() {
+    const join = document.getElementById('session-join-box');
+    const idle = document.getElementById('session-idle-box');
+    if (idle) idle.hidden = true;
+    if (join) join.hidden = false;
+    const inp = document.getElementById('session-join-key');
+    if (inp) {
+        inp.value = '';
+        inp.focus();
     }
-    setPlayerGateStatus('ВХОД…');
+    setSessionStatus('');
+}
+
+function hideMasterJoinForm() {
+    const join = document.getElementById('session-join-box');
+    const idle = document.getElementById('session-idle-box');
+    if (join) join.hidden = true;
+    if (idle) idle.hidden = !!PipSession.sessionId ? true : false;
+    if (!PipSession.sessionId && idle) idle.hidden = false;
+    setSessionStatus('');
+}
+
+function rememberMasterUrl() {
     try {
-        await PipSession.connect(PipSession.defaultUrl(), id, '');
-        const url = new URL(location.href);
-        url.searchParams.set('s', PipSession.sessionId);
-        history.replaceState({}, '', url.pathname + url.search);
-        enterPlayerApp();
-    } catch (err) {
-        setPlayerGateStatus('СЕССИЯ НЕ НАЙДЕНА', true);
-    }
+        const next = new URL(PipSession.masterUrl() || location.href);
+        history.replaceState({}, '', next.pathname + next.search);
+    } catch (e) {}
 }
 
 async function masterCreateSession() {
     const url = (document.getElementById('session-url') && document.getElementById('session-url').value.trim()) || PipSession.defaultUrl();
+    setSessionStatus('Создаю стол…');
     try {
         await PipSession.create(url, { map: customPOIs, db: masterDB });
         updateSessionUi();
         renderChars();
+        rememberMasterUrl();
         const play = PipSession.playUrl();
         if (play && navigator.clipboard && navigator.clipboard.writeText) {
             navigator.clipboard.writeText(play).catch(() => {});
         }
-        const masterLink = PipSession.masterUrl();
-        if (masterLink) {
-            const next = new URL(masterLink);
-            history.replaceState({}, '', next.pathname + next.search);
-        }
+        downloadMasterKey();
+        const copy = document.getElementById('session-copy-status');
+        if (copy) copy.textContent = 'Ссылка игрокам скопирована. Ключ скачан файлом.';
+        const modal = document.getElementById('session-modal');
+        if (modal) modal.classList.add('active');
     } catch (err) {
-        alert('Не удалось создать сессию.\n' + (err.message || err));
+        setSessionStatus('Не удалось создать стол: ' + (err.message || err), true);
     }
 }
 
 async function masterJoinSession() {
+    const raw = (document.getElementById('session-join-key') && document.getElementById('session-join-key').value) || '';
+    const parsed = PipSession.parseMasterKey(raw);
+    if (!parsed) {
+        setSessionStatus('Вставьте ключ из файла или строку КОД-ТОКЕН.', true);
+        return;
+    }
     const url = (document.getElementById('session-url') && document.getElementById('session-url').value.trim()) || PipSession.defaultUrl();
-    const id = prompt('Код сессии:', '');
-    if (!id) return;
-    const token = prompt('Токен из вашей ссылки мастера (параметр k=):', '') || '';
+    setSessionStatus('Подключаюсь…');
     try {
-        await PipSession.connect(url, id, token);
+        await PipSession.connect(url, parsed.sessionId, parsed.masterToken);
         updateSessionUi();
         renderChars();
+        rememberMasterUrl();
+        setSessionStatus('Стол открыт.');
     } catch (err) {
-        alert(err.message || 'Не удалось подключиться');
+        setSessionStatus(err.message || 'Не удалось подключиться', true);
     }
 }
 
 function masterLeaveSession() {
     PipSession.disconnect();
+    try { history.replaceState({}, '', location.pathname); } catch (e) {}
+    hideMasterJoinForm();
     updateSessionUi();
     renderChars();
 }
 
 function copyPlayLink() {
     const link = PipSession.playUrl();
+    const status = document.getElementById('session-copy-status');
+    const input = document.getElementById('session-play-link');
     if (!link) return;
+    if (input) {
+        input.value = link;
+        input.focus();
+        input.select();
+    }
+    const ok = () => { if (status) status.textContent = 'Ссылка скопирована'; };
     if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(link).then(() => alert('Ссылка скопирована')).catch(() => prompt('Скопируйте ссылку:', link));
-    } else prompt('Скопируйте ссылку:', link);
+        navigator.clipboard.writeText(link).then(ok).catch(ok);
+    } else ok();
+}
+
+function masterKeyFileBody() {
+    const code = PipSession.sessionId;
+    const key = PipSession.masterKey();
+    const play = PipSession.playUrl();
+    return ['Fallout 2d20 Pip-Boy', 'Код: ' + code, 'Ключ: ' + key, 'Игроки: ' + play, ''].join('\n');
+}
+
+function refreshMasterKeyDownload() {
+    const a = document.getElementById('session-key-dl');
+    if (!a) return;
+    if (a._blobUrl) {
+        try { URL.revokeObjectURL(a._blobUrl); } catch (e) {}
+        a._blobUrl = '';
+    }
+    if (typeof PipSession === 'undefined' || !PipSession.sessionId || !PipSession.masterToken) {
+        a.removeAttribute('href');
+        return;
+    }
+    const url = URL.createObjectURL(new Blob([masterKeyFileBody()], { type: 'text/plain;charset=utf-8' }));
+    a._blobUrl = url;
+    a.href = url;
+    a.download = 'pipboy-' + PipSession.sessionId + '.txt';
+}
+
+function downloadMasterKey() {
+    if (typeof PipSession === 'undefined' || !PipSession.sessionId) return;
+    refreshMasterKeyDownload();
+    const a = document.getElementById('session-key-dl');
+    if (a && a.href && a.href.indexOf('blob:') === 0) {
+        a.click();
+        return;
+    }
+    const code = PipSession.sessionId;
+    const blob = new Blob([masterKeyFileBody()], { type: 'text/plain;charset=utf-8' });
+    const tmp = document.createElement('a');
+    tmp.href = URL.createObjectURL(blob);
+    tmp.download = 'pipboy-' + code + '.txt';
+    document.body.appendChild(tmp);
+    tmp.click();
+    setTimeout(() => { URL.revokeObjectURL(tmp.href); tmp.remove(); }, 500);
+}
+
+function wireSessionKeyFile() {
+    const file = document.getElementById('session-key-file');
+    const area = document.getElementById('session-join-key');
+    if (!file || file.dataset.bound) return;
+    file.dataset.bound = '1';
+    file.addEventListener('change', () => {
+        const f = file.files && file.files[0];
+        if (!f) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+            if (area) area.value = String(reader.result || '');
+            file.value = '';
+        };
+        reader.readAsText(f);
+    });
 }
 
 async function playerOpenChar(id) {
@@ -267,9 +359,10 @@ function playerShowPanel(panel) {
 }
 
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', wirePipSession);
+    document.addEventListener('DOMContentLoaded', () => { wirePipSession(); wireSessionKeyFile(); });
 } else {
     wirePipSession();
+    wireSessionKeyFile();
 }
 
 if (PIP_MODE === 'player') {

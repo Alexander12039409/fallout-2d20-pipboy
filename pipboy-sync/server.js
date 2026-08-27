@@ -55,7 +55,7 @@ function saveSession(sess) {
     fs.writeFileSync(sessionFile(sess.id), JSON.stringify(copy, null, 2), 'utf8');
 }
 
-function publicState(sess) {
+function publicState(sess, req) {
     const chars = {};
     Object.keys(sess.characters || {}).forEach(id => {
         const c = Object.assign({}, sess.characters[id]);
@@ -67,7 +67,8 @@ function publicState(sess) {
         createdAt: sess.createdAt,
         map: sess.map || [],
         db: sess.db || null,
-        characters: chars
+        characters: chars,
+        isMaster: !!(req && isMaster(req, sess))
     };
 }
 
@@ -212,7 +213,7 @@ async function handleApi(req, res, u) {
         if (!sess) return send(res, 404, { error: 'session not found' });
 
         if (req.method === 'GET' && parts.length === 3) {
-            return send(res, 200, publicState(sess));
+            return send(res, 200, publicState(sess, req));
         }
 
         if (req.method === 'GET' && parts[3] === 'stream') {

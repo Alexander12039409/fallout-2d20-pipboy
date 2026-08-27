@@ -365,26 +365,19 @@
         </div>
     </div>
 
-    <div class="modal-overlay" id="session-modal">
+    <input type="hidden" id="session-url" value="">
+
+    <div class="modal-overlay" id="pin-modal">
         <div class="terminal-modal" role="dialog" aria-modal="true">
             <div class="sheet-handle" aria-hidden="true"></div>
-            <h2>СЕССИЯ</h2>
-            <p class="session-help">Запустите pipboy-sync и создайте сессию. Ссылка для игроков статичная: пока сервер жив, код не меняется.</p>
-            <div style="margin-bottom:6px; opacity:0.8; font-size:1rem;">АДРЕС СЕРВЕРА</div>
-            <input type="text" id="session-url" class="term-input" placeholder="http://localhost:8787" autocomplete="off">
-            <div class="term-actions" style="margin-top:12px;">
-                <button class="term-btn" onclick="masterCreateSession()">СОЗДАТЬ</button>
-                <button class="term-btn" onclick="masterJoinSession()">ОТКРЫТЬ</button>
+            <h2>PIN</h2>
+            <p class="session-help">Этот персонаж защищён PIN.</p>
+            <input type="password" id="pin-modal-input" class="term-input" maxlength="8" placeholder="PIN" autocomplete="off">
+            <div id="pin-modal-err" class="session-copy-status" style="color:var(--pip-red)"></div>
+            <div class="term-actions">
+                <button class="term-btn danger" type="button" onclick="cancelPinModal()">ОТМЕНА</button>
+                <button class="term-btn" type="button" onclick="submitPinModal()">ОК</button>
             </div>
-            <div id="session-live-box" hidden style="margin-top:16px;">
-                <div style="margin-bottom:6px;">КОД: <span id="session-code-val">—</span></div>
-                <input type="text" id="session-play-link" class="term-input" readonly onclick="this.select()">
-                <div class="term-actions" style="margin-top:10px;">
-                    <button class="term-btn" onclick="copyPlayLink()">КОПИРОВАТЬ ССЫЛКУ</button>
-                    <button class="term-btn danger" onclick="masterLeaveSession()">ОТКЛЮЧИТЬ</button>
-                </div>
-            </div>
-            <button class="term-btn" style="width:100%; margin-top:14px;" onclick="document.getElementById('session-modal').classList.remove('active')">ЗАКРЫТЬ</button>
         </div>
     </div>
 

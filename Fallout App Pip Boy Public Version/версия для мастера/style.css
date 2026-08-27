@@ -89,7 +89,7 @@ body { background-color: #000; color: var(--pip-green); font-family: 'Anonymous 
 .term-input[type="number"]::-webkit-outer-spin-button, .term-input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 .term-textarea { resize: none; overflow: hidden; min-height: 80px; }
 select.term-input { cursor: pointer; appearance: none; border-radius: 0;} select.term-input option { background: var(--pip-bg); color: var(--pip-green); }
-.term-btn { background: transparent; border: 1px solid var(--pip-green); color: var(--pip-green); font-family: 'Anonymous Pro', monospace; font-size: 1.2rem; padding: 5px 15px; cursor: pointer; text-transform: uppercase; transition: 0.1s; text-align: center; outline: none; }
+.term-btn { background: transparent; border: 1px solid var(--pip-green); color: var(--pip-green); font-family: 'Anonymous Pro', monospace; font-size: 1.2rem; padding: 5px 15px; cursor: pointer; text-transform: uppercase; transition: 0.1s; text-align: center; outline: none; text-decoration: none; display: inline-block; }
 .term-btn:hover { background: var(--pip-green); color: #000; } .term-btn.danger { color: var(--pip-red); border-color: var(--pip-red); } .term-btn.danger:hover { background: var(--pip-red); color: #000; } .term-btn:active { transform: scale(0.95); }
 .header { position: relative; z-index: 1500; margin-bottom: 15px; flex-shrink: 0; display: flex; justify-content: space-between; align-items: flex-end; gap: 8px; }
 .header::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 2px; background-color: var(--pip-green); z-index: -1; box-shadow: 0 0 5px var(--pip-green); }
@@ -520,6 +520,23 @@ button, .nav-item, .char-card, .icon-btn { -webkit-tap-highlight-color: rgba(20,
 #session-status-label { opacity: 0.85; font-size: 0.9rem; }
 #session-status-label.is-live { color: var(--pip-green); }
 .session-help { font-size: 1rem; line-height: 1.4; text-transform: none; opacity: 0.85; margin-bottom: 12px; }
+.session-join-key { min-height: 96px; text-transform: none; font-size: 1rem; margin: 8px 0 10px; }
+.session-file-btn { display: inline-block; text-align: center; cursor: pointer; margin-bottom: 8px; }
+.session-copy-status { min-height: 1.2em; margin-top: 8px; font-size: 0.95rem; text-transform: none; opacity: 0.9; }
+.session-live-code { font-size: 1.35rem; letter-spacing: 2px; margin: 8px 0 12px; }
+.session-field-label { opacity: 0.75; font-size: 0.95rem; text-transform: none; margin: 8px 0 6px; }
+body.player-playing .char-right-drawer,
+body.player-playing #char-drawer {
+    right: 0 !important;
+    left: 0;
+    width: 100%;
+    max-width: none;
+    border-left: none;
+    transform: none !important;
+    height: 100%;
+    max-height: none;
+    visibility: visible;
+}
 
 /* ==========================================================================
    АДАПТИВ

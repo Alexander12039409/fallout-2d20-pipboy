@@ -85,9 +85,9 @@ const PipSession = (function () {
 
     function applyHello(state) {
         api.state = state || api.state;
-        if (state && state.db && typeof api.onDb === 'function') api.onDb(state.db);
-        if (state && state.map && typeof api.onMap === 'function') api.onMap(state.map);
-        if (typeof api.onHello === 'function') api.onHello(state);
+        try { if (state && state.db && typeof api.onDb === 'function') api.onDb(state.db); } catch (e) { console.warn('session db', e); }
+        try { if (state && state.map && typeof api.onMap === 'function') api.onMap(state.map); } catch (e) { console.warn('session map', e); }
+        try { if (typeof api.onHello === 'function') api.onHello(state); } catch (e) { console.warn('session hello', e); }
     }
 
     function openStream() {
@@ -132,9 +132,60 @@ const PipSession = (function () {
         return api.syncUrl + '/play/?s=' + api.sessionId;
     };
 
-    api.masterUrl = function () {
+    api.masterKey = function () {
         if (!api.sessionId || !api.masterToken) return '';
-        return api.syncUrl + '/master/?s=' + api.sessionId + '&k=' + encodeURIComponent(api.masterToken);
+        return api.sessionId + '-' + api.masterToken;
+    };
+
+    api.parseMasterKey = function (raw) {
+        const text = String(raw || '').replace(/\r/g, '').trim();
+        if (!text) return null;
+        const splitCombined = (value) => {
+            const t = String(value || '').trim().toUpperCase().replace(/\s+/g, '');
+            const m = t.match(/^([A-HJ-NP-Z2-9]{6,8})-([A-HJ-NP-Z2-9]{8,16})$/);
+            if (!m) return null;
+            return { sessionId: m[1], masterToken: m[2] };
+        };
+        const decode = (value) => {
+            try { return decodeURIComponent(String(value || '')); } catch (e) { return String(value || ''); }
+        };
+        const queryK = text.match(/[?&#](?:k|t|mk)=([^&\s#]+)/i);
+        if (queryK) {
+            const combined = splitCombined(decode(queryK[1]));
+            if (combined) return combined;
+        }
+        const queryS = text.match(/[?&]s=([A-HJ-NP-Z2-9]{6,8})/i);
+        if (queryS && queryK) {
+            return { sessionId: queryS[1].toUpperCase(), masterToken: decode(queryK[1]).toUpperCase() };
+        }
+        const urlMatch = text.match(/https?:\/\/[^\s]+/i);
+        if (urlMatch && typeof URL === 'function') {
+            try {
+                const u = new URL(urlMatch[0]);
+                const sid = (u.searchParams.get('s') || '').toUpperCase();
+                const k = u.searchParams.get('k') || u.searchParams.get('t') || u.searchParams.get('mk') || '';
+                const combined = splitCombined(k);
+                if (combined) return combined;
+                if (sid && k) return { sessionId: sid, masterToken: k };
+            } catch (e) {}
+        }
+        const keyLine = text.match(/(?:ключ|key)\s*[:：]\s*([A-HJ-NP-Z2-9-]{10,})/i);
+        if (keyLine) {
+            const combined = splitCombined(keyLine[1]);
+            if (combined) return combined;
+        }
+        const codeLine = text.match(/(?:код|code|стол)\s*[:：]\s*([A-HJ-NP-Z2-9]{6,8})/i);
+        const tokenLine = text.match(/(?:токен|token)\s*[:：]\s*([A-HJ-NP-Z2-9]{8,16})/i);
+        if (codeLine && tokenLine) {
+            return { sessionId: codeLine[1].toUpperCase(), masterToken: tokenLine[1].toUpperCase() };
+        }
+        return splitCombined(text) || splitCombined(text.split(/\s|\n/).filter(Boolean).pop());
+    };
+
+    api.masterUrl = function () {
+        const key = api.masterKey();
+        if (!key) return '';
+        return api.syncUrl + '/master/?k=' + encodeURIComponent(key);
     };
 
     api.create = async function (syncUrl, snapshot) {
@@ -154,7 +205,19 @@ const PipSession = (function () {
         api.syncUrl = (syncUrl || originUrl()).replace(/\/$/, '');
         api.sessionId = String(sessionId || '').trim().toUpperCase();
         api.masterToken = masterToken || '';
-        const state = await req('GET', '/api/sessions/' + api.sessionId);
+        let state;
+        try {
+            state = await req('GET', '/api/sessions/' + api.sessionId);
+        } catch (err) {
+            api.sessionId = '';
+            api.masterToken = '';
+            throw err;
+        }
+        if (api.role === 'master' && state && state.isMaster === false) {
+            api.sessionId = '';
+            api.masterToken = '';
+            throw new Error('Неверный ключ мастера');
+        }
         applyHello(state);
         persistCreds();
         openStream();
