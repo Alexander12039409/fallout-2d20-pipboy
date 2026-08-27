@@ -1,0 +1,116 @@
+Fallout 2d20 — Pip-Boy (публичная версия)
+==========================================
+Сохрани этот файл. Если чат потерял контекст — вставь его целиком в новый диалог.
+
+РАБОЧАЯ ПАПКА (сюда вносим правки):
+  E:\fall app\Fallout App Pip Boy Public Version
+    версия для мастера     — Pip-Boy мастера
+    версия для игроков     — Pip-Boy игрока
+    ИНСТРУКЦИЯ.txt         — этот файл
+
+Git-репозиторий (корень, пуш на GitHub идёт отсюда):
+  E:\fall app
+
+Сервер сессий (не удалять):
+  E:\fall app\pipboy-sync
+
+СТАРЫЕ КОПИИ (не править, это запас):
+  E:\fall app\adaptive
+  E:\fall app\adaptive-v2
+  E:\fall app\adaptive-v3
+  E:\fall app\adaptive-v3-player
+
+
+1) ЖИВОЙ САЙТ (VPS adminvps, Германия)
+--------------------------------------
+Мастер:
+  http://89.125.90.225:8787/master/
+
+Игрок (без кода сессии — сначала логотип Fallout):
+  http://89.125.90.225:8787/play/
+
+Проверка, что сервер жив:
+  http://89.125.90.225:8787/api/health
+
+Как играть:
+  1. Мастер открывает /master/
+  2. Иконка людей → Создать
+  3. Ссылка игрокам копируется сама и НЕ меняется
+  4. Игрок открывает ссылку → логотип → сессия найдена → персонажи и карта
+
+Сессия живёт на сервере. Мастеру не обязательно быть онлайн.
+Свою ссылку мастера (с k=) сохраните отдельно: с другого устройства карта снова будет редактироваться.
+
+Порт только 8787. VPN на этом же VPS не трогаем (Amnezia, UDP 30463).
+ОС сервера не переустанавливаем.
+
+
+2) GITHUB (исходники, чтобы не потерять)
+----------------------------------------
+Репозиторий:
+  https://github.com/Alexander12039409/fallout-2d20-pipboy
+
+Clone:
+  https://github.com/Alexander12039409/fallout-2d20-pipboy.git
+
+Ветка: main
+
+Скрипт установки / обновления VPS:
+  https://raw.githubusercontent.com/Alexander12039409/fallout-2d20-pipboy/main/deploy/install.sh
+
+
+3) КАК ВНОСИТЬ ИЗМЕНЕНИЯ
+------------------------
+1. Правим файлы в этой папке:
+     «версия для мастера» и/или «версия для игроков»
+2. Коммит + пуш в GitHub (ветка main, корень git — E:\fall app)
+3. На VPS подтягиваем код (сессии игроков при этом НЕ стираются):
+
+   curl -fsSL https://raw.githubusercontent.com/Alexander12039409/fallout-2d20-pipboy/main/deploy/install.sh | bash
+
+   Или уже зайдя по SSH:
+     git -C /opt/pipboy fetch origin
+     git -C /opt/pipboy reset --hard origin/main
+     systemctl restart pipboy
+
+Локальная проверка на ПК (нужен Node.js):
+  запустить-локально.bat
+  или:  node "E:\fall app\pipboy-sync\server.js"
+  затем: http://localhost:8787/master/
+
+
+4) VPS (adminvps)
+-----------------
+IP:              89.125.90.225
+Хост:            popkov (Ubuntu)
+SSH:             root@89.125.90.225
+Ключ с этого ПК: C:\Users\Popkov\.ssh\pipboy_vps_rsa
+                 (RSA; ключ ED25519 сервер не принял)
+
+Подключение:
+  ssh -i C:\Users\Popkov\.ssh\pipboy_vps_rsa -o IdentitiesOnly=yes root@89.125.90.225
+
+На сервере:
+  Код:     /opt/pipboy
+  Node:    /opt/pipboy-node   (системный Node не трогаем)
+  Сессии:  /opt/pipboy/pipboy-sync/data/sessions
+  Сервис:  pipboy.service     порт 8787
+
+Пароль root в чат не писать.
+
+
+5) ЧТО НЕ ИСПОЛЬЗОВАТЬ ИЗ РОССИИ
+--------------------------------
+Railway жив, но с домашнего интернета не открывается:
+  https://fallout-2d20-pipboy-production.up.railway.app
+
+Рабочий адрес только VPS:
+  http://89.125.90.225:8787/master/
+
+
+6) ПРАВИЛА, ЧТОБЫ НИЧЕГО НЕ СЛОМАТЬ
+-----------------------------------
+- Не менять список оружия в db.js без явной просьбы.
+- Не ломать функции мастера.
+- Не трогать VPN, порт 80, файрвол и не переустанавливать ОС на VPS.
+- Папки adaptive / adaptive-v2 / adaptive-v3 — запас, не рабочая копия.

@@ -8,8 +8,8 @@ const { URL } = require('url');
 const PORT = parseInt(process.env.PORT || '8787', 10);
 const HOST = process.env.HOST || '0.0.0.0';
 const ROOT = path.resolve(__dirname, '..');
-const MASTER_DIR = path.join(ROOT, 'adaptive-v3');
-const PLAY_DIR = path.join(ROOT, 'adaptive-v3-player');
+const MASTER_DIR = path.join(ROOT, 'Fallout App Pip Boy Public Version', 'версия для мастера');
+const PLAY_DIR = path.join(ROOT, 'Fallout App Pip Boy Public Version', 'версия для игроков');
 const DATA_DIR = process.env.DATA_DIR
     ? path.resolve(process.env.DATA_DIR)
     : path.join(__dirname, 'data', 'sessions');
