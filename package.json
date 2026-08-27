@@ -1,0 +1,11 @@
+{
+  "name": "pipboy",
+  "private": false,
+  "description": "Fallout 2d20 Pip-Boy: мастер и игроки",
+  "scripts": {
+    "start": "node pipboy-sync/server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

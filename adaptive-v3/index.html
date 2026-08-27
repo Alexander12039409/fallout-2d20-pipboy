@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#031203">
+    <title>Fallout 2d20: Pip-Boy Master OS</title>
+    <link href="https://fonts.googleapis.com/css2?family=Anonymous+Pro:wght@700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="crt-monitor">
+        <div class="tv-glitch" aria-hidden="true"></div>
+        <header class="header">
+            <div class="nav-scroll-container">
+                <div class="nav-item active" data-target="view-stat">СТАТ</div>
+                <div class="nav-item" data-target="view-characters">ПЕРСОНАЖИ</div>
+                <div class="nav-item" data-target="view-map">КАРТА</div>
+                <div class="nav-item" data-target="view-radio">РАДИО</div>
+                <div class="nav-item" data-target="view-help">ПОМОЩЬ</div>
+                <div class="nav-item" data-target="view-master" style="color: var(--pip-red); border-color: var(--pip-red);">МАСТЕРУ</div>
+            </div>
+            <div class="sys-actions">
+                <button class="icon-btn" id="btn-session" type="button" title="Сессия с игроками" onclick="document.getElementById('session-modal').classList.add('active')">
+                    <svg viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5s-3 1.34-3 3 1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+                </button>
+                <button class="icon-btn fs-btn" id="btn-fullscreen" type="button" title="Развернуть на весь экран" onclick="togglePipFullscreen()">
+                    <svg class="fs-icon-expand" viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
+                    <svg class="fs-icon-collapse" viewBox="0 0 24 24" style="display:none"><path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z"/></svg>
+                </button>
+                <button class="icon-btn" onclick="exportGlobal()" title="Экспорт ВСЕЙ системы (JS)"><svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg></button>
+                <button class="icon-btn" onclick="document.getElementById('global-import').click()" title="Импорт ВСЕЙ системы (JS)"><svg viewBox="0 0 24 24"><path d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z"/></svg></button>
+                <input type="file" id="global-import" accept=".js" style="display:none">
+            </div>
+        </header>
+
+        <main class="main-content">
+            <div id="view-stat" class="view-section active">
+                <div class="stat-logo-screen">
+                    <img class="stat-logo" src="icons/logo/icons8-fallout.svg" alt="Fallout">
+                </div>
+            </div>
+
+            <div id="view-characters" class="view-section">
+                <div class="sheet-scrim" onclick="closeCharEditor()"></div>
+                <div class="char-list-container custom-scrollbar">
+                    <div style="font-size: 1.8rem; border-bottom: 2px solid var(--pip-green); margin-bottom: 20px; padding-bottom: 5px;">БАЗА ПЕРСОНАЖЕЙ</div>
+                    <div class="char-grid" id="char-grid"></div>
+                    <div id="session-block" class="session-block" hidden>
+                        <div class="session-block-title">СЕССИЯ <span id="session-block-id"></span></div>
+                        <p class="session-block-hint">Персонажи игроков появляются здесь сразу, как только они создают лист.</p>
+                        <div class="char-grid" id="session-char-grid"></div>
+                    </div>
+                </div>
+
+                <div class="char-right-drawer" id="char-drawer">
+                    <div class="sheet-handle" aria-hidden="true"></div>
+                    <div class="cs-header">
+                        <span style="font-size: 1.3rem; font-weight: bold;">БАЗА: РЕДАКТОР</span>
+                        <button class="term-btn cs-close-btn" onclick="closeCharEditor()" style="padding: 5px 10px; font-size: 1rem;"><span class="cs-close-desktop">СВЕРНУТЬ 🡒</span><span class="cs-close-mobile">▼ СВЕРНУТЬ</span></button>
+                    </div>
+                    
+                    <div class="cs-scroll-body custom-scrollbar">
+                        <div class="cs-identity">
+                            <div class="cs-avatar" aria-hidden="true">
+                                <img class="pip-glyph cs-avatar-img" id="cs-avatar-img" src="icons/vault%20boy%20avatar/%D0%B7%D0%B4%D0%BE%D1%80%D0%BE%D0%B2.svg" alt="">
+                            </div>
+                            <div class="cs-identity-fields">
+                        <div class="cs-row">
+                            <span class="cs-label">УРОВЕНЬ</span>
+                            <input type="number" id="cs-lvl" class="term-input cs-input-num" value="1">
+                            <span class="cs-identity-spacer"></span>
+                            <span class="cs-label">ОПЫТ</span>
+                            <input type="text" id="cs-xp" class="term-input cs-input-text" style="width: 60px; text-align: right;">
+                        </div>
+                        <div class="cs-row">
+                            <span class="cs-label" style="width: 70px;">ИМЯ:</span>
+                            <input type="text" id="cs-name" class="term-input cs-input-text" placeholder="ВВЕДИТЕ ИМЯ...">
+                        </div>
+                        <div class="cs-row">
+                            <span class="cs-label" style="width: 70px;">РАСА:</span>
+                            <select id="cs-origin" class="term-input cs-input-text" style="cursor: pointer; appearance: none; border-radius: 0;">
+                                <option value="Выживший">ВЫЖИВШИЙ</option><option value="Братство Стали">БРАТСТВО СТАЛИ</option>
+                                <option value="Гуль">ГУЛЬ</option><option value="Супермутант">СУПЕРМУТАНТ</option>
+                                <option value="Мистер Помощник">МИСТЕР ПОМОЩНИК</option><option value="Выходец из Убежища">ВЫХОДЕЦ ИЗ УБЕЖИЩА</option>
+                            </select>
+                        </div>
+                            </div>
+                        </div>
+
+                        <!-- SPECIAL -->
+                        <div class="cs-special-container">
+                            <div class="cs-special-col"><div class="cs-special-box"><input type="number" id="cs-str" class="term-input" value="5" min="1" max="10"></div><div class="cs-special-label"><span class="cs-special-letter">S</span>СИЛА</div></div>
+                            <div class="cs-special-col"><div class="cs-special-box"><input type="number" id="cs-per" class="term-input" value="5" min="1" max="10"></div><div class="cs-special-label"><span class="cs-special-letter">P</span>ВОСПР.</div></div>
+                            <div class="cs-special-col"><div class="cs-special-box"><input type="number" id="cs-end" class="term-input" value="5" min="1" max="10"></div><div class="cs-special-label"><span class="cs-special-letter">E</span>ВЫНОСЛ.</div></div>
+                            <div class="cs-special-col"><div class="cs-special-box"><input type="number" id="cs-cha" class="term-input" value="5" min="1" max="10"></div><div class="cs-special-label"><span class="cs-special-letter">C</span>ХАРИЗМА</div></div>
+                            <div class="cs-special-col"><div class="cs-special-box"><input type="number" id="cs-int" class="term-input" value="5" min="1" max="10"></div><div class="cs-special-label"><span class="cs-special-letter">I</span>ИНТЕЛЛ.</div></div>
+                            <div class="cs-special-col"><div class="cs-special-box"><input type="number" id="cs-agi" class="term-input" value="5" min="1" max="10"></div><div class="cs-special-label"><span class="cs-special-letter">A</span>ЛОВКОСТЬ</div></div>
+                            <div class="cs-special-col"><div class="cs-special-box"><input type="number" id="cs-luc" class="term-input" value="5" min="1" max="10"></div><div class="cs-special-label"><span class="cs-special-letter">L</span>УДАЧА</div></div>
+                        </div>
+
+                        <!-- HP и CND -->
+                        <div style="display:flex; align-items:flex-end; gap:5px; font-size:1.2rem; flex-shrink:0;">
+                            HP <input type="number" id="cs-hp-cur" class="term-input cs-input-num" value="10" style="border-bottom:none;"> / <input type="number" id="cs-hp-max" class="term-input cs-input-num" value="10" readonly style="color:#555; border-bottom:none;">
+                        </div>
+                        <div class="cs-hp-bar">
+                            <div class="cs-hp-wrapper"><div class="cs-hp-fill" id="cs-hp-ui"></div></div>
+                            <div style="border:1px solid var(--pip-green); padding:2px 5px; font-size:0.9rem;">CND</div>
+                        </div>
+
+                        <!-- Vault Boy -->
+                        <div class="cs-vault-boy">
+                            <img class="cs-vb-full" id="cs-vb-full" src="icons/vault%20boy%20full/vault.svg" alt="">
+                            <!-- Обновленные модули брони -->
+                            <div class="cs-hit-loc head" data-loc="head"><div class="loc-title"><span class="loc-name">ГОЛОВА (1-2)</span><span class="loc-worn" id="loc-worn-head"></span></div><div class="loc-stats"><div><span>ФИЗ</span><input type="number" id="cs-dr-head-phys" class="term-input" value="0"></div><div><span>ЭНГ</span><input type="number" id="cs-dr-head-eng" class="term-input" value="0"></div><div><span>РАД</span><input type="number" id="cs-dr-head-rad" class="term-input" value="0"></div></div></div>
+                            <div class="cs-hit-loc l-arm" data-loc="larm"><div class="loc-title"><span class="loc-name">Л.РУКА (9-11)</span><span class="loc-worn" id="loc-worn-larm"></span></div><div class="loc-stats"><div><span>ФИЗ</span><input type="number" id="cs-dr-larm-phys" class="term-input" value="0"></div><div><span>ЭНГ</span><input type="number" id="cs-dr-larm-eng" class="term-input" value="0"></div><div><span>РАД</span><input type="number" id="cs-dr-larm-rad" class="term-input" value="0"></div></div></div>
+                            <div class="cs-hit-loc r-arm" data-loc="rarm"><div class="loc-title"><span class="loc-name">П.РУКА (12-14)</span><span class="loc-worn" id="loc-worn-rarm"></span></div><div class="loc-stats"><div><span>ФИЗ</span><input type="number" id="cs-dr-rarm-phys" class="term-input" value="0"></div><div><span>ЭНГ</span><input type="number" id="cs-dr-rarm-eng" class="term-input" value="0"></div><div><span>РАД</span><input type="number" id="cs-dr-rarm-rad" class="term-input" value="0"></div></div></div>
+                            <div class="cs-hit-loc torso" data-loc="torso"><div class="loc-title"><span class="loc-name">ТОРС (3-8)</span><span class="loc-worn" id="loc-worn-torso"></span></div><div class="loc-stats"><div><span>ФИЗ</span><input type="number" id="cs-dr-torso-phys" class="term-input" value="0"></div><div><span>ЭНГ</span><input type="number" id="cs-dr-torso-eng" class="term-input" value="0"></div><div><span>РАД</span><input type="number" id="cs-dr-torso-rad" class="term-input" value="0"></div></div></div>
+                            <div class="cs-hit-loc l-leg" data-loc="lleg"><div class="loc-title"><span class="loc-name">Л.НОГА (15-17)</span><span class="loc-worn" id="loc-worn-lleg"></span></div><div class="loc-stats"><div><span>ФИЗ</span><input type="number" id="cs-dr-lleg-phys" class="term-input" value="0"></div><div><span>ЭНГ</span><input type="number" id="cs-dr-lleg-eng" class="term-input" value="0"></div><div><span>РАД</span><input type="number" id="cs-dr-lleg-rad" class="term-input" value="0"></div></div></div>
+                            <div class="cs-hit-loc r-leg" data-loc="rleg"><div class="loc-title"><span class="loc-name">П.НОГА (18-20)</span><span class="loc-worn" id="loc-worn-rleg"></span></div><div class="loc-stats"><div><span>ФИЗ</span><input type="number" id="cs-dr-rleg-phys" class="term-input" value="0"></div><div><span>ЭНГ</span><input type="number" id="cs-dr-rleg-eng" class="term-input" value="0"></div><div><span>РАД</span><input type="number" id="cs-dr-rleg-rad" class="term-input" value="0"></div></div></div>
+                        </div>
+
+                        <!-- Боевые статы -->
+                        <div class="cs-combat-stats">
+                            <div>ЗАЩИТА<span class="val" id="cs-stat-def">1</span></div>
+                            <div>ИНИЦИАТИВА<span class="val" id="cs-stat-init">10</span></div>
+                            <div>МАКС. ОД<span class="val" id="cs-stat-ap">6</span></div>
+                            <div>УРОН ББ<span class="val" id="cs-stat-melee">+0 БК</span></div>
+                            <div>ВЕС<span class="val" id="cs-stat-carry">200 Ф.</span></div>
+                        </div>
+
+                        <!-- Навыки -->
+                        <div class="cs-framed-box">
+                            <div class="cs-box-title">НАВЫКИ (SKILLS)</div>
+                            <div style="font-size:0.9rem; text-align:right; margin-bottom:5px;">РАНГ / ЦЕЛЬ</div>
+                            <div class="cs-skills-grid" id="cs-skills-list"></div>
+                        </div>
+
+                        <!-- Табы: Перки, Инвентарь, Прочее -->
+                        <div class="cs-tabs-header">
+                            <button class="cs-tab-btn active" id="btn-tab-perks" onclick="switchCharTab('perks')">СПОСОБНОСТИ</button>
+                            <button class="cs-tab-btn" id="btn-tab-inv" onclick="switchCharTab('inv')">ИНВЕНТАРЬ</button>
+                            <button class="cs-tab-btn" id="btn-tab-notes" onclick="switchCharTab('notes')">ПРОЧЕЕ</button>
+                        </div>
+                        
+                        <div class="cs-tab-content active" id="tab-perks">
+                            <button class="term-btn" onclick="openContextPerks()" style="margin-bottom:10px;">+ ДОБАВИТЬ ПЕРК ИЗ БАЗЫ</button>
+                            <div id="cs-perks-list" style="display:flex; flex-direction:column; gap:10px; flex-grow:1; margin-bottom: 15px;"></div>
+                            <textarea id="cs-text-perks" class="term-textarea custom-scrollbar" placeholder="ПРОЧИЕ СПОСОБНОСТИ..."></textarea>
+                        </div>
+                        <div class="cs-tab-content" id="tab-inv">
+                            <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                                <button class="term-btn" onclick="openMasterInvModal()" style="flex:1;">+ ИЗ БАЗЫ</button>
+                                <button class="term-btn" onclick="openInvModal()" style="flex:1;">+ СВОЙ ПРЕДМЕТ</button>
+                            </div>
+                            <div id="cs-inv-list" class="custom-scrollbar" style="display: flex; flex-direction: column; gap: 10px; overflow-y: auto; flex-grow: 1;"></div>
+                        </div>
+                        <div class="cs-tab-content" id="tab-notes">
+                            <textarea id="cs-text-notes" class="term-textarea custom-scrollbar" placeholder="ЛИЧНЫЕ ЗАМЕТКИ, ЗАДАЧИ, КОДЫ..."></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ================= ВКЛАДКА: МАСТЕРУ ================= -->
+            <div id="view-master" class="view-section custom-scrollbar">
+                <div class="master-panel">
+                <h2 class="master-title">ПАНЕЛЬ МАСТЕРА (УПРАВЛЕНИЕ БАЗАМИ)</h2>
+                <div class="db-grid">
+                    <div class="db-card">
+                        <h3>ОРУЖИЕ И МОДИФИКАЦИИ</h3>
+                        <p id="db-weapons-status">Загружено: 0</p>
+                        <div class="db-card-actions">
+                            <button class="term-btn" onclick="exportModuleJS('weapons')">ЭКСПОРТ (JS)</button>
+                            <button class="term-btn" onclick="document.getElementById('import-weapons').click()">ЗАГРУЗИТЬ</button>
+                            <input type="file" id="import-weapons" accept=".js" style="display:none" onchange="importModuleJS(event, 'weapons')">
+                        </div>
+                    </div>
+                    <div class="db-card">
+                        <h3>ПЕРКИ И СПОСОБНОСТИ</h3>
+                        <p id="db-perks-status">Загружено: 0</p>
+                        <div class="db-card-actions">
+                            <button class="term-btn" onclick="exportModuleJS('perks')">ЭКСПОРТ (JS)</button>
+                            <button class="term-btn" onclick="document.getElementById('import-perks').click()">ЗАГРУЗИТЬ</button>
+                            <input type="file" id="import-perks" accept=".js" style="display:none" onchange="importModuleJS(event, 'perks')">
+                        </div>
+                    </div>
+                    <div class="db-card">
+                        <h3>ПРЕДМЕТЫ И СНАРЯЖЕНИЕ</h3>
+                        <p id="db-items-status">Загружено: 0</p>
+                        <div class="db-card-actions">
+                            <button class="term-btn" onclick="exportModuleJS('items')">ЭКСПОРТ (JS)</button>
+                            <button class="term-btn" onclick="document.getElementById('import-items').click()">ЗАГРУЗИТЬ</button>
+                            <input type="file" id="import-items" accept=".js" style="display:none" onchange="importModuleJS(event, 'items')">
+                        </div>
+                    </div>
+                    <div class="db-card">
+                        <h3>КАРТА (МЕТКИ POI)</h3>
+                        <p id="db-map-status">Загружено: 0</p>
+                        <div class="db-card-actions">
+                            <button class="term-btn" onclick="exportMapPOIs()">ЭКСПОРТ (JS)</button>
+                            <button class="term-btn" onclick="document.getElementById('import-map').click()">ЗАГРУЗИТЬ</button>
+                            <input type="file" id="import-map" accept=".js" style="display:none" onchange="importMapPOIs(event)">
+                        </div>
+                    </div>
+                    <div class="db-card">
+                        <h3>ПЕРСОНАЖИ</h3>
+                        <p id="db-chars-status">Загружено: 0</p>
+                        <div class="db-card-actions">
+                            <button class="term-btn" onclick="exportCharsJS()">ЭКСПОРТ (JS)</button>
+                            <button class="term-btn" onclick="document.getElementById('import-chars').click()">ЗАГРУЗИТЬ</button>
+                            <input type="file" id="import-chars" accept=".js" style="display:none" onchange="importCharsJS(event)">
+                        </div>
+                    </div>
+                </div>
+                </div>
+            </div>
+
+            <!-- ================= ВКЛАДКА: КАРТА ================= -->
+            <div id="view-map" class="view-section">
+                <div class="sheet-scrim" onclick="closeMapOverlays()"></div>
+                <div id="map-area"></div>
+                <div class="map-grid-overlay"></div>
+                <div class="hud-toolbar">
+                    <div class="tool-group">
+                        <button class="icon-btn" id="toggle-search" title="Поиск координат"><svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg></button>
+                    </div>
+                    <div class="tool-group"><button class="icon-btn" id="toggle-ruler" title="Дальномер"><svg viewBox="0 0 24 24"><path d="M19.71 4.29a1 1 0 0 0-1.42 0l-14 14a1 1 0 0 0 0 1.42 1 1 0 0 0 1.42 0l14-14a1 1 0 0 0 0-1.42zM7.12 14.05 5.71 15.46l2.83 2.83 1.41-1.41-2.83-2.83zm3.54-3.53-1.41 1.41 1.41 1.41 1.41-1.41-1.41-1.41zm3.53-3.54-1.41 1.41 1.41 1.41 1.41-1.41-1.41-1.41z"/></svg></button></div>
+                    <div class="tool-group"><button class="icon-btn" id="toggle-editor" title="Редактор Карты"><svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34a.995.995 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></button></div>
+                </div>
+                <div class="search-panel" id="search-panel">
+                    <div class="sheet-handle" aria-hidden="true"></div>
+                    <div class="search-sheet-title">СКАНИРОВАНИЕ</div>
+                    <div class="search-panel-row">
+                        <span>>_</span>
+                        <input type="text" id="search-input" class="term-input search-input" placeholder="СКАНИРОВАТЬ..." autocomplete="off">
+                        <button class="close-btn" id="close-search">X</button>
+                    </div>
+                </div>
+                <div class="editor-palette" id="editor-palette"></div>
+                <div class="info-drawer" id="info-drawer">
+                    <div class="sheet-handle" aria-hidden="true"></div>
+                    <div class="drawer-header"><div class="drawer-title" id="drawer-title">Название</div><button class="drawer-close" id="drawer-close">X</button></div>
+                    <div class="drawer-desc custom-scrollbar" id="drawer-desc">Описание локации...</div>
+                    <div class="drawer-actions"><button class="term-btn" id="drawer-edit-btn">ИЗМЕНИТЬ</button><button class="term-btn danger" id="drawer-delete-btn">УДАЛИТЬ</button></div>
+                </div>
+            </div>
+
+            <!-- ================= ВКЛАДКА: ПОМОЩЬ ================= -->
+            <div id="view-help" class="view-section">
+                <div class="help-layout">
+                    <button type="button" class="help-burger" id="help-burger" title="Разделы правил" onclick="toggleHelpNav()" aria-label="Разделы правил">
+                        <span></span><span></span><span></span>
+                    </button>
+                    <div class="help-scrim" onclick="closeHelpNav()"></div>
+                    <aside class="help-nav" id="help-nav">
+                        <div class="help-nav-title">ПРАВИЛА</div>
+                        <div class="help-nav-list custom-scrollbar" id="help-nav-list"></div>
+                    </aside>
+                    <div class="help-body custom-scrollbar" id="help-body"></div>
+                </div>
+            </div>
+
+            <!-- ================= ВКЛАДКА: РАДИО ================= -->
+            <div id="view-radio" class="view-section custom-scrollbar">
+                <div class="radio-container">
+                    <div class="radio-header">ЧАСТОТЫ ПУСТОШИ</div>
+                    <div class="station-list custom-scrollbar" id="station-list"></div>
+                    <div class="player-controls">
+                        <button class="play-toggle-btn" id="btn-play-pause">
+                            <svg id="icon-play" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                            <svg id="icon-pause" viewBox="0 0 24 24" style="display:none;"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                        </button>
+                        <div class="now-playing-info">
+                            <span class="np-label">ТРАНСЛЯЦИЯ:</span>
+                            <span class="np-title" id="np-title">НЕТ СИГНАЛА</span>
+                        </div>
+                        <div class="visualizer" id="radio-visualizer">
+                            <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
+                        </div>
+                        <audio id="pip-audio" crossorigin="anonymous"></audio>
+                    </div>
+                </div>
+            </div>
+        </main>
+        <footer class="footer">
+            <div class="footer-group"><span id="real-time">--:--:--</span><span id="real-date">--.--.----</span></div>
+            <div class="footer-group"><span id="session-status-label"></span></div>
+            <div class="footer-group footer-geo" id="footer-geo"><span id="geo-scanner">ЛОКАЦИЯ: НЕИЗВЕСТНО</span></div>
+        </footer>
+    </div>
+
+    <!-- ================= МОДАЛЬНЫЕ ОКНА ================= -->
+    <div class="modal-overlay" id="marker-modal">
+        <div class="terminal-modal" role="dialog" aria-modal="true">
+            <div class="sheet-handle" aria-hidden="true"></div>
+            <h2>ТЕРМИНАЛ: ВВОД ДАННЫХ</h2>
+            <input type="text" id="poi-title" class="term-input" placeholder="НАЗВАНИЕ ЛОКАЦИИ (MAX 30)" maxlength="30">
+            <textarea id="poi-desc" class="term-textarea custom-scrollbar" placeholder="ОПИСАНИЕ ОБЪЕКТА..."></textarea>
+            <div class="term-actions"><button class="term-btn danger" id="modal-cancel">ОТМЕНА</button><button class="term-btn" id="modal-save">ЗАПИСАТЬ</button></div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="radio-modal">
+        <div class="terminal-modal" role="dialog" aria-modal="true">
+            <div class="sheet-handle" aria-hidden="true"></div>
+            <h2>ТЕРМИНАЛ: СВОЯ ВОЛНА</h2>
+            <div style="margin-bottom: 5px; opacity: 0.8; font-size: 1.1rem;">ЛОКАЛЬНАЯ ПАПКА (МУЗЫКА):</div>
+            <input type="file" id="local-audio-upload" webkitdirectory directory multiple style="display:none">
+            <button class="term-btn" id="btn-browse-audio" style="width: 100%; margin-bottom: 20px;">ВЫБРАТЬ ПАПКУ</button>
+            <div style="margin-bottom: 20px; text-align: center; opacity: 0.5;">--- ИЛИ СЕТЕВОЙ ПОТОК ---</div>
+            <div style="margin-bottom: 5px; opacity: 0.8; font-size: 1.1rem;">URL ПОТОКА (Прямая ссылка):</div>
+            <input type="text" id="stream-url-input" class="term-input" placeholder="https://..." autocomplete="off">
+            <div class="term-actions"><button class="term-btn danger" id="radio-modal-cancel">ОТМЕНА</button><button class="term-btn" id="radio-modal-save">ПОДТВЕРДИТЬ</button></div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="inv-modal">
+        <div class="terminal-modal" role="dialog" aria-modal="true">
+            <div class="sheet-handle" aria-hidden="true"></div>
+            <h2>ДОБАВЛЕНИЕ ПРЕДМЕТА</h2>
+            <input type="text" id="inv-title" class="term-input" placeholder="НАЗВАНИЕ ПРЕДМЕТА">
+            <textarea id="inv-desc" class="term-textarea custom-scrollbar" placeholder="ОПИСАНИЕ..."></textarea>
+            <div class="term-actions"><button class="term-btn danger" onclick="closeInvModal()">ОТМЕНА</button><button class="term-btn" onclick="saveInvItem()">ДОБАВИТЬ</button></div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="db-picker-modal">
+        <div class="terminal-modal db-picker-modal-box">
+            <div class="sheet-handle" aria-hidden="true"></div>
+            <h2 id="db-picker-title">БАЗА ДАННЫХ</h2>
+            <div class="cs-tabs-header" id="db-tabs-container" style="margin-top: 0; margin-bottom: 10px;"></div>
+            <input type="text" id="db-picker-search" class="term-input" placeholder="ПОИСК..." onkeyup="filterDbPicker()">
+            <div id="db-picker-list" class="custom-scrollbar" style="max-height: 400px; overflow-y:auto; margin-top:15px; display:flex; flex-direction:column; gap:10px;"></div>
+            <button class="term-btn danger" style="margin-top:15px; width: 100%;" onclick="document.getElementById('db-picker-modal').classList.remove('active')">ЗАКРЫТЬ</button>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="mod-modal">
+        <div class="terminal-modal" role="dialog" aria-modal="true">
+            <div class="sheet-handle" aria-hidden="true"></div>
+            <h2 id="mod-modal-title">ВЫБОР МОДИФИКАЦИИ</h2>
+            <div id="mod-modal-body" class="custom-scrollbar" style="max-height: 400px; overflow-y:auto; display:flex; flex-direction:column; gap:10px;"></div>
+            <button class="term-btn danger" style="margin-top:15px; width: 100%;" onclick="document.getElementById('mod-modal').classList.remove('active')">ОТМЕНА</button>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="qual-modal">
+        <div class="terminal-modal qual-sheet" role="dialog" aria-modal="true">
+            <div class="sheet-handle" aria-hidden="true"></div>
+            <h2 id="qual-title">СВОЙСТВО</h2>
+            <p id="qual-body" class="qual-body"></p>
+            <button class="term-btn" style="width:100%;" onclick="closeQualSheet()">ЗАКРЫТЬ</button>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="equip-slot-modal">
+        <div class="terminal-modal" role="dialog" aria-modal="true">
+            <div class="sheet-handle" aria-hidden="true"></div>
+            <h2>НАДЕТЬ НА</h2>
+            <div id="equip-slot-body" class="equip-slot-grid"></div>
+            <button class="term-btn danger" style="width:100%; margin-top:10px;" onclick="document.getElementById('equip-slot-modal').classList.remove('active')">ОТМЕНА</button>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="session-modal">
+        <div class="terminal-modal" role="dialog" aria-modal="true">
+            <div class="sheet-handle" aria-hidden="true"></div>
+            <h2>СЕССИЯ</h2>
+            <p class="session-help">Создайте сессию — ссылка для игроков не меняется. Игроки заходят по ней в любой момент, даже если вы сейчас не в приложении.</p>
+            <div id="session-url-wrap" hidden>
+                <div style="margin-bottom:6px; opacity:0.8; font-size:1rem;">АДРЕС СЕРВЕРА</div>
+                <input type="text" id="session-url" class="term-input" placeholder="http://localhost:8787" autocomplete="off">
+            </div>
+            <div class="term-actions" style="margin-top:12px;">
+                <button class="term-btn" onclick="masterCreateSession()">СОЗДАТЬ</button>
+                <button class="term-btn" onclick="masterJoinSession()">ОТКРЫТЬ</button>
+            </div>
+            <div id="session-live-box" hidden style="margin-top:16px;">
+                <div style="margin-bottom:6px;">КОД: <span id="session-code-val">—</span></div>
+                <div style="margin:10px 0 6px; opacity:0.75; font-size:0.95rem; text-transform:none;">Ссылка игрокам:</div>
+                <input type="text" id="session-play-link" class="term-input" readonly onclick="this.select()">
+                <div style="margin:10px 0 6px; opacity:0.75; font-size:0.95rem; text-transform:none;">Ваша ссылка мастера (сохраните):</div>
+                <input type="text" id="session-master-link" class="term-input" readonly onclick="this.select()">
+                <div class="term-actions" style="margin-top:10px;">
+                    <button class="term-btn" onclick="copyPlayLink()">КОПИРОВАТЬ ИГРОКАМ</button>
+                    <button class="term-btn danger" onclick="masterLeaveSession()">ОТКЛЮЧИТЬ</button>
+                </div>
+            </div>
+            <button class="term-btn" style="width:100%; margin-top:14px;" onclick="document.getElementById('session-modal').classList.remove('active')">ЗАКРЫТЬ</button>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="session-char-modal">
+        <div class="terminal-modal" role="dialog" aria-modal="true">
+            <div class="sheet-handle" aria-hidden="true"></div>
+            <h2>НОВЫЙ ПЕРСОНАЖ</h2>
+            <input type="text" id="session-char-name" class="term-input" placeholder="ИМЯ">
+            <input type="text" id="session-char-pin" class="term-input" placeholder="PIN (необязательно)" maxlength="8" style="margin-top:10px;">
+            <div class="term-actions">
+                <button class="term-btn danger" onclick="document.getElementById('session-char-modal').classList.remove('active')">ОТМЕНА</button>
+                <button class="term-btn" onclick="confirmCreateSessionChar()">СОЗДАТЬ</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="db.js"></script>
+    <script src="rules.js"></script>
+    <script src="icons.js"></script>
+    <script src="help.js"></script>
+    <script src="session.js"></script>
+    <script src="app.js"></script>
+    <script src="session-ui.js"></script>
+</body>
+</html>

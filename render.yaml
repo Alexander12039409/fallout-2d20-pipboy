@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: pipboy
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATA_DIR
+        value: /data/sessions
+    disk:
+      name: pipboy-sessions
+      mountPath: /data
+      sizeGB: 1

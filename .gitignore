@@ -1,0 +1,21 @@
+# Локальные копии и черновики
+adaptive/
+adaptive-v2/
+"adaptive — "*
+"adaptive — копия"/
+"adaptive — копия (2)"/
+
+# Сессии — живые данные сервера, не исходники
+pipboy-sync/data/sessions/*.json
+!pipboy-sync/data/sessions/.gitkeep
+
+node_modules/
+.env
+.env.*
+*.log
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+tools/
+*.docx

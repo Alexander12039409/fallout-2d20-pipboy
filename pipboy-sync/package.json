@@ -1,0 +1,10 @@
+{
+  "name": "pipboy-sync",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Локальный сервер сессии Pip-Boy: мастер + игроки",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  }
+}
