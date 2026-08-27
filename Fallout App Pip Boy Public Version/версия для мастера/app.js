@@ -29,6 +29,7 @@ function persistLiveChar() {
     }
     if (char._session || sessionCharById(char.id)) {
         if (typeof PipSession !== 'undefined' && PipSession.sessionId) PipSession.pushChar(char, char.pin);
+        if (PIP_MODE === 'player' && typeof hubRememberChar === 'function') hubRememberChar(char);
         return;
     }
     try { localStorage.setItem('pipboy_master_chars', JSON.stringify(masterChars)); } catch (e) {}
@@ -175,17 +176,32 @@ if (globalImportEl) globalImportEl.addEventListener('change', (e) => {
 // ==========================================================================
 setInterval(() => {
     const now = new Date();
-    document.getElementById('real-time').textContent = [now.getHours(), now.getMinutes(), now.getSeconds()].map(n => String(n).padStart(2, '0')).join(':');
-    document.getElementById('real-date').textContent = [now.getDate(), now.getMonth() + 1].map(n => String(n).padStart(2, '0')).join('.') + '.' + now.getFullYear();
+    const timeEl = document.getElementById('real-time');
+    const dateEl = document.getElementById('real-date');
+    if (timeEl) timeEl.textContent = [now.getHours(), now.getMinutes(), now.getSeconds()].map(n => String(n).padStart(2, '0')).join(':');
+    if (dateEl) dateEl.textContent = [now.getDate(), now.getMonth() + 1].map(n => String(n).padStart(2, '0')).join('.') + '.' + now.getFullYear();
 }, 1000);
 
 const navItems = document.querySelectorAll('.nav-item[data-target]');
 const views = document.querySelectorAll('.view-section');
+function closeSysMenu() {
+    document.body.classList.remove('sys-open');
+}
+function toggleSysMenu() {
+    document.body.classList.toggle('sys-open');
+}
+function closeNavDrawer() { closeSysMenu(); }
+function toggleNavDrawer() { toggleSysMenu(); }
+function setNavTitle(text) {
+    const el = document.getElementById('nav-current-title');
+    if (el && text) el.textContent = text;
+}
 navItems.forEach(item => {
     item.addEventListener('click', () => {
         const targetId = item.getAttribute('data-target'); if(!targetId) return;
         navItems.forEach(nav => nav.classList.remove('active')); item.classList.add('active');
         views.forEach(view => view.classList.remove('active')); document.getElementById(targetId).classList.add('active');
+        closeSysMenu();
         if (targetId !== 'view-characters') closeCharEditor();
         if (targetId !== 'view-map') {
             closeDrawerMap();
@@ -193,11 +209,14 @@ navItems.forEach(item => {
             setFooterGeoVisible(false);
         } else {
             setFooterGeoVisible(true);
-            setTimeout(() => map.invalidateSize(), 150);
+            setTimeout(() => { if (map && map.invalidateSize) map.invalidateSize(); }, 150);
         }
         if (typeof closeHelpNav === 'function') closeHelpNav();
         closeAllModals();
     });
+});
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeSysMenu();
 });
 
 // ==========================================================================
@@ -222,19 +241,22 @@ if (skillsContainer) skillsDefs.forEach(skill => {
 });
 
 function renderChars() {
+    if (PIP_MODE === 'player') {
+        if (typeof renderPlayerHub === 'function') renderPlayerHub();
+        if (typeof updateMasterStatus === 'function') updateMasterStatus();
+        return;
+    }
     const grid = document.getElementById('char-grid');
     if (!grid) return;
     grid.innerHTML = '';
-    if (PIP_MODE !== 'player') {
-        masterChars.forEach(char => {
-            const card = document.createElement('div'); card.className = 'char-card';
-            card.innerHTML = charCardHtml(char, false);
-            card.onclick = () => openChar(char.id); grid.appendChild(card);
-        });
-        const addCard = document.createElement('div'); addCard.className = 'char-card add-char-card';
-        addCard.innerHTML = '<div style="font-size: 3rem;">+</div><div>СОЗДАТЬ ПЕРСОНАЖА</div>';
-        addCard.onclick = createChar; grid.appendChild(addCard);
-    }
+    masterChars.forEach(char => {
+        const card = document.createElement('div'); card.className = 'char-card';
+        card.innerHTML = charCardHtml(char, false);
+        card.onclick = () => openChar(char.id); grid.appendChild(card);
+    });
+    const addCard = document.createElement('div'); addCard.className = 'char-card add-char-card';
+    addCard.innerHTML = '<div style="font-size: 3rem;">+</div><div>СОЗДАТЬ ПЕРСОНАЖА</div>';
+    addCard.onclick = createChar; grid.appendChild(addCard);
     renderSessionCharGrid();
     if (typeof updateMasterStatus === 'function') updateMasterStatus();
 }
@@ -324,13 +346,9 @@ function openChar(id) {
     const char = findChar(id);
     if (!char) return;
     activeCharId = id;
-    if (PIP_MODE === 'player') {
-        document.body.classList.add('player-playing');
-        const ln = document.getElementById('player-lobby-nav');
-        const pn = document.getElementById('player-play-nav');
-        if (ln) ln.hidden = true;
-        if (pn) { pn.hidden = false; if (typeof playerShowPanel === 'function') playerShowPanel('main'); }
-    }
+    if (PIP_MODE === 'player' && typeof enterPlayerPlay === 'function') enterPlayerPlay();
+    const titleEl = document.getElementById('cs-editor-title');
+    if (titleEl) titleEl.textContent = (char['cs-name'] || 'ПЕРСОНАЖ');
     document.querySelectorAll('#char-drawer .term-input, #char-drawer .term-textarea, #char-drawer .cs-skill-val').forEach(el => {
         if(el.type === 'number') { el.value = el.hasAttribute('min') ? el.min : 0; } else if(el.tagName === 'SELECT') el.selectedIndex = 0; else el.value = '';
     });
@@ -357,16 +375,10 @@ function closeCharEditor() {
     const vc = document.getElementById('view-characters');
     if (vc) vc.classList.remove('sheet-open');
     if (PIP_MODE === 'player') {
-        document.body.classList.remove('player-playing');
-        window.__unlockedCharId = null;
-        const ln = document.getElementById('player-lobby-nav');
-        const pn = document.getElementById('player-play-nav');
-        if (ln) ln.hidden = false;
-        if (pn) pn.hidden = true;
-        document.querySelectorAll('#player-lobby-nav .nav-item').forEach(n => n.classList.toggle('active', n.getAttribute('data-player-lobby') === 'chars'));
-        document.querySelectorAll('.view-section').forEach(v => v.classList.remove('active'));
-        if (vc) vc.classList.add('active');
-        setFooterGeoVisible(false);
+        if (typeof playerExitToHub === 'function') {
+            playerExitToHub(true);
+            return;
+        }
     }
 }
 
@@ -449,10 +461,23 @@ function calcCharTNs() {
 function updateCharVisualHP() {
     let cur = parseInt(document.getElementById('cs-hp-cur').value) || 0; let max = parseInt(document.getElementById('cs-hp-max').value) || 1;
     if (max < 1) max = 1; if (cur > max) cur = max; if (cur < 0) cur = 0;
+    document.getElementById('cs-hp-cur').value = cur;
     const percentage = (cur / max) * 100; const fillUi = document.getElementById('cs-hp-ui'); fillUi.style.width = percentage + '%';
     if(percentage <= 25) { fillUi.style.background = '#ff2121'; fillUi.style.boxShadow = '0 0 8px rgba(255, 33, 33, 0.6)'; } 
     else { fillUi.style.background = 'var(--pip-green)'; fillUi.style.boxShadow = 'var(--theme-glow)'; }
     updateCharAvatar(cur, max);
+}
+
+function nudgeHp(delta) {
+    const el = document.getElementById('cs-hp-cur');
+    if (!el) return;
+    const max = parseInt(document.getElementById('cs-hp-max').value) || 1;
+    let cur = (parseInt(el.value) || 0) + (parseInt(delta, 10) || 0);
+    if (cur < 0) cur = 0;
+    if (cur > max) cur = max;
+    el.value = cur;
+    updateCharVisualHP();
+    saveActiveCharLive();
 }
 
 function updateCharAvatar(cur, max) {
@@ -1088,9 +1113,29 @@ document.getElementById('cs-inv-list').addEventListener('click', (e) => {
 // ==========================================================================
 // 5. КАРТА
 // ==========================================================================
-const map = L.map('map-area', { crs: L.CRS.EPSG3395, zoomControl: false, attributionControl: false, maxZoom: 17 }).setView([38.8951, -77.0364], 12); 
-L.tileLayer('https://core-sat.maps.yandex.net/tiles?l=sat&x={x}&y={y}&z={z}', { maxZoom: 19, className: 'yandex-sat-base' }).addTo(map);
-L.tileLayer('https://core-renderer-tiles.maps.yandex.net/tiles?l=skl&x={x}&y={y}&z={z}&scale=1&lang=ru_RU', { maxZoom: 19, className: 'yandex-roads-overlay' }).addTo(map);
+function pipNoopMap() {
+    return {
+        on: function () { return this; },
+        off: function () { return this; },
+        invalidateSize: function () {},
+        removeLayer: function () { return this; },
+        addLayer: function () { return this; },
+        flyTo: function () { return this; },
+        setView: function () { return this; },
+        distance: function () { return 0; }
+    };
+}
+let map = pipNoopMap();
+try {
+    if (typeof L === 'undefined') throw new Error('leaflet unavailable');
+    const mapEl = document.getElementById('map-area');
+    if (!mapEl) throw new Error('map container missing');
+    map = L.map(mapEl, { crs: L.CRS.EPSG3395, zoomControl: false, attributionControl: false, maxZoom: 17 }).setView([38.8951, -77.0364], 12);
+    L.tileLayer('https://core-sat.maps.yandex.net/tiles?l=sat&x={x}&y={y}&z={z}', { maxZoom: 19, className: 'yandex-sat-base' }).addTo(map);
+    L.tileLayer('https://core-renderer-tiles.maps.yandex.net/tiles?l=skl&x={x}&y={y}&z={z}&scale=1&lang=ru_RU', { maxZoom: 19, className: 'yandex-roads-overlay' }).addTo(map);
+} catch (e) {
+    map = pipNoopMap();
+}
 
 const geoScanner = document.getElementById('geo-scanner'); let hoverTimer = null; let searchMarker = null;
 const GEO_NAME_MAX = 22;
@@ -1168,13 +1213,13 @@ if (toggleSearchBtn) toggleSearchBtn.addEventListener('click', () => {
     }
     syncMapScrim();
 });
-closeSearchBtn.addEventListener('click', () => closeSearchPanel());
-searchInput.addEventListener('keypress', async (e) => { if (e.key === 'Enter' && searchInput.value.trim()) { const query = searchInput.value.trim(); const originalPlaceholder = searchInput.placeholder; searchInput.value = ''; searchInput.placeholder = 'СКАНИРОВАНИЕ...'; try { const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&accept-language=ru`); const data = await res.json(); if (data && data.length > 0) { map.flyTo([data[0].lat, data[0].lon], 14, { duration: 1.5 }); if (searchMarker) map.removeLayer(searchMarker); searchMarker = L.circleMarker([data[0].lat, data[0].lon], { radius: 8, color: '#14fe14', weight: 2, fillOpacity: 0.2 }).bindTooltip('ЦЕЛЬ', { className: 'pip-tooltip', direction: 'auto', offset: [0, -10] }).addTo(map); searchMarker.openTooltip(); if (isCompactUI()) closeSearchPanel(); } else searchInput.placeholder = 'ОШИБКА БАЗЫ'; } catch (err) { searchInput.placeholder = 'ОБРЫВ СВЯЗИ'; } setTimeout(() => searchInput.placeholder = originalPlaceholder, 1500); } });
+closeSearchBtn && closeSearchBtn.addEventListener('click', () => closeSearchPanel());
+if (searchInput) searchInput.addEventListener('keypress', async (e) => { if (e.key === 'Enter' && searchInput.value.trim()) { const query = searchInput.value.trim(); const originalPlaceholder = searchInput.placeholder; searchInput.value = ''; searchInput.placeholder = 'СКАНИРОВАНИЕ...'; try { const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&accept-language=ru`); const data = await res.json(); if (data && data.length > 0) { map.flyTo([data[0].lat, data[0].lon], 14, { duration: 1.5 }); if (searchMarker) map.removeLayer(searchMarker); if (typeof L !== 'undefined') { searchMarker = L.circleMarker([data[0].lat, data[0].lon], { radius: 8, color: '#14fe14', weight: 2, fillOpacity: 0.2 }).bindTooltip('ЦЕЛЬ', { className: 'pip-tooltip', direction: 'auto', offset: [0, -10] }).addTo(map); searchMarker.openTooltip(); } if (isCompactUI()) closeSearchPanel(); } else searchInput.placeholder = 'ОШИБКА БАЗЫ'; } catch (err) { searchInput.placeholder = 'ОБРЫВ СВЯЗИ'; } setTimeout(() => searchInput.placeholder = originalPlaceholder, 1500); } });
 
 const toggleRulerBtn = document.getElementById('toggle-ruler'); const mapContainer = document.getElementById('map-area'); let isRulerActive = false; let rulerPoints = []; let rulerLine = null; let rulerMarkers = [];
 function clearRuler() { if (rulerLine) map.removeLayer(rulerLine); rulerMarkers.forEach(m => map.removeLayer(m)); rulerPoints = []; rulerMarkers = []; }
-toggleRulerBtn.addEventListener('click', () => { if(isEditorActive) toggleEditorBtn.click(); if(searchPanel.classList.contains('active')) closeSearchBtn.click(); isRulerActive = !isRulerActive; toggleRulerBtn.classList.toggle('active', isRulerActive); mapContainer.classList.toggle('crosshair-cursor', isRulerActive); if(!isRulerActive) clearRuler(); });
-function handleRulerPointClick(latlng) { if (rulerPoints.length === 2) clearRuler(); rulerPoints.push(latlng); const m = L.circleMarker(latlng, { radius: 4, color: '#14fe14', weight: 2, fillColor: '#000', fillOpacity: 1 }).addTo(map); rulerMarkers.push(m); if (rulerPoints.length === 2) { rulerLine = L.polyline(rulerPoints, { color: '#14fe14', weight: 2, dashArray: '6, 6' }).addTo(map); const dist = map.distance(rulerPoints[0], rulerPoints[1]); rulerLine.bindTooltip(`ДИСТАНЦИЯ: ${dist > 1000 ? (dist/1000).toFixed(2)+' КМ' : Math.round(dist)+' М'}`, { permanent: true, className: 'pip-tooltip', direction: 'auto', offset: [0, -10] }).openTooltip(); } }
+if (toggleRulerBtn) toggleRulerBtn.addEventListener('click', () => { if(isEditorActive && toggleEditorBtn) toggleEditorBtn.click(); if(searchPanel && searchPanel.classList.contains('active') && closeSearchBtn) closeSearchBtn.click(); isRulerActive = !isRulerActive; toggleRulerBtn.classList.toggle('active', isRulerActive); if (mapContainer) mapContainer.classList.toggle('crosshair-cursor', isRulerActive); if(!isRulerActive) clearRuler(); });
+function handleRulerPointClick(latlng) { if (typeof L === 'undefined') return; if (rulerPoints.length === 2) clearRuler(); rulerPoints.push(latlng); const m = L.circleMarker(latlng, { radius: 4, color: '#14fe14', weight: 2, fillColor: '#000', fillOpacity: 1 }).addTo(map); rulerMarkers.push(m); if (rulerPoints.length === 2) { rulerLine = L.polyline(rulerPoints, { color: '#14fe14', weight: 2, dashArray: '6, 6' }).addTo(map); const dist = map.distance(rulerPoints[0], rulerPoints[1]); rulerLine.bindTooltip(`ДИСТАНЦИЯ: ${dist > 1000 ? (dist/1000).toFixed(2)+' КМ' : Math.round(dist)+' М'}`, { permanent: true, className: 'pip-tooltip', direction: 'auto', offset: [0, -10] }).openTooltip(); } }
 
 const toggleEditorBtn = document.getElementById('toggle-editor'); const palette = document.getElementById('editor-palette'); const markerModal = document.getElementById('marker-modal'); const drawerMap = document.getElementById('info-drawer');
 let isEditorActive = false; let selectedIconType = null; let pendingLatLng = null; let editingPoiId = null; let renderLayers = {}; 
@@ -1217,9 +1262,9 @@ map.on('click', (e) => {
 });
 
 function openMarkerModal(existingPoi = null) { document.getElementById('poi-title').value = existingPoi ? existingPoi.title : ''; document.getElementById('poi-desc').value = existingPoi ? existingPoi.desc : ''; markerModal.classList.add('active'); }
-document.getElementById('modal-cancel').onclick = () => markerModal.classList.remove('active');
-document.getElementById('modal-save').onclick = () => { const title = document.getElementById('poi-title').value.trim() || 'НЕИЗВЕСТНЫЙ ОБЪЕКТ'; const desc = document.getElementById('poi-desc').value.trim() || 'Нет данных'; if (editingPoiId) { const poi = customPOIs.find(p => p.id === editingPoiId); if(poi) { poi.title = title; poi.desc = desc; } } else { customPOIs.push({ id: Date.now().toString(), type: selectedIconType, lat: pendingLatLng.lat, lng: pendingLatLng.lng, title: title, desc: desc }); } persistMap(); markerModal.classList.remove('active'); if(drawerMap.classList.contains('open')) closeDrawerMap(); renderAllPOIs(); };
-document.getElementById('drawer-close').onclick = closeDrawerMap;
+if (document.getElementById('modal-cancel')) document.getElementById('modal-cancel').onclick = () => markerModal.classList.remove('active');
+if (document.getElementById('modal-save')) document.getElementById('modal-save').onclick = () => { const title = document.getElementById('poi-title').value.trim() || 'НЕИЗВЕСТНЫЙ ОБЪЕКТ'; const desc = document.getElementById('poi-desc').value.trim() || 'Нет данных'; if (editingPoiId) { const poi = customPOIs.find(p => p.id === editingPoiId); if(poi) { poi.title = title; poi.desc = desc; } } else { customPOIs.push({ id: Date.now().toString(), type: selectedIconType, lat: pendingLatLng.lat, lng: pendingLatLng.lng, title: title, desc: desc }); } persistMap(); markerModal.classList.remove('active'); if(drawerMap && drawerMap.classList.contains('open')) closeDrawerMap(); renderAllPOIs(); };
+if (document.getElementById('drawer-close')) document.getElementById('drawer-close').onclick = closeDrawerMap;
 function closeDrawerMap() {
     const drawer = document.getElementById('info-drawer');
     if (drawer) drawer.classList.remove('open');
@@ -1237,6 +1282,7 @@ function openDrawerForPoi(poi) {
 }
 
 function renderAllPOIs() {
+    if (typeof L === 'undefined') { updateMasterStatus(); return; }
     Object.values(renderLayers).forEach(layer => map.removeLayer(layer)); renderLayers = {};
     customPOIs.forEach(poi => {
         const descText = poi.desc || 'Нет данных';

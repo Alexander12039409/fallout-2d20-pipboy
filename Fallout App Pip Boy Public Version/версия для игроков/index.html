@@ -6,35 +6,33 @@
     <meta name="theme-color" content="#031203">
     <title>Fallout 2d20: Pip-Boy игрока</title>
     <link href="https://fonts.googleapis.com/css2?family=Anonymous+Pro:wght@700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="leaflet.css">
     <link rel="stylesheet" href="style.css">
 </head>
-<body data-mode="player" class="player-mode player-gated" data-player-panel="main">
+<body data-mode="player" class="player-mode player-hub" data-player-panel="main">
     <div class="crt-monitor">
         <div class="tv-glitch" aria-hidden="true"></div>
-        <div id="player-gate" class="player-gate" aria-live="polite">
-            <img class="stat-logo" src="icons/logo/icons8-fallout.svg" alt="Fallout">
-            <div id="player-gate-status" class="player-gate-status">ТЕРМИНАЛ ИГРОКА</div>
-            <form id="player-gate-form" class="player-gate-form" onsubmit="event.preventDefault(); playerJoinFromLobby();">
-                <input type="text" id="player-join-code" class="term-input" placeholder="КОД СЕССИИ" autocomplete="off" maxlength="12" autocapitalize="characters">
-                <button class="term-btn" type="submit">ВОЙТИ</button>
-            </form>
+        <div id="player-hub" class="player-hub" aria-live="polite">
+            <img class="stat-logo player-hub-logo" src="icons/logo/icons8-fallout.svg" alt="Fallout">
+            <div class="player-hub-scroll custom-scrollbar">
+                <div id="player-hub-sessions" class="player-hub-sessions"></div>
+                <button class="term-btn player-hub-join-btn" type="button" onclick="togglePlayerJoinForm()">ПОДКЛЮЧИТЬСЯ К НОВОЙ СЕССИИ</button>
+                <form id="player-gate-form" class="player-gate-form" onsubmit="event.preventDefault(); playerJoinFromLobby();">
+                    <input type="text" id="player-join-code" class="term-input" placeholder="КОД СЕССИИ" autocomplete="off" maxlength="12" autocapitalize="characters">
+                    <button class="term-btn" type="submit">ВОЙТИ</button>
+                </form>
+                <div id="player-gate-status" class="player-gate-status">ТЕРМИНАЛ ИГРОКА</div>
+            </div>
         </div>
         <header class="header">
-            <div class="nav-scroll-container" id="player-lobby-nav">
-                <div class="nav-item active" data-player-lobby="chars">СЕССИЯ</div>
-                <div class="nav-item" data-player-lobby="map">КАРТА</div>
-            </div>
-            <div class="nav-scroll-container" id="player-play-nav" hidden>
+            <div class="nav-scroll-container" id="player-play-nav">
                 <div class="nav-item active" data-player="main">ОСНОВНОЕ</div>
                 <div class="nav-item" data-player="inv">ИНВЕНТАРЬ</div>
-                <div class="nav-item" data-player="notes">ЗАМЕТКИ</div>
                 <div class="nav-item" data-player="map">КАРТА</div>
+                <div class="nav-item" data-player="notes">ЗАМЕТКИ</div>
+                <div class="nav-item nav-exit" data-player="exit" title="Выйти из сессии">ВЫХОД</div>
             </div>
             <div class="sys-actions">
-                <button class="icon-btn" id="btn-session" type="button" title="Сессия" style="display:none" onclick="document.getElementById('session-modal').classList.add('active')">
-                    <svg viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5s-3 1.34-3 3 1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
-                </button>
                 <button class="icon-btn fs-btn" id="btn-fullscreen" type="button" title="Развернуть на весь экран" onclick="togglePipFullscreen()">
                     <svg class="fs-icon-expand" viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
                     <svg class="fs-icon-collapse" viewBox="0 0 24 24" style="display:none"><path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z"/></svg>
@@ -65,7 +63,7 @@
                 <div class="char-right-drawer" id="char-drawer">
                     <div class="sheet-handle" aria-hidden="true"></div>
                     <div class="cs-header">
-                        <span style="font-size: 1.3rem; font-weight: bold;">БАЗА: РЕДАКТОР</span>
+                        <span id="cs-editor-title" style="font-size: 1.3rem; font-weight: bold;">БАЗА: РЕДАКТОР</span>
                         <button class="term-btn cs-close-btn" onclick="closeCharEditor()" style="padding: 5px 10px; font-size: 1rem;"><span class="cs-close-desktop">К СПИСКУ 🡒</span><span class="cs-close-mobile">▼ К СПИСКУ</span></button>
                     </div>
                     
@@ -75,46 +73,41 @@
                                 <img class="pip-glyph cs-avatar-img" id="cs-avatar-img" src="icons/vault%20boy%20avatar/%D0%B7%D0%B4%D0%BE%D1%80%D0%BE%D0%B2.svg" alt="">
                             </div>
                             <div class="cs-identity-fields">
-                        <div class="cs-row">
-                            <span class="cs-label">УРОВЕНЬ</span>
-                            <input type="number" id="cs-lvl" class="term-input cs-input-num" value="1">
-                            <span class="cs-identity-spacer"></span>
-                            <span class="cs-label">ОПЫТ</span>
-                            <input type="text" id="cs-xp" class="term-input cs-input-text" style="width: 60px; text-align: right;">
-                        </div>
-                        <div class="cs-row">
-                            <span class="cs-label" style="width: 70px;">ИМЯ:</span>
-                            <input type="text" id="cs-name" class="term-input cs-input-text" placeholder="ВВЕДИТЕ ИМЯ...">
-                        </div>
-                        <div class="cs-row">
-                            <span class="cs-label" style="width: 70px;">РАСА:</span>
-                            <select id="cs-origin" class="term-input cs-input-text" style="cursor: pointer; appearance: none; border-radius: 0;">
-                                <option value="Выживший">ВЫЖИВШИЙ</option><option value="Братство Стали">БРАТСТВО СТАЛИ</option>
-                                <option value="Гуль">ГУЛЬ</option><option value="Супермутант">СУПЕРМУТАНТ</option>
-                                <option value="Мистер Помощник">МИСТЕР ПОМОЩНИК</option><option value="Выходец из Убежища">ВЫХОДЕЦ ИЗ УБЕЖИЩА</option>
-                            </select>
-                        </div>
+                                <div class="cs-id-stats">
+                                    <label class="cs-id-field"><span class="cs-label">УР</span><input type="number" id="cs-lvl" class="term-input cs-input-num" value="1"></label>
+                                    <label class="cs-id-field"><span class="cs-label">ОП</span><input type="text" id="cs-xp" class="term-input cs-input-text"></label>
+                                </div>
+                                <label class="cs-id-field cs-id-wide"><span class="cs-label">ИМЯ</span><input type="text" id="cs-name" class="term-input cs-input-text" placeholder="ВВЕДИТЕ ИМЯ..."></label>
+                                <label class="cs-id-field cs-id-wide"><span class="cs-label">РАСА</span>
+                                    <select id="cs-origin" class="term-input cs-input-text">
+                                        <option value="Выживший">ВЫЖИВШИЙ</option><option value="Братство Стали">БРАТСТВО СТАЛИ</option>
+                                        <option value="Гуль">ГУЛЬ</option><option value="Супермутант">СУПЕРМУТАНТ</option>
+                                        <option value="Мистер Помощник">МИСТЕР ПОМОЩНИК</option><option value="Выходец из Убежища">ВЫХОДЕЦ ИЗ УБЕЖИЩА</option>
+                                    </select>
+                                </label>
                             </div>
                         </div>
 
                         <!-- SPECIAL -->
                         <div class="cs-special-container">
-                            <div class="cs-special-col"><div class="cs-special-box"><input type="number" id="cs-str" class="term-input" value="5" min="1" max="10"></div><div class="cs-special-label"><span class="cs-special-letter">S</span>СИЛА</div></div>
-                            <div class="cs-special-col"><div class="cs-special-box"><input type="number" id="cs-per" class="term-input" value="5" min="1" max="10"></div><div class="cs-special-label"><span class="cs-special-letter">P</span>ВОСПР.</div></div>
-                            <div class="cs-special-col"><div class="cs-special-box"><input type="number" id="cs-end" class="term-input" value="5" min="1" max="10"></div><div class="cs-special-label"><span class="cs-special-letter">E</span>ВЫНОСЛ.</div></div>
-                            <div class="cs-special-col"><div class="cs-special-box"><input type="number" id="cs-cha" class="term-input" value="5" min="1" max="10"></div><div class="cs-special-label"><span class="cs-special-letter">C</span>ХАРИЗМА</div></div>
-                            <div class="cs-special-col"><div class="cs-special-box"><input type="number" id="cs-int" class="term-input" value="5" min="1" max="10"></div><div class="cs-special-label"><span class="cs-special-letter">I</span>ИНТЕЛЛ.</div></div>
-                            <div class="cs-special-col"><div class="cs-special-box"><input type="number" id="cs-agi" class="term-input" value="5" min="1" max="10"></div><div class="cs-special-label"><span class="cs-special-letter">A</span>ЛОВКОСТЬ</div></div>
-                            <div class="cs-special-col"><div class="cs-special-box"><input type="number" id="cs-luc" class="term-input" value="5" min="1" max="10"></div><div class="cs-special-label"><span class="cs-special-letter">L</span>УДАЧА</div></div>
+                            <div class="cs-special-col"><div class="cs-special-box"><input type="number" id="cs-str" class="term-input" value="5" min="1" max="10"></div><div class="cs-special-label"><span class="cs-special-letter">S</span><span class="cs-special-name">СИЛА</span></div></div>
+                            <div class="cs-special-col"><div class="cs-special-box"><input type="number" id="cs-per" class="term-input" value="5" min="1" max="10"></div><div class="cs-special-label"><span class="cs-special-letter">P</span><span class="cs-special-name">ВОСПР.</span></div></div>
+                            <div class="cs-special-col"><div class="cs-special-box"><input type="number" id="cs-end" class="term-input" value="5" min="1" max="10"></div><div class="cs-special-label"><span class="cs-special-letter">E</span><span class="cs-special-name">ВЫНОСЛ.</span></div></div>
+                            <div class="cs-special-col"><div class="cs-special-box"><input type="number" id="cs-cha" class="term-input" value="5" min="1" max="10"></div><div class="cs-special-label"><span class="cs-special-letter">C</span><span class="cs-special-name">ХАРИЗМА</span></div></div>
+                            <div class="cs-special-col"><div class="cs-special-box"><input type="number" id="cs-int" class="term-input" value="5" min="1" max="10"></div><div class="cs-special-label"><span class="cs-special-letter">I</span><span class="cs-special-name">ИНТЕЛЛ.</span></div></div>
+                            <div class="cs-special-col"><div class="cs-special-box"><input type="number" id="cs-agi" class="term-input" value="5" min="1" max="10"></div><div class="cs-special-label"><span class="cs-special-letter">A</span><span class="cs-special-name">ЛОВКОСТЬ</span></div></div>
+                            <div class="cs-special-col"><div class="cs-special-box"><input type="number" id="cs-luc" class="term-input" value="5" min="1" max="10"></div><div class="cs-special-label"><span class="cs-special-letter">L</span><span class="cs-special-name">УДАЧА</span></div></div>
                         </div>
 
                         <!-- HP и CND -->
-                        <div style="display:flex; align-items:flex-end; gap:5px; font-size:1.2rem; flex-shrink:0;">
-                            HP <input type="number" id="cs-hp-cur" class="term-input cs-input-num" value="10" style="border-bottom:none;"> / <input type="number" id="cs-hp-max" class="term-input cs-input-num" value="10" readonly style="color:#555; border-bottom:none;">
+                        <div class="cs-hp-row">
+                            HP <input type="number" id="cs-hp-cur" class="term-input cs-input-num" value="10"> / <input type="number" id="cs-hp-max" class="term-input cs-input-num" value="10" readonly>
                         </div>
                         <div class="cs-hp-bar">
+                            <button type="button" class="hp-step" onclick="nudgeHp(-1)" aria-label="Минус HP">−</button>
                             <div class="cs-hp-wrapper"><div class="cs-hp-fill" id="cs-hp-ui"></div></div>
-                            <div style="border:1px solid var(--pip-green); padding:2px 5px; font-size:0.9rem;">CND</div>
+                            <button type="button" class="hp-step" onclick="nudgeHp(1)" aria-label="Плюс HP">+</button>
+                            <div class="cs-cnd">CND</div>
                         </div>
 
                         <!-- Vault Boy -->
@@ -408,7 +401,7 @@
         </div>
     </div>
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="leaflet.js"></script>
     <script src="db.js"></script>
     <script src="rules.js"></script>
     <script src="icons.js"></script>

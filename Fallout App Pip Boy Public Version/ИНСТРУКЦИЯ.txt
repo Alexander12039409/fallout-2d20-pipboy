@@ -19,6 +19,7 @@ Git-репозиторий (корень, пуш на GitHub идёт отсюд
   E:\fall app\adaptive-v2
   E:\fall app\adaptive-v3
   E:\fall app\adaptive-v3-player
+  E:\fall app\Fallout App Pip Boy Public Version v2   — снимок после UX v2 (git tag v2)
 
 
 1) ЖИВОЙ САЙТ (VPS adminvps, Германия)

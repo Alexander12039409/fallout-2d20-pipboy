@@ -4,6 +4,8 @@ adaptive-v2/
 "adaptive — "*
 "adaptive — копия"/
 "adaptive — копия (2)"/
+"Fallout App Pip Boy Public Version v2"/
+
 
 # Сессии — живые данные сервера, не исходники
 pipboy-sync/data/sessions/*.json

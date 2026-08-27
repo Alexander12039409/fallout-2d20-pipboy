@@ -189,6 +189,9 @@ function showHelpSection(id) {
     }
     document.querySelectorAll('.help-nav-btn').forEach(btn => {
         btn.classList.toggle('active', btn.getAttribute('data-help') === section.id);
+        if (btn.classList.contains('active') && btn.scrollIntoView) {
+            btn.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
+        }
     });
     closeHelpNav();
 }
