@@ -5,17 +5,42 @@
         return /Telegram/i.test((typeof navigator !== 'undefined' && navigator.userAgent) || '');
     }
 
+    function lockTabsHorizontal() {
+        const nav = document.getElementById('player-play-nav');
+        if (!nav || nav.dataset.panLock) return;
+        nav.dataset.panLock = '1';
+        let x0 = 0, y0 = 0, axis = '';
+        nav.addEventListener('touchstart', function (e) {
+            if (!e.touches[0]) return;
+            x0 = e.touches[0].clientX;
+            y0 = e.touches[0].clientY;
+            axis = '';
+        }, { passive: true });
+        nav.addEventListener('touchmove', function (e) {
+            if (!e.touches[0]) return;
+            const dx = e.touches[0].clientX - x0;
+            const dy = e.touches[0].clientY - y0;
+            if (!axis) {
+                if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
+                axis = Math.abs(dx) >= Math.abs(dy) ? 'x' : 'y';
+            }
+            if (axis !== 'x') e.preventDefault();
+        }, { passive: false });
+    }
+
     function boot() {
         if (!inTelegram()) return;
         document.documentElement.classList.add('telegram-webapp');
         if (document.body) document.body.classList.add('telegram-webapp');
         const tg = window.Telegram && window.Telegram.WebApp;
-        if (!tg) return;
-        try { tg.ready(); } catch (e) {}
-        try { tg.expand(); } catch (e) {}
-        try { if (tg.setHeaderColor) tg.setHeaderColor('#031203'); } catch (e) {}
-        try { if (tg.setBackgroundColor) tg.setBackgroundColor('#000000'); } catch (e) {}
-        try { if (tg.disableVerticalSwipes) tg.disableVerticalSwipes(); } catch (e) {}
+        if (tg) {
+            try { tg.ready(); } catch (e) {}
+            try { tg.expand(); } catch (e) {}
+            try { if (tg.setHeaderColor) tg.setHeaderColor('#031203'); } catch (e) {}
+            try { if (tg.setBackgroundColor) tg.setBackgroundColor('#000000'); } catch (e) {}
+            try { if (tg.disableVerticalSwipes) tg.disableVerticalSwipes(); } catch (e) {}
+        }
+        lockTabsHorizontal();
     }
 
     window.pipTelegramStartCode = function () {
