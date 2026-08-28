@@ -83,16 +83,22 @@ function wirePipSession() {
         if (state && state.db) applySessionDb(state.db);
         if (state && state.map) applySessionMap(state.map);
         renderChars();
+        if (typeof activeCharId !== 'undefined' && activeCharId && state && state.characters && state.characters[activeCharId] && typeof applyRemoteChar === 'function') {
+            applyRemoteChar(state.characters[activeCharId]);
+        }
         if (PIP_MODE === 'player' && PipSession.sessionId) enterPlayerApp();
     };
     PipSession.onChar = function (char) {
-        renderChars();
-        if (activeCharId === char.id) {
-            const keep = document.activeElement && document.activeElement.id;
-            openChar(char.id);
-            if (keep) {
-                const el = document.getElementById(keep);
-                if (el && el.focus) el.focus();
+        if (typeof applyRemoteChar === 'function') applyRemoteChar(char);
+        else {
+            renderChars();
+            if (activeCharId === char.id) {
+                const keep = document.activeElement && document.activeElement.id;
+                openChar(char.id);
+                if (keep) {
+                    const el = document.getElementById(keep);
+                    if (el && el.focus) el.focus();
+                }
             }
         }
     };

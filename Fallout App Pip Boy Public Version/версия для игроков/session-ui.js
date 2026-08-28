@@ -15,9 +15,12 @@ function blankSessionChar(name) {
 function loadPlayerHub() {
     try {
         const data = JSON.parse(localStorage.getItem(PLAYER_HUB_KEY) || 'null');
-        if (data && Array.isArray(data.sessions)) return data;
+        if (data && Array.isArray(data.sessions)) {
+            if (!Array.isArray(data.vault)) data.vault = [];
+            return data;
+        }
     } catch (e) {}
-    return { sessions: [] };
+    return { sessions: [], vault: [] };
 }
 
 function savePlayerHub(data) {
@@ -90,6 +93,135 @@ function hubRemoveSession(sessionId) {
     savePlayerHub(data);
     try { localStorage.removeItem('pipboy_claim_' + id); } catch (e) {}
     if (hubExpandedId === id) hubExpandedId = '';
+}
+
+function vaultList() {
+    return loadPlayerHub().vault || [];
+}
+function vaultFind(id) {
+    return vaultList().find(c => c.id === id) || null;
+}
+function vaultUpsert(char) {
+    if (!char || !char.id) return;
+    const data = loadPlayerHub();
+    if (!Array.isArray(data.vault)) data.vault = [];
+    const stored = JSON.parse(JSON.stringify(char));
+    stored._vault = true;
+    delete stored._session;
+    const idx = data.vault.findIndex(c => c.id === char.id);
+    if (idx === -1) data.vault.unshift(stored);
+    else data.vault[idx] = Object.assign({}, data.vault[idx], stored);
+    savePlayerHub(data);
+}
+function vaultRemove(id) {
+    const data = loadPlayerHub();
+    data.vault = (data.vault || []).filter(c => c.id !== id);
+    savePlayerHub(data);
+}
+
+function playerCreateVaultChar() {
+    const char = blankSessionChar('Новый Персонаж');
+    delete char._session;
+    char._vault = true;
+    vaultUpsert(char);
+    window.__unlockedCharId = char.id;
+    renderPlayerHub();
+    if (typeof openChar === 'function') openChar(char.id);
+}
+function playerOpenVaultChar(charId) {
+    window.__unlockedCharId = charId;
+    if (typeof openChar === 'function') openChar(charId);
+}
+function playerDeleteVaultChar(charId) {
+    if (!confirm('Удалить этого персонажа навсегда? Он не на столе мастера.')) return;
+    if (typeof activeCharId !== 'undefined' && activeCharId === charId) {
+        activeCharId = null;
+        const drawer = document.getElementById('char-drawer');
+        if (drawer) drawer.classList.remove('open');
+        const vc = document.getElementById('view-characters');
+        if (vc) vc.classList.remove('sheet-open');
+        showPlayerHub({ keepSession: true });
+    }
+    vaultRemove(charId);
+    renderPlayerHub();
+}
+
+let attachCharId = '';
+function openAttachModal(charId) {
+    attachCharId = charId;
+    const list = document.getElementById('attach-session-list');
+    const status = document.getElementById('attach-modal-status');
+    if (status) status.textContent = '';
+    const sessions = loadPlayerHub().sessions || [];
+    if (list) {
+        if (!sessions.length) {
+            list.innerHTML = '<div class="player-hub-empty">Нет столов в списке. Введите код ниже.</div>';
+        } else {
+            list.innerHTML = sessions.map(s => {
+                const n = (s.chars || []).length;
+                return '<button type="button" class="term-btn attach-session-btn" onclick="playerAttachVaultToSession(\'' + attachCharId + '\',\'' + s.id + '\')">' +
+                    escapeHub(s.id) + ' · ' + n + ' перс.</button>';
+            }).join('');
+        }
+    }
+    const code = document.getElementById('attach-join-code');
+    if (code) {
+        code.value = '';
+        code.onkeydown = function (e) {
+            if (e.key === 'Enter') { e.preventDefault(); playerAttachVaultFromCode(); }
+        };
+        code.focus();
+    }
+    const modal = document.getElementById('attach-modal');
+    if (modal) modal.classList.add('active');
+    if (code) code.focus();
+}
+function closeAttachModal() {
+    const modal = document.getElementById('attach-modal');
+    if (modal) modal.classList.remove('active');
+    attachCharId = '';
+}
+function setAttachStatus(text, asError) {
+    const el = document.getElementById('attach-modal-status');
+    if (!el) return;
+    el.textContent = text || '';
+    el.style.color = asError ? 'var(--pip-red, #fe1414)' : '';
+}
+async function playerAttachVaultFromCode() {
+    const raw = (document.getElementById('attach-join-code') && document.getElementById('attach-join-code').value.trim()) || '';
+    const id = raw.toUpperCase();
+    if (!id) {
+        setAttachStatus('Введите код стола', true);
+        return;
+    }
+    await playerAttachVaultToSession(attachCharId, id);
+}
+async function playerAttachVaultToSession(charId, sessionId) {
+    const id = String(sessionId || '').trim().toUpperCase();
+    const src = vaultFind(charId);
+    if (!src || !id) return;
+    setAttachStatus('Добавляю на стол ' + id + '…');
+    try {
+        await ensurePlayerSession(id);
+        hubUpsertSession(id);
+        const copy = JSON.parse(JSON.stringify(src));
+        copy.id = 'char_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
+        copy._session = true;
+        delete copy._vault;
+        const pin = copy.pin || '';
+        if (!PipSession.state.characters) PipSession.state.characters = {};
+        PipSession.state.characters[copy.id] = copy;
+        await PipSession.pushCharNow(copy, pin);
+        hubRememberChar(Object.assign({}, copy, { _hubSession: id }), pin);
+        closeAttachModal();
+        hubExpandedId = id;
+        setPlayUrl(id);
+        setPlayerGateStatus('Персонаж добавлен на стол ' + id);
+        renderPlayerHub();
+    } catch (err) {
+        setAttachStatus((err && err.message) || 'Не удалось добавить на стол', true);
+        setPlayerGateStatus((err && err.message) || 'Стол не найден', true);
+    }
 }
 
 async function playerDeleteHubChar(sessionId, charId) {
@@ -187,34 +319,55 @@ function escapeHub(text) {
 
 function renderPlayerHub() {
     const host = document.getElementById('player-hub-sessions');
-    if (!host) return;
-    const data = loadPlayerHub();
-    if (!data.sessions.length) {
-        host.innerHTML = '<div class="player-hub-empty">Нет сохранённых сессий.<br>Подключитесь по коду от мастера.</div>';
-        return;
+    if (host) {
+        const data = loadPlayerHub();
+        if (!data.sessions.length) {
+            host.innerHTML = '<div class="player-hub-empty">Нет сохранённых сессий.<br>Подключитесь по коду от мастера.</div>';
+        } else {
+            host.innerHTML = data.sessions.map(sess => {
+                const open = hubExpandedId === sess.id ? ' open' : '';
+                const count = (sess.chars || []).length;
+                const cards = (sess.chars || []).map(ch => {
+                    const max = parseInt(ch.hpMax, 10) || 10;
+                    const cur = parseInt(ch.hpCur, 10) || 0;
+                    const pct = Math.max(0, Math.min(100, max ? (cur / max) * 100 : 0));
+                    return '<div class="hub-char-card" onclick="event.stopPropagation(); playerOpenHubChar(\'' + sess.id + '\',\'' + ch.id + '\')">' +
+                        '<button type="button" class="hub-del hub-char-del" onclick="event.stopPropagation(); playerDeleteHubChar(\'' + sess.id + '\',\'' + ch.id + '\')">X</button>' +
+                        '<div class="hub-char-name">' + escapeHub(ch.name || 'Без имени') + '</div>' +
+                        '<div class="hub-char-info">УР ' + escapeHub(ch.lvl || 1) + ' · ' + escapeHub(ch.origin || 'Выживший') + ' · HP ' + cur + '/' + max + '</div>' +
+                        '<div class="hub-char-hp"><span style="width:' + pct + '%"></span></div></div>';
+                }).join('');
+                const addBtn = '<button class="term-btn" type="button" onclick="event.stopPropagation(); playerAddCharToSession(\'' + sess.id + '\')">СОЗДАТЬ ПЕРСОНАЖА</button>';
+                const delSess = '<button class="term-btn danger" type="button" onclick="event.stopPropagation(); playerDeleteHubSession(\'' + sess.id + '\')">УДАЛИТЬ СТОЛ ИЗ СПИСКА</button>';
+                return '<div class="hub-session' + open + '" data-sid="' + sess.id + '">' +
+                    '<div class="hub-session-head" onclick="toggleHubSession(\'' + sess.id + '\')">' +
+                    '<div><div class="hub-session-code">' + escapeHub(sess.id) + '</div>' +
+                    '<div class="hub-session-meta">' + count + ' перс.</div></div>' +
+                    '<div class="hub-session-tools"><span class="hub-session-chevron">▶</span></div></div>' +
+                    '<div class="hub-session-body">' + (cards || '<div class="player-hub-empty">В этом столе пока нет вашего персонажа</div>') + addBtn + delSess + '</div></div>';
+            }).join('');
+        }
     }
-    host.innerHTML = data.sessions.map(sess => {
-        const open = hubExpandedId === sess.id ? ' open' : '';
-        const count = (sess.chars || []).length;
-        const cards = (sess.chars || []).map(ch => {
-            const max = parseInt(ch.hpMax, 10) || 10;
-            const cur = parseInt(ch.hpCur, 10) || 0;
-            const pct = Math.max(0, Math.min(100, max ? (cur / max) * 100 : 0));
-            return '<div class="hub-char-card" onclick="event.stopPropagation(); playerOpenHubChar(\'' + sess.id + '\',\'' + ch.id + '\')">' +
-                '<button type="button" class="hub-del hub-char-del" onclick="event.stopPropagation(); playerDeleteHubChar(\'' + sess.id + '\',\'' + ch.id + '\')">X</button>' +
-                '<div class="hub-char-name">' + escapeHub(ch.name || 'Без имени') + '</div>' +
-                '<div class="hub-char-info">УР ' + escapeHub(ch.lvl || 1) + ' · ' + escapeHub(ch.origin || 'Выживший') + ' · HP ' + cur + '/' + max + '</div>' +
-                '<div class="hub-char-hp"><span style="width:' + pct + '%"></span></div></div>';
-        }).join('');
-        const addBtn = '<button class="term-btn" type="button" onclick="event.stopPropagation(); playerAddCharToSession(\'' + sess.id + '\')">СОЗДАТЬ ПЕРСОНАЖА</button>';
-        const delSess = '<button class="term-btn danger" type="button" onclick="event.stopPropagation(); playerDeleteHubSession(\'' + sess.id + '\')">УДАЛИТЬ СТОЛ ИЗ СПИСКА</button>';
-        return '<div class="hub-session' + open + '" data-sid="' + sess.id + '">' +
-            '<div class="hub-session-head" onclick="toggleHubSession(\'' + sess.id + '\')">' +
-            '<div><div class="hub-session-code">' + escapeHub(sess.id) + '</div>' +
-            '<div class="hub-session-meta">' + count + ' перс.</div></div>' +
-            '<div class="hub-session-tools"><span class="hub-session-chevron">▶</span></div></div>' +
-            '<div class="hub-session-body">' + (cards || '<div class="player-hub-empty">В этом столе пока нет вашего персонажа</div>') + addBtn + delSess + '</div></div>';
+    renderPlayerVault();
+}
+
+function renderPlayerVault() {
+    const host = document.getElementById('player-hub-vault');
+    if (!host) return;
+    const vault = vaultList();
+    const cards = vault.map(ch => {
+        const max = parseInt(ch['cs-hp-max'], 10) || 10;
+        const cur = parseInt(ch['cs-hp-cur'], 10) || 0;
+        const pct = Math.max(0, Math.min(100, max ? (cur / max) * 100 : 0));
+        return '<div class="hub-char-card vault-card" onclick="playerOpenVaultChar(\'' + ch.id + '\')">' +
+            '<button type="button" class="hub-del hub-char-attach" title="Добавить в стол" aria-label="Добавить в стол" onclick="event.stopPropagation(); openAttachModal(\'' + ch.id + '\')">СТОЛ</button>' +
+            '<button type="button" class="hub-del hub-char-del" onclick="event.stopPropagation(); playerDeleteVaultChar(\'' + ch.id + '\')">X</button>' +
+            '<div class="hub-char-name">' + escapeHub(ch['cs-name'] || 'Без имени') + '</div>' +
+            '<div class="hub-char-info">УР ' + escapeHub(ch['cs-lvl'] || 1) + ' · ' + escapeHub(ch['cs-origin'] || 'Выживший') + ' · HP ' + cur + '/' + max + '</div>' +
+            '<div class="hub-char-hp"><span style="width:' + pct + '%"></span></div></div>';
     }).join('');
+    host.innerHTML = (cards || '<div class="player-hub-empty">Нет персонажей вне стола.<br>Создайте лист, даже если мастер не ведёт стол в приложении.</div>') +
+        '<button class="term-btn" type="button" onclick="playerCreateVaultChar()">СОЗДАТЬ ПЕРСОНАЖА</button>';
 }
 
 function toggleHubSession(id) {
@@ -406,20 +559,16 @@ function wirePipSession() {
             });
         }
         if (typeof renderChars === 'function') renderChars();
+        if (typeof activeCharId !== 'undefined' && activeCharId && state && state.characters && state.characters[activeCharId] && typeof applyRemoteChar === 'function') {
+            applyRemoteChar(state.characters[activeCharId]);
+        }
     };
     PipSession.onChar = function (char) {
         if (char && PipSession.sessionId && hubFindChar(PipSession.sessionId, char.id)) {
             hubRememberChar(Object.assign({}, char, { _hubSession: PipSession.sessionId }));
         }
-        if (typeof renderChars === 'function') renderChars();
-        if (typeof activeCharId !== 'undefined' && activeCharId === char.id) {
-            const keep = document.activeElement && document.activeElement.id;
-            openChar(char.id);
-            if (keep) {
-                const el = document.getElementById(keep);
-                if (el && el.focus) el.focus();
-            }
-        }
+        if (typeof applyRemoteChar === 'function') applyRemoteChar(char);
+        else if (typeof renderChars === 'function') renderChars();
     };
     PipSession.onCharDelete = function (id) {
         if (PipSession.sessionId) hubRemoveChar(PipSession.sessionId, id);
@@ -458,7 +607,7 @@ function wirePipSession() {
             });
             return;
         }
-        setPlayerGateStatus('Введите код стола или откройте ссылку мастера');
+        setPlayerGateStatus('Введите код стола или создайте персонажа без стола');
         return;
     }
 }

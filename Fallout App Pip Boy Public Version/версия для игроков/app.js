@@ -5,7 +5,53 @@ function sessionCharById(id) {
     return (PipSession.state && PipSession.state.characters && PipSession.state.characters[id]) || null;
 }
 function findChar(id) {
+    if (PIP_MODE === 'player' && typeof vaultFind === 'function') {
+        const vault = vaultFind(id);
+        if (vault) return vault;
+    }
     return (masterChars || []).find(c => c.id === id) || sessionCharById(id);
+}
+function applyRemoteChar(char) {
+    if (!char || !char.id) return;
+    if (typeof PipSession !== 'undefined' && PipSession.state && PipSession.state.characters) {
+        PipSession.state.characters[char.id] = char;
+    }
+    if (typeof renderChars === 'function') renderChars();
+    if (typeof activeCharId === 'undefined' || activeCharId !== char.id) return;
+    const drawer = document.getElementById('char-drawer');
+    if (!drawer || !drawer.classList.contains('open')) return;
+    const focused = document.activeElement;
+    const keepFocusId = (focused && drawer.contains(focused) && focused.id) ? focused.id : '';
+    const keepTabBtn = document.querySelector('.cs-tab-btn.active');
+    const keepTabId = keepTabBtn && keepTabBtn.id ? keepTabBtn.id.replace(/^btn-tab-/, '') : '';
+    const keepPanel = document.body.getAttribute('data-player-panel');
+    const skip = { inventory: 1, perks: 1, notes: 1, drBase: 1, pin: 1, _session: 1, _vault: 1, updatedAt: 1 };
+    for (const key in char) {
+        if (skip[key]) continue;
+        const el = document.getElementById(key);
+        if (!el || el.id === keepFocusId) continue;
+        const next = char[key] == null ? '' : String(char[key]);
+        if (el.value !== next) el.value = char[key] == null ? '' : char[key];
+    }
+    const titleEl = document.getElementById('cs-editor-title');
+    if (titleEl) titleEl.textContent = char['cs-name'] || 'ПЕРСОНАЖ';
+    if (char.inventory) char.inventory.forEach(it => {
+        if (typeof normalizeArmorItem === 'function' && typeof isArmorItem === 'function' && isArmorItem(it)) normalizeArmorItem(it);
+    });
+    if (typeof ensureDrBase === 'function') ensureDrBase(char);
+    if (typeof applyEquippedArmor === 'function') applyEquippedArmor(char, false);
+    if (typeof renderInventoryAndPerks === 'function') renderInventoryAndPerks(char);
+    if (typeof migrateCharNotes === 'function') migrateCharNotes(char);
+    if (typeof renderCharNotes === 'function') renderCharNotes(char);
+    if (typeof calcCharSecondary === 'function') calcCharSecondary();
+    if (keepTabId && typeof switchCharTab === 'function') switchCharTab(keepTabId);
+    if (PIP_MODE === 'player' && keepPanel && keepPanel !== 'main' && typeof playerShowPanel === 'function') {
+        playerShowPanel(keepPanel);
+    }
+    if (keepFocusId) {
+        const el = document.getElementById(keepFocusId);
+        if (el && el.focus) el.focus();
+    }
 }
 function isLiveSessionChar() {
     return !!(activeCharId && sessionCharById(activeCharId));
@@ -30,6 +76,11 @@ function persistLiveChar() {
     if (char._session || sessionCharById(char.id)) {
         if (typeof PipSession !== 'undefined' && PipSession.sessionId) PipSession.pushChar(char, char.pin);
         if (PIP_MODE === 'player' && typeof hubRememberChar === 'function') hubRememberChar(char);
+        return;
+    }
+    if (PIP_MODE === 'player' && typeof vaultUpsert === 'function') {
+        vaultUpsert(char);
+        if (typeof renderPlayerHub === 'function') renderPlayerHub();
         return;
     }
     try { localStorage.setItem('pipboy_master_chars', JSON.stringify(masterChars)); } catch (e) {}
@@ -325,6 +376,11 @@ function deleteChar(e, id) {
     e.stopPropagation();
     if(!confirm('Удалить этого персонажа навсегда?')) return;
     if (activeCharId === id) closeCharEditor();
+    if (PIP_MODE === 'player' && typeof vaultFind === 'function' && vaultFind(id) && !sessionCharById(id)) {
+        vaultRemove(id);
+        renderChars();
+        return;
+    }
     if (sessionCharById(id)) {
         const pin = (PIP_MODE === 'player' && typeof hubFindChar === 'function' && PipSession.sessionId)
             ? ((hubFindChar(PipSession.sessionId, id) || {}).pin || '')
@@ -409,6 +465,13 @@ function saveActiveCharLive() {
         charData._session = true;
         if (typeof PipSession !== 'undefined') PipSession.state.characters[activeCharId] = charData;
         persistLiveChar();
+        renderChars();
+        return;
+    }
+    if (PIP_MODE === 'player' && typeof vaultUpsert === 'function' && (prev._vault || vaultFind(activeCharId))) {
+        charData._vault = true;
+        delete charData._session;
+        vaultUpsert(charData);
         renderChars();
         return;
     }
@@ -596,12 +659,13 @@ function switchCharTab(tabId) {
     document.querySelectorAll('.cs-tab-btn').forEach(b => b.classList.remove('active'));
     tab.classList.add('active');
     btn.classList.add('active');
-    if (tabId === 'notes') {
-        const char = typeof liveChar === 'function' ? liveChar() : findChar(activeCharId);
-        if (char) {
-            migrateCharNotes(char);
-            renderCharNotes(char);
-        }
+    const char = typeof liveChar === 'function' ? liveChar() : findChar(activeCharId);
+    if (tabId === 'notes' && char) {
+        migrateCharNotes(char);
+        renderCharNotes(char);
+    }
+    if ((tabId === 'inv' || tabId === 'perks') && char && typeof renderInventoryAndPerks === 'function') {
+        renderInventoryAndPerks(char);
     }
 }
 

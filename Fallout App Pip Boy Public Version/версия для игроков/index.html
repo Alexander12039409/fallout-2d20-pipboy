@@ -23,6 +23,11 @@
                     <div id="player-hub-sessions" class="player-hub-sessions"></div>
                 </section>
                 <hr class="player-hub-divider" aria-hidden="true">
+                <section class="player-hub-block" aria-labelledby="hub-vault-title">
+                    <h2 id="hub-vault-title" class="player-hub-heading">НЕПРИВЯЗАННЫЕ ПЕРСОНАЖИ</h2>
+                    <div id="player-hub-vault" class="player-hub-vault"></div>
+                </section>
+                <hr class="player-hub-divider" aria-hidden="true">
                 <section class="player-hub-block" aria-labelledby="hub-join-title">
                     <h2 id="hub-join-title" class="player-hub-heading">ПОДКЛЮЧИТЬСЯ К НОВОЙ СЕССИИ</h2>
                     <form id="player-gate-form" class="player-gate-form" onsubmit="event.preventDefault(); playerJoinFromLobby();">
@@ -397,6 +402,22 @@
             <div class="term-actions">
                 <button class="term-btn danger" type="button" onclick="cancelPinModal()">ОТМЕНА</button>
                 <button class="term-btn" type="button" onclick="submitPinModal()">ОК</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="attach-modal">
+        <div class="terminal-modal" role="dialog" aria-modal="true">
+            <div class="sheet-handle" aria-hidden="true"></div>
+            <h2>ДОБАВИТЬ В СТОЛ</h2>
+            <p class="session-help">Персонаж появится у мастера в этой сессии. Копия в «Непривязанных» останется у вас.</p>
+            <div id="attach-session-list" class="attach-session-list custom-scrollbar"></div>
+            <div class="session-field-label" style="margin-top:12px;">Новый код стола</div>
+            <input type="text" id="attach-join-code" class="term-input" placeholder="КОД СЕССИИ" maxlength="12" autocapitalize="characters" autocomplete="off">
+            <p id="attach-modal-status" class="player-gate-status" role="status"></p>
+            <div class="term-actions">
+                <button class="term-btn danger" type="button" onclick="closeAttachModal()">ОТМЕНА</button>
+                <button class="term-btn" type="button" onclick="playerAttachVaultFromCode()">ДОБАВИТЬ</button>
             </div>
         </div>
     </div>
