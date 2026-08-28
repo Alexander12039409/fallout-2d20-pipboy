@@ -3,6 +3,7 @@
 	auto_https disable_redirects
 	http_port 8877
 	https_port 443
+	grace_period 5s
 }
 
 https://{$PIPBOY_HTTPS_HOST:89-125-90-225.sslip.io} {

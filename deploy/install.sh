@@ -79,7 +79,7 @@ cat >/etc/systemd/system/pipboy-https.service <<EOF
 [Unit]
 Description=Fallout 2d20 Pip-Boy HTTPS (Caddy)
 After=network.target pipboy.service
-Requires=pipboy.service
+Wants=pipboy.service
 
 [Service]
 Type=simple
@@ -87,9 +87,12 @@ WorkingDirectory=${CADDY_HOME}
 ExecStart=${CADDY_HOME}/caddy run --config ${CADDY_HOME}/Caddyfile --adapter caddyfile
 Restart=always
 RestartSec=5
+TimeoutStopSec=15
+KillMode=mixed
 Environment=PIPBOY_HTTPS_HOST=${HTTPS_HOST}
 Environment=XDG_DATA_HOME=${CADDY_HOME}/data
 Environment=XDG_CONFIG_HOME=${CADDY_HOME}/config
+Environment=HOME=${CADDY_HOME}
 
 [Install]
 WantedBy=multi-user.target
@@ -117,6 +120,7 @@ EOF
 systemctl daemon-reload
 systemctl enable pipboy pipboy-https
 systemctl restart pipboy
+systemctl reset-failed pipboy-https || true
 systemctl restart pipboy-https || true
 
 WEBAPP_URL="https://${HTTPS_HOST}/play/"

@@ -107,7 +107,10 @@ Clone:
    Или уже зайдя по SSH:
      git -C /opt/pipboy fetch origin
      git -C /opt/pipboy reset --hard origin/main
+     cp -f /opt/pipboy/deploy/Caddyfile /opt/pipboy-caddy/Caddyfile
      systemctl restart pipboy
+     systemctl reset-failed pipboy-https || true
+     systemctl restart pipboy-https
 
 Локальная проверка на ПК (нужен Node.js):
   запустить-локально.bat
@@ -188,3 +191,4 @@ HTTPS для Mini App:
 - Заметки игрока — несколько карточек, добавление в шторке
 - Заметки мастера — отдельный таб при живом столе, только для мастера, привязаны к сессии
 - Стартовый экран мастера: короткая инструкция под логотипом и кнопка «Сессия» (как в меню ☰)
+- HTTPS Caddy не останавливается вместе с pipboy (Mini App в Telegram не падает после выкладки)
