@@ -52,6 +52,7 @@ Environment=NODE_ENV=production
 Environment=PORT=${PORT}
 Environment=HOST=0.0.0.0
 Environment=DATA_DIR=${APP_DIR}/pipboy-sync/data/sessions
+EnvironmentFile=-${APP_DIR}/pipboy-sync/telegram.env
 
 [Install]
 WantedBy=multi-user.target
@@ -60,6 +61,35 @@ EOF
 systemctl daemon-reload
 systemctl enable pipboy
 systemctl restart pipboy
+
+cat >/etc/systemd/system/pipboy-telegram.service <<EOF
+[Unit]
+Description=Fallout 2d20 Pip-Boy Telegram bot
+After=network.target pipboy.service
+
+[Service]
+Type=simple
+WorkingDirectory=${APP_DIR}/pipboy-sync
+ExecStart=${NODE_HOME}/bin/node telegram-bot.js
+Restart=always
+RestartSec=5
+Environment=NODE_ENV=production
+Environment=DATA_DIR=${APP_DIR}/pipboy-sync/data/sessions
+EnvironmentFile=-${APP_DIR}/pipboy-sync/telegram.env
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+systemctl daemon-reload
+if grep -qsE '^TELEGRAM_BOT_TOKEN=.+' "${APP_DIR}/pipboy-sync/telegram.env" 2>/dev/null; then
+  systemctl enable pipboy-telegram
+  systemctl restart pipboy-telegram
+  echo "  Telegram-бот включён."
+else
+  echo "  Telegram-бот пока выключен: создайте ${APP_DIR}/pipboy-sync/telegram.env из telegram.env.example"
+fi
+
 sleep 1
 systemctl --no-pager --full status pipboy || true
 
@@ -67,5 +97,7 @@ IP="$(curl -fsSL --max-time 5 https://ifconfig.me || hostname -I | awk '{print $
 echo
 echo "  VPN не трогал. Pip-Boy слушает порт ${PORT}."
 echo "  Мастер:  http://${IP}:${PORT}/master/"
+echo "  Игрок:   http://${IP}:${PORT}/play/"
+echo "  Telegram: токен в ${APP_DIR}/pipboy-sync/telegram.env (см. ИНСТРУКЦИЯ.txt)"
 echo "  В панели adminvps откройте входящий TCP ${PORT} (остальные порты VPN не меняйте)."
 echo

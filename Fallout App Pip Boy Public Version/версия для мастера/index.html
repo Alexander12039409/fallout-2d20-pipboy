@@ -400,9 +400,14 @@
                 <div class="session-live-code">СТОЛ <span id="session-code-val">—</span></div>
                 <div class="session-field-label">Ссылка игрокам</div>
                 <input type="text" id="session-play-link" class="term-input" readonly onclick="this.select()">
+                <div id="session-tg-wrap" hidden>
+                    <div class="session-field-label">Telegram</div>
+                    <input type="text" id="session-tg-link" class="term-input" readonly onclick="this.select()">
+                </div>
                 <div id="session-copy-status" class="session-copy-status"></div>
                 <div class="term-actions" style="margin-top:10px;">
                     <button class="term-btn" type="button" onclick="copyPlayLink()">КОПИРОВАТЬ ССЫЛКУ</button>
+                    <button class="term-btn" type="button" id="session-tg-copy" hidden onclick="copyTelegramLink()">КОПИРОВАТЬ TELEGRAM</button>
                     <a class="term-btn" id="session-key-dl" href="#" download="pipboy-session.txt">СКАЧАТЬ КЛЮЧ</a>
                 </div>
                 <button class="term-btn danger" style="width:100%; margin-top:10px;" type="button" onclick="masterLeaveSession()">УЙТИ С ЭТОГО УСТРОЙСТВА</button>

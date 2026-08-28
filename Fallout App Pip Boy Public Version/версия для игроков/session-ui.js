@@ -371,7 +371,7 @@ function wirePipSession() {
     if (urlInp) urlInp.value = PipSession.defaultUrl();
 
     const q = new URLSearchParams(location.search);
-    const sid = (q.get('s') || '').toUpperCase();
+    const sid = ((typeof pipTelegramStartCode === 'function' && pipTelegramStartCode()) || q.get('s') || '').toUpperCase();
 
     if (PIP_MODE === 'player') {
         const codeInp = document.getElementById('player-join-code');

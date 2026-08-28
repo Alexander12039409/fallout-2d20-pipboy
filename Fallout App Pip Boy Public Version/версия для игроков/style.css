@@ -956,6 +956,25 @@ body.player-mode[data-player-panel="notes"] #tab-notes,
 body.player-mode[data-player-panel="main"] #tab-perks {
     display: flex !important;
 }
+body.telegram-webapp {
+    height: 100%;
+    height: 100dvh;
+    align-items: stretch;
+    justify-content: stretch;
+    background: #000;
+}
+body.telegram-webapp .crt-monitor {
+    width: 100%;
+    max-width: none;
+    height: 100%;
+    height: 100dvh;
+    max-height: none;
+    border-radius: 0;
+    padding: calc(8px + var(--tg-content-safe-area-inset-top, var(--tg-safe-area-inset-top, 0px))) 10px calc(8px + var(--tg-content-safe-area-inset-bottom, var(--tg-safe-area-inset-bottom, 0px)));
+    box-shadow: none;
+}
+body.telegram-webapp .fs-btn { display: none !important; }
+body.telegram-webapp .tv-glitch { opacity: 0.32; }
 body.player-hub {
     display: flex;
 }

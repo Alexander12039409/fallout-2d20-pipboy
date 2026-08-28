@@ -5,6 +5,23 @@ const fs = require('fs');
 const path = require('path');
 const { URL } = require('url');
 
+function loadEnvFile(file) {
+    try {
+        if (!fs.existsSync(file)) return;
+        fs.readFileSync(file, 'utf8').split(/\n/).forEach((line) => {
+            const t = line.trim();
+            if (!t || t.startsWith('#')) return;
+            const i = t.indexOf('=');
+            if (i < 1) return;
+            const k = t.slice(0, i).trim();
+            let v = t.slice(i + 1).trim();
+            if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) v = v.slice(1, -1);
+            if (process.env[k] == null || process.env[k] === '') process.env[k] = v;
+        });
+    } catch (e) {}
+}
+loadEnvFile(path.join(__dirname, 'telegram.env'));
+
 const PORT = parseInt(process.env.PORT || '8787', 10);
 const HOST = process.env.HOST || '0.0.0.0';
 const ROOT = path.resolve(__dirname, '..');
@@ -184,6 +201,17 @@ async function handleApi(req, res, u) {
     // /api/...
     if (req.method === 'GET' && parts[1] === 'health') {
         return send(res, 200, { ok: true, sessions: sessions.size });
+    }
+
+    if (req.method === 'GET' && parts[1] === 'public') {
+        let bot = String(process.env.TELEGRAM_BOT_USERNAME || '').replace(/^@/, '');
+        try {
+            const meta = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'telegram.json'), 'utf8'));
+            if (meta && meta.username) bot = String(meta.username).replace(/^@/, '');
+        } catch (e) {}
+        return send(res, 200, {
+            telegramBot: bot || null
+        });
     }
 
     if (req.method === 'POST' && parts[1] === 'sessions' && parts.length === 2) {

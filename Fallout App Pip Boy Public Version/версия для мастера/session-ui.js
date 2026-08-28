@@ -123,6 +123,7 @@ function wirePipSession() {
         return;
     }
     if (PIP_MODE === 'master') {
+        loadPublicConfig();
         const parsed = PipSession.parseMasterKey(location.href);
         if (parsed && parsed.sessionId && parsed.masterToken) {
             PipSession.connect(PipSession.defaultUrl(), parsed.sessionId, parsed.masterToken).then(() => {
@@ -144,6 +145,13 @@ function updateSessionUi() {
     const join = document.getElementById('session-join-box');
     if (code) code.textContent = live ? PipSession.sessionId : '—';
     if (link) link.value = live ? PipSession.playUrl() : '';
+    const tgLink = document.getElementById('session-tg-link');
+    const tgWrap = document.getElementById('session-tg-wrap');
+    const tgBtn = document.getElementById('session-tg-copy');
+    const tgUrl = live ? telegramPlayUrl() : '';
+    if (tgLink) tgLink.value = tgUrl;
+    if (tgWrap) tgWrap.hidden = !tgUrl;
+    if (tgBtn) tgBtn.hidden = !tgUrl;
     if (box) box.hidden = !live;
     if (idle) idle.hidden = live;
     if (join && live) join.hidden = true;
@@ -242,6 +250,37 @@ function masterLeaveSession() {
     renderChars();
 }
 
+function telegramPlayUrl() {
+    const bot = window.__pipTelegramBot;
+    if (!bot || typeof PipSession === 'undefined' || !PipSession.sessionId) return '';
+    return 'https://t.me/' + bot + '?start=' + encodeURIComponent(PipSession.sessionId);
+}
+
+function copyTelegramLink() {
+    const link = telegramPlayUrl();
+    const status = document.getElementById('session-copy-status');
+    const input = document.getElementById('session-tg-link');
+    if (!link) return;
+    if (input) {
+        input.value = link;
+        input.focus();
+        input.select();
+    }
+    const ok = () => { if (status) status.textContent = 'Ссылка Telegram скопирована'; };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(link).then(ok).catch(ok);
+    } else ok();
+}
+
+function loadPublicConfig() {
+    const base = (typeof PipSession !== 'undefined' && PipSession.defaultUrl()) || '';
+    if (!base) return;
+    fetch(base + '/api/public').then((r) => r.json()).then((data) => {
+        window.__pipTelegramBot = (data && data.telegramBot) || '';
+        updateSessionUi();
+    }).catch(() => {});
+}
+
 function copyPlayLink() {
     const link = PipSession.playUrl();
     const status = document.getElementById('session-copy-status');
@@ -262,7 +301,11 @@ function masterKeyFileBody() {
     const code = PipSession.sessionId;
     const key = PipSession.masterKey();
     const play = PipSession.playUrl();
-    return ['Fallout 2d20 Pip-Boy', 'Код: ' + code, 'Ключ: ' + key, 'Игроки: ' + play, ''].join('\n');
+    const tg = telegramPlayUrl();
+    const lines = ['Fallout 2d20 Pip-Boy', 'Код: ' + code, 'Ключ: ' + key, 'Игроки: ' + play];
+    if (tg) lines.push('Telegram: ' + tg);
+    lines.push('');
+    return lines.join('\n');
 }
 
 function refreshMasterKeyDownload() {

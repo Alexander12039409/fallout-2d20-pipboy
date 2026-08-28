@@ -11,6 +11,9 @@ Fallout App Pip Boy Public Version v2/
 # Сессии — живые данные сервера, не исходники
 pipboy-sync/data/sessions/*.json
 !pipboy-sync/data/sessions/.gitkeep
+pipboy-sync/telegram.env
+pipboy-sync/data/telegram.json
+pipboy-sync/data/telegram-offset
 
 node_modules/
 .env
