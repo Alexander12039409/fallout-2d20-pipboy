@@ -63,8 +63,8 @@ function weaponIconRel(name, category) {
     const n = `${name || ''} ${category || ''}`.toLowerCase();
     if (/гаусс|лазер|плазм|гамма|энерг|институт|мушкет/.test(n)) return PIP_ICONS.gun.energy;
     if (/дробовик/.test(n)) return PIP_ICONS.gun.shotgun;
-    if (/мина|гранат|взрывчат/.test(n)) return PIP_ICONS.gun.mine;
-    if (/кастет|безоруж|кулак|рукоят/.test(n)) return PIP_ICONS.gun.knuckles;
+    if (/мина|гранат|взрывчат|молотов|коктейль/.test(n)) return PIP_ICONS.gun.mine;
+    if (/кастет|безоруж|кулак|рукоят|перчатк|камень|рукопаш/.test(n)) return PIP_ICONS.gun.knuckles;
     if (/мачет|меч|нож|потрошит|шиш|клинок|лезв/.test(n)) return PIP_ICONS.gun.machete;
     if (/кувалд|бит|труб|ключ|кий|скалк|дубинк|монтиров|трост|дрын/.test(n)) return PIP_ICONS.gun.hammer;
     if (/миниган|гатлинг|толстяк|огнемет|инсинератор|хламотрон|пусков/.test(n)) return PIP_ICONS.gun.minigun;
@@ -81,14 +81,14 @@ function itemIconRel(item) {
     const type = `${item.itemType || item.type || ''}`.toLowerCase();
     const cat = `${item.category || ''}`.toLowerCase();
     const n = `${item.title || item.name || ''} ${item.desc || ''} ${cat} ${type}`.toLowerCase();
-    if (type === 'armor' || /брон|одежд|шлем|нагрудн|понож|наруч|комбинезон|халат|пальто|форма|рейдер|кожан|металл|синтов/.test(n)) return PIP_ICONS.armor;
+    if (type === 'armor' || /брон|одежд|шлем|нагрудн|понож|наруч|комбинезон|халат|пальто|форма|рейдер|кожан|металл|синтов|силов|каркас|капюшон|противогаз|каска/.test(n)) return PIP_ICONS.armor;
     if (/стимул|стимпак/.test(n)) return PIP_ICONS.inventory.stimpak;
     if (/крышк|валют|монет/.test(n)) return PIP_ICONS.inventory.caps;
     if (/отмыч|взлом|замок/.test(n)) return PIP_ICONS.inventory.lockpick;
-    if (/психо|винт|баффаут|нарк|таблет|препарат|аддикт/.test(n)) return PIP_ICONS.inventory.drugs;
+    if (/психо|винт|баффаут|бафф|ментат|нарк|таблет|препарат|аддикт|меди-х|мед-х|ярость|глюконафт|успокоин|перегруз|ультравинт|шик\b/.test(n) || cat.includes('препарат')) return PIP_ICONS.inventory.drugs;
     if (/химикат/.test(n)) return PIP_ICONS.inventory.chems;
-    if (/еда|пищ|вода|напит|голод/.test(n)) return PIP_ICONS.inventory.food;
-    if (/аптеч|антибиот|рад-х|радх|антирад|медик|лечен|травм/.test(n)) return PIP_ICONS.inventory.medkit;
+    if (/еда|пищ|вода|напит|голод|кола|пиво|виски|сок |стейк|мясо|патрон|заряд|батаре|ракет|гвозд|шприц|ядерн|топлив/.test(n) || cat.includes('еда') || cat.includes('напит') || cat.includes('боеприпас')) return PIP_ICONS.inventory.food;
+    if (/аптеч|антибиот|рад-х|радх|антирад|медик|лечен|травм/.test(n) || cat.includes('аптеч')) return PIP_ICONS.inventory.medkit;
     if (type === 'consumable' || cat.includes('расход')) return PIP_ICONS.inventory.medkit;
     return PIP_ICONS.inventory.medkit;
 }

@@ -835,57 +835,47 @@ function startEquipArmor(idx) {
     confirmEquipArmor(idx, null);
 }
 
-function syncWeaponMagazine(item, fireRate, qualities) {
+function migrateWeaponAmmo(item) {
     if (!item || item.type !== 'weapon') return false;
-    const mag = (typeof computeWeaponMagSize === 'function')
-        ? computeWeaponMagSize(item.baseId, fireRate, qualities, item)
-        : (item.magSize || 1);
     let changed = false;
-    if (item.magSize !== mag) { item.magSize = mag; changed = true; }
-    if ((item.ammo || 0) > mag) { item.ammo = mag; changed = true; }
-    if (item.ammo == null) item.ammo = 0;
+    const extra = parseInt(item.totalAmmo, 10) || 0;
+    if (extra > 0) {
+        item.ammo = (parseInt(item.ammo, 10) || 0) + extra;
+        item.totalAmmo = 0;
+        changed = true;
+    }
+    if (item.ammo == null || item.ammo === undefined) { item.ammo = 0; changed = true; }
+    if (item.ammo < 0) { item.ammo = 0; changed = true; }
     return changed;
+}
+
+function syncWeaponMagazine(item) {
+    return migrateWeaponAmmo(item);
 }
 
 function changeAmmo(idx, delta) {
     const char = liveChar();
     let item = char.inventory[idx];
-    if (item.ammo === undefined) item.ammo = 0;
-    const mag = item.magSize || 1;
-    item.ammo += delta;
-    if (item.ammo < 0) { item.ammo = 0; alert("НЕТ ПАТРОНОВ В ОБОЙМЕ!"); }
-    if (item.ammo > mag) item.ammo = mag;
+    migrateWeaponAmmo(item);
+    item.ammo = (parseInt(item.ammo, 10) || 0) + delta;
+    if (item.ammo < 0) item.ammo = 0;
     persistLiveChar();
     const val = document.getElementById(`ammo-val-${idx}`);
     if (val) val.innerText = item.ammo;
 }
 
 function reloadWeapon(idx) {
-    const char = liveChar();
-    let item = char.inventory[idx];
-    if (item.ammo === undefined) item.ammo = 0;
-    if (item.totalAmmo === undefined) item.totalAmmo = 0;
-    const mag = item.magSize || 1;
-    let need = mag - item.ammo;
-    if (need <= 0) return;
-    if (item.totalAmmo < need) {
-        if (item.totalAmmo > 0) { item.ammo += item.totalAmmo; item.totalAmmo = 0; }
-        else { alert("НЕТ ПАТРОНОВ В ИНВЕНТАРЕ!"); return; }
-    } else {
-        item.ammo += need; item.totalAmmo -= need;
-    }
-    persistLiveChar();
-    const val = document.getElementById(`ammo-val-${idx}`);
-    const tot = document.getElementById(`ammo-tot-${idx}`);
-    if (val) val.innerText = item.ammo;
-    if (tot) tot.value = item.totalAmmo;
+    changeAmmo(idx, 0);
 }
 
 function updateAmmoTotal(idx, val) {
     const char = liveChar();
     if (!char || !char.inventory[idx]) return;
-    char.inventory[idx].totalAmmo = parseInt(val) || 0;
+    char.inventory[idx].ammo = Math.max(0, parseInt(val, 10) || 0);
+    char.inventory[idx].totalAmmo = 0;
     persistLiveChar();
+    const shown = document.getElementById(`ammo-val-${idx}`);
+    if (shown) shown.innerText = char.inventory[idx].ammo;
 }
 
 function openInvModal() { document.getElementById('inv-title').value = ''; document.getElementById('inv-desc').value = ''; document.getElementById('inv-modal').classList.add('active'); }
@@ -975,16 +965,13 @@ function filterDbPicker() {
             let matchTab = activeDbTab === 'Все' || 
                            (activeDbTab === 'Стрелковое' && (w.category === 'Стрелковое' || w.category === 'Энергетическое')) ||
                            (activeDbTab === 'Холодное/Рукопашн.' && (w.category === 'Холодное' || w.category === 'Рукопашное' || w.category === 'Оружие ближнего боя')) ||
-                           (activeDbTab === 'Тяжелое' && w.category === 'Тяжелое');
+                           (activeDbTab === 'Тяжелое' && (w.category === 'Тяжелое' || w.category === 'Взрывчатка'));
 
             if(matchTab && wKey.toLowerCase().includes(q)) {
                 let div = document.createElement('div'); div.className = 'db-item-row'; div.innerHTML = `${pipGlyph(weaponIconRel(wKey, w.category), 'db-item-glyph')}<span>[${w.category.toUpperCase()}] ${wKey}</span>`;
                 div.onclick = () => {
-                    let newWep = { type: 'weapon', baseId: wKey, mods: {}, ammo: 0, totalAmmo: 0, magSize: 30 };
+                    let newWep = { type: 'weapon', baseId: wKey, mods: {}, ammo: 0, totalAmmo: 0 };
                     for(let s in w.slots) newWep.mods[s] = 0;
-                    newWep.magSize = (typeof computeWeaponMagSize === 'function')
-                        ? computeWeaponMagSize(wKey, w.fireRate, w.qualities, newWep)
-                        : 8;
                     if(!char.inventory) char.inventory = [];
                     char.inventory.push(newWep); persistLiveChar(); 
                     document.getElementById('db-picker-modal').classList.remove('active'); renderInventoryAndPerks(char);
@@ -994,7 +981,7 @@ function filterDbPicker() {
         });
         (masterDB.items || []).forEach(i => {
             let matchTab = activeDbTab === 'Все' || 
-                           (activeDbTab === 'Броня/Одежда' && (i.category === 'Одежда' || i.type === 'armor')) ||
+                           (activeDbTab === 'Броня/Одежда' && (i.type === 'armor' || /одежд|брон|шлем|комбинезон|обмундир|силов|голов/i.test(i.category || ''))) ||
                            (activeDbTab === 'Расходники' && i.type === 'consumable');
 
             if(matchTab && i.name.toLowerCase().includes(q)) {
@@ -1121,15 +1108,14 @@ function renderInventoryAndPerks(char) {
                         }
                     }
                 }
-                if (syncWeaponMagazine(item, cFr, cQual)) magDirty = true;
+                if (syncWeaponMagazine(item)) magDirty = true;
                 const ammoType = (typeof getWeaponAmmoType === 'function') ? getWeaponAmmoType(item.baseId, item) : '';
                 
                 let isMelee = (wData.category === 'Холодное' || wData.category === 'Рукопашное' || wData.category === 'Оружие ближнего боя');
                 let ammoHtml = isMelee ? '' : `
                     <div class="wep-ammo-panel">
-                        <div class="ammo-controls"><span style="font-size: 0.9rem; opacity: 0.8;">ОБОЙМА:</span><button class="ammo-btn" onclick="changeAmmo(${index}, -1)">-</button><span class="ammo-text" id="ammo-val-${index}">${item.ammo || 0}</span><button class="ammo-btn" onclick="changeAmmo(${index}, 1)">+</button><span class="ammo-mag-cap">/ ${item.magSize || 1}</span></div>
-                        <div class="ammo-total-controls"><span style="font-size: 0.9rem; opacity: 0.8;">ВСЕГО:</span><input type="number" class="ammo-total-input" id="ammo-tot-${index}" value="${item.totalAmmo || 0}" onchange="updateAmmoTotal(${index}, this.value)"><button class="term-btn" style="padding: 2px 8px; margin-left: 10px;" onclick="reloadWeapon(${index})">⟳ РЕЛОАД</button></div>
-                        ${ammoType ? `<div class="ammo-type-label">ПАТРОНЫ: ${escapePipHtml(ammoType)}</div>` : ''}
+                        <div class="ammo-controls"><span style="font-size: 0.9rem; opacity: 0.8;">КОЛ-ПАТРОН:</span><button class="ammo-btn" onclick="changeAmmo(${index}, -1)">-</button><span class="ammo-text" id="ammo-val-${index}">${item.ammo || 0}</span><button class="ammo-btn" onclick="changeAmmo(${index}, 1)">+</button></div>
+                        ${ammoType ? `<div class="ammo-type-label">ТИП: ${escapePipHtml(ammoType)}</div>` : ''}
                     </div>`;
 
                 let html = `
