@@ -229,26 +229,64 @@ body.sys-open .sys-menu { display: flex; }
 .cs-hp-fill { height: 100%; width: 100%; background: var(--pip-green); box-shadow: var(--theme-glow); transition: width 0.3s; }
 
 /* ОБНОВЛЕННЫЙ ВАУЛТ БОЙ И БРОНЯ */
-.cs-vault-boy { position: relative; width: 100%; max-width: 250px; height: 300px; min-height: 300px; margin: 15px auto; border: 1px dashed var(--theme-dim); background: radial-gradient(circle, rgba(20,254,20,0.05) 0%, transparent 70%); }
+.cs-vault-boy {
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(88px, 150px) minmax(0, 1fr);
+    grid-template-areas:
+        ". head ."
+        "larm boy rarm"
+        ". torso ."
+        "lleg . rleg";
+    align-items: center;
+    justify-items: center;
+    gap: 10px 8px;
+    width: 100%;
+    max-width: 520px;
+    height: auto;
+    min-height: 0;
+    margin: 15px auto;
+    padding: 8px 4px 10px;
+    border: 1px dashed var(--theme-dim);
+    background: radial-gradient(circle, rgba(20,254,20,0.05) 0%, transparent 70%);
+    overflow: visible;
+}
 .cs-vb-full {
-    width: 168px; height: 248px;
-    position: absolute; top: 50%; left: 50%;
-    transform: translate(-50%, -52%);
+    grid-area: boy;
+    width: 140px; height: 208px;
+    position: static;
+    transform: none;
     object-fit: contain; pointer-events: none; z-index: 1;
     filter: brightness(0) invert(72%) sepia(80%) saturate(900%) hue-rotate(70deg) brightness(1.02);
     opacity: 0.38;
+    margin: 0;
 }
-.cs-hit-loc { position: absolute; background: rgba(0,0,0,0.85); border: 1px solid var(--pip-green); display: flex; flex-direction: column; z-index: 10; box-shadow: 0 0 5px rgba(0,0,0,0.8); }
-.loc-title { font-size: 0.85rem; text-align: center; border-bottom: 1px solid var(--pip-green); margin: 0; padding: 3px 4px; font-weight: bold; background: rgba(20,254,20,0.1); }
-.loc-stats { display: flex; }
-.loc-stats div { display: flex; flex-direction: column; align-items: center; border-right: 1px dashed var(--theme-dim); padding: 2px 3px; }
+.cs-hit-loc {
+    position: static;
+    transform: none;
+    background: rgba(0,0,0,0.85);
+    border: 1px solid var(--pip-green);
+    display: flex;
+    flex-direction: column;
+    z-index: 10;
+    box-shadow: 0 0 5px rgba(0,0,0,0.8);
+    width: 100%;
+    max-width: 168px;
+    min-width: 0;
+    box-sizing: border-box;
+}
+.loc-title { font-size: 0.85rem; text-align: center; border-bottom: 1px solid var(--pip-green); margin: 0; padding: 3px 4px; font-weight: bold; background: rgba(20,254,20,0.1); line-height: 1.15; }
+.loc-stats { display: flex; width: 100%; }
+.loc-stats div { display: flex; flex-direction: column; align-items: center; flex: 1 1 0; min-width: 0; border-right: 1px dashed var(--theme-dim); padding: 2px 2px; }
 .loc-stats div:last-child { border-right: none; }
 .loc-stats span { font-size: 0.78rem; opacity: 0.85; margin-bottom: 1px; }
-.loc-stats input { width: 30px !important; height: 22px; font-size: 1rem; padding: 0; text-align: center; border: none; border-top: 1px dashed var(--theme-dim); background: transparent; color: var(--pip-green); font-family: inherit;}
-.cs-hit-loc.head { top: 2%; left: 50%; transform: translateX(-50%); } 
-.cs-hit-loc.l-arm { top: 35%; left: -6%; } .cs-hit-loc.r-arm { top: 35%; right: -6%; } 
-.cs-hit-loc.torso { top: 50%; left: 50%; transform: translate(-50%, -50%); } 
-.cs-hit-loc.l-leg { bottom: 5%; left: -2%; } .cs-hit-loc.r-leg { bottom: 5%; right: -2%; }
+.loc-stats input { width: 100% !important; max-width: 32px; min-width: 0; height: 22px; font-size: 1rem; padding: 0; text-align: center; border: none; border-top: 1px dashed var(--theme-dim); background: transparent; color: var(--pip-green); font-family: inherit; box-sizing: border-box;}
+.cs-hit-loc.head { grid-area: head; max-width: 180px; }
+.cs-hit-loc.l-arm { grid-area: larm; justify-self: stretch; }
+.cs-hit-loc.r-arm { grid-area: rarm; justify-self: stretch; }
+.cs-hit-loc.torso { grid-area: torso; max-width: 180px; }
+.cs-hit-loc.l-leg { grid-area: lleg; justify-self: stretch; }
+.cs-hit-loc.r-leg { grid-area: rleg; justify-self: stretch; }
 
 .cs-combat-stats { display: flex; flex-wrap: wrap; justify-content: space-around; font-size: 1rem; text-align: center; padding: 15px 0; border-top: 1px dashed var(--theme-dim); border-bottom: 1px dashed var(--theme-dim); margin: 15px 0;}
 .cs-combat-stats > div { flex: 1 1 30%; margin-bottom: 10px;}
@@ -664,25 +702,28 @@ body.player-playing #char-drawer {
     .cs-special-letter { display: none; }
 
     .cs-vault-boy {
-        height: 340px;
-        min-height: 340px;
-        max-width: 280px;
-        display: block;
-        padding: 0;
+        height: auto;
+        min-height: 0;
+        max-width: 100%;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(72px, 110px) minmax(0, 1fr);
+        padding: 8px 2px 10px;
+        gap: 10px 6px;
         margin: 12px auto;
     }
     .cs-vb-full {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -52%);
-        width: 168px;
-        height: 248px;
+        position: static;
+        transform: none;
+        width: 96px;
+        height: 144px;
+        max-width: 100%;
         margin: 0;
     }
+    .cs-hit-loc { max-width: 100%; }
+    .cs-hit-loc.head, .cs-hit-loc.torso { max-width: 100%; }
     .loc-title { font-size: 0.92rem; padding: 4px 5px; }
     .loc-stats span { font-size: 0.82rem; }
-    .loc-stats input { width: 32px !important; height: 24px; font-size: 1.05rem; }
+    .loc-stats input { max-width: 28px; height: 24px; font-size: 1.05rem; }
     .loc-title .loc-worn { font-size: 0.78rem; }
 
     .cs-combat-stats { font-size: 0.9rem; padding: 10px 0; }

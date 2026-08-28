@@ -209,12 +209,15 @@ async function masterCreateSession() {
         renderChars();
         rememberMasterUrl();
         const play = PipSession.playUrl();
-        if (play && navigator.clipboard && navigator.clipboard.writeText) {
-            navigator.clipboard.writeText(play).catch(() => {});
-        }
         downloadMasterKey();
         const copy = document.getElementById('session-copy-status');
-        if (copy) copy.textContent = 'Ссылка игрокам скопирована. Ключ скачан файлом.';
+        if (play) {
+            copyTextToClipboard(play).then(function () {
+                if (copy) copy.textContent = 'Ссылка игрокам скопирована. Ключ скачан файлом.';
+            }).catch(function () {
+                if (copy) copy.textContent = 'Ключ скачан. Нажмите «Копировать ссылку».';
+            });
+        }
         const modal = document.getElementById('session-modal');
         if (modal) modal.classList.add('active');
     } catch (err) {
@@ -256,20 +259,42 @@ function telegramPlayUrl() {
     return 'https://t.me/' + bot + '?start=' + encodeURIComponent(PipSession.sessionId);
 }
 
+function copyTextToClipboard(text) {
+    const value = String(text || '');
+    if (!value) return Promise.reject(new Error('empty'));
+    function execCopy() {
+        const ta = document.createElement('textarea');
+        ta.value = value;
+        ta.setAttribute('readonly', '');
+        ta.style.cssText = 'position:fixed;top:0;left:0;width:2em;height:2em;padding:0;border:none;outline:none;box-shadow:none;background:transparent;';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        ta.setSelectionRange(0, ta.value.length);
+        let ok = false;
+        try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+        document.body.removeChild(ta);
+        return ok;
+    }
+    if (execCopy()) return Promise.resolve(true);
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        return navigator.clipboard.writeText(value);
+    }
+    return Promise.reject(new Error('copy'));
+}
+
 function copyTelegramLink() {
     const link = telegramPlayUrl();
     const status = document.getElementById('session-copy-status');
     const input = document.getElementById('session-tg-link');
     if (!link) return;
-    if (input) {
-        input.value = link;
-        input.focus();
-        input.select();
-    }
-    const ok = () => { if (status) status.textContent = 'Ссылка Telegram скопирована'; };
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(link).then(ok).catch(ok);
-    } else ok();
+    if (input) input.value = link;
+    copyTextToClipboard(link).then(function () {
+        if (status) status.textContent = 'Ссылка Telegram скопирована';
+    }).catch(function () {
+        if (input) { input.focus(); input.select(); }
+        if (status) status.textContent = 'Не удалось скопировать — выделите строку вручную';
+    });
 }
 
 function loadPublicConfig() {
@@ -286,15 +311,13 @@ function copyPlayLink() {
     const status = document.getElementById('session-copy-status');
     const input = document.getElementById('session-play-link');
     if (!link) return;
-    if (input) {
-        input.value = link;
-        input.focus();
-        input.select();
-    }
-    const ok = () => { if (status) status.textContent = 'Ссылка скопирована'; };
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(link).then(ok).catch(ok);
-    } else ok();
+    if (input) input.value = link;
+    copyTextToClipboard(link).then(function () {
+        if (status) status.textContent = 'Ссылка скопирована';
+    }).catch(function () {
+        if (input) { input.focus(); input.select(); }
+        if (status) status.textContent = 'Не удалось скопировать — выделите строку вручную';
+    });
 }
 
 function masterKeyFileBody() {

@@ -15,15 +15,22 @@
     <div class="crt-monitor">
         <div class="tv-glitch" aria-hidden="true"></div>
         <div id="player-hub" class="player-hub" aria-live="polite">
-            <img class="stat-logo player-hub-logo" src="icons/logo/icons8-fallout.svg" alt="Fallout">
+            <img class="stat-logo player-hub-logo" src="icons/logo/icons8-fallout.svg" alt="">
+            <h1 class="player-hub-title">ТЕРМИНАЛ ИГРОКА</h1>
             <div class="player-hub-scroll custom-scrollbar">
-                <div id="player-hub-sessions" class="player-hub-sessions"></div>
-                <button class="term-btn player-hub-join-btn" type="button" onclick="togglePlayerJoinForm()">ПОДКЛЮЧИТЬСЯ К НОВОЙ СЕССИИ</button>
-                <form id="player-gate-form" class="player-gate-form" onsubmit="event.preventDefault(); playerJoinFromLobby();">
-                    <input type="text" id="player-join-code" class="term-input" placeholder="КОД СЕССИИ" autocomplete="off" maxlength="12" autocapitalize="characters">
-                    <button class="term-btn" type="submit">ВОЙТИ</button>
-                </form>
-                <div id="player-gate-status" class="player-gate-status">ТЕРМИНАЛ ИГРОКА</div>
+                <section class="player-hub-block" aria-labelledby="hub-tables-title">
+                    <h2 id="hub-tables-title" class="player-hub-heading">ВАШИ СТОЛЫ</h2>
+                    <div id="player-hub-sessions" class="player-hub-sessions"></div>
+                </section>
+                <hr class="player-hub-divider" aria-hidden="true">
+                <section class="player-hub-block" aria-labelledby="hub-join-title">
+                    <h2 id="hub-join-title" class="player-hub-heading">ПОДКЛЮЧИТЬСЯ К НОВОЙ СЕССИИ</h2>
+                    <form id="player-gate-form" class="player-gate-form" onsubmit="event.preventDefault(); playerJoinFromLobby();">
+                        <input type="text" id="player-join-code" class="term-input" placeholder="КОД СЕССИИ" autocomplete="off" maxlength="12" autocapitalize="characters">
+                        <button class="term-btn" type="submit">ВОЙТИ</button>
+                    </form>
+                    <p id="player-gate-status" class="player-gate-status" role="status"></p>
+                </section>
             </div>
         </div>
         <header class="header">
