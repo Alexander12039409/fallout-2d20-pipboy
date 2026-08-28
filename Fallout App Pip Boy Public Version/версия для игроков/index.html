@@ -396,13 +396,22 @@
         </div>
     </div>
 
-    <script src="leaflet.js"></script>
     <script src="telegram-app.js"></script>
-    <script src="db.js"></script>
-    <script src="rules.js"></script>
-    <script src="icons.js"></script>
-    <script src="session.js"></script>
-    <script src="app.js"></script>
-    <script src="session-ui.js"></script>
+    <script src="telegram-storage.js"></script>
+    <script>
+    (function () {
+        var files = ['leaflet.js', 'db.js', 'rules.js', 'icons.js', 'session.js', 'app.js', 'session-ui.js'];
+        function load(i) {
+            if (i >= files.length) return;
+            var s = document.createElement('script');
+            s.src = files[i];
+            s.onload = function () { load(i + 1); };
+            s.onerror = function () { load(i + 1); };
+            document.body.appendChild(s);
+        }
+        var ready = window.pipStorageReady || Promise.resolve();
+        ready.then(function () { load(0); }, function () { load(0); });
+    })();
+    </script>
 </body>
 </html>
