@@ -110,6 +110,8 @@ select.term-input { cursor: pointer; appearance: none; border-radius: 0;} select
 }
 .nav-scroll-container::-webkit-scrollbar { display: none; }
 .nav-item { flex-shrink: 0; font-size: 1.25rem; text-transform: uppercase; cursor: pointer; padding: 5px 14px; opacity: 0.6; transition: 0.2s; letter-spacing: 1px; margin-bottom: -2px; }
+.nav-item[hidden] { display: none !important; }
+#view-notes.active { display: flex; flex-direction: column; overflow: hidden; }
 .nav-item:active { transform: scale(0.95); }
 .nav-item.active { opacity: 1; border: 2px solid var(--pip-green); border-bottom: 2px solid var(--pip-bg); border-radius: 6px 6px 0 0; background-color: var(--pip-bg); box-shadow: inset 0 2px 5px rgba(20, 254, 20, 0.2); }
 .nav-item.nav-master { color: var(--pip-red); }
@@ -576,7 +578,35 @@ button, .char-card, .icon-btn { -webkit-tap-highlight-color: rgba(20, 254, 20, 0
 .session-join-key { min-height: 96px; text-transform: none; font-size: 1rem; margin: 8px 0 10px; }
 .session-file-btn { display: inline-block; text-align: center; cursor: pointer; margin-bottom: 8px; }
 .session-copy-status { min-height: 1.2em; margin-top: 8px; font-size: 0.95rem; text-transform: none; opacity: 0.9; }
-.session-live-code { font-size: 1.35rem; letter-spacing: 2px; margin: 8px 0 12px; }
+.session-live-code { font-size: 1.35rem; letter-spacing: 2px; margin: 8px 0 12px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.session-block-title { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.session-copy-code-btn {
+    width: 34px; height: 34px; flex-shrink: 0; padding: 0;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: transparent; border: 1px solid var(--pip-green); cursor: pointer;
+}
+.session-copy-code-btn svg { width: 18px; height: 18px; fill: var(--pip-green); }
+.session-copy-code-btn:hover { background: var(--pip-green); }
+.session-copy-code-btn:hover svg { fill: #000; }
+.notes-board { width: 100%; height: 100%; padding: 16px 18px 22px; display: flex; flex-direction: column; min-height: 0; box-sizing: border-box; }
+.notes-board-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+.notes-board-title { font-size: 1.5rem; letter-spacing: 1px; }
+.notes-board-hint { font-size: 0.95rem; opacity: 0.75; margin-bottom: 12px; text-transform: none; font-weight: 700; }
+.notes-card-list { display: flex; flex-direction: column; gap: 10px; overflow-y: auto; flex: 1; min-height: 0; }
+.note-card { border: 1px solid var(--pip-green); padding: 12px 14px; position: relative; background: rgba(0,0,0,0.5); cursor: pointer; }
+.note-card:hover { background: rgba(20,254,20,0.08); }
+.note-card-title { font-size: 1.12rem; margin-bottom: 8px; padding-right: 28px; letter-spacing: 0.5px; }
+.note-card-text { font-size: 1rem; opacity: 0.92; text-transform: none; white-space: pre-wrap; word-wrap: break-word; font-weight: 700; line-height: 1.45; }
+.note-card-del { position: absolute; top: 8px; right: 8px; background: transparent; border: 1px solid var(--pip-red); color: var(--pip-red); width: 24px; height: 24px; display: flex; justify-content: center; align-items: center; cursor: pointer; font-family: monospace; }
+.note-card-del:hover { background: var(--pip-red); color: #000; }
+.notes-empty { opacity: 0.7; text-align: center; padding: 16px 8px; text-transform: none; }
+.hub-session-tools { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.hub-del {
+    background: transparent; border: 1px solid var(--pip-red); color: var(--pip-red);
+    font-family: inherit; cursor: pointer; min-height: 32px; padding: 4px 8px; font-size: 0.85rem;
+}
+.hub-del:hover { background: var(--pip-red); color: #000; }
+.hub-char-del { position: absolute; top: 8px; right: 8px; width: 24px; height: 24px; min-height: 24px; padding: 0; z-index: 2; }
 .session-field-label { opacity: 0.75; font-size: 0.95rem; text-transform: none; margin: 8px 0 6px; }
 body.player-playing .char-right-drawer,
 body.player-playing #char-drawer {
@@ -1152,8 +1182,10 @@ body.player-playing #player-hub { display: none !important; }
 .hub-session-body { display: none; padding: 0 12px 12px; }
 .hub-session.open .hub-session-body { display: flex; flex-direction: column; gap: 10px; }
 .hub-char-card {
+    position: relative;
     border: 1px dashed var(--theme-dim);
     padding: 12px;
+    padding-right: 36px;
     cursor: pointer;
     background: rgba(0,0,0,0.35);
 }

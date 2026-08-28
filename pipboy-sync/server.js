@@ -79,7 +79,7 @@ function publicState(sess, req) {
         delete c.pin;
         chars[id] = c;
     });
-    return {
+    const out = {
         id: sess.id,
         createdAt: sess.createdAt,
         map: sess.map || [],
@@ -87,6 +87,8 @@ function publicState(sess, req) {
         characters: chars,
         isMaster: !!(req && isMaster(req, sess))
     };
+    if (out.isMaster) out.masterNotes = Array.isArray(sess.masterNotes) ? sess.masterNotes : [];
+    return out;
 }
 
 function alphabet() { return 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; }
@@ -224,7 +226,8 @@ async function handleApi(req, res, u) {
             createdAt: Date.now(),
             map: Array.isArray(body.map) ? body.map : [],
             db: body.db || null,
-            characters: {}
+            characters: {},
+            masterNotes: []
         };
         sessions.set(id, sess);
         saveSession(sess);
@@ -239,6 +242,19 @@ async function handleApi(req, res, u) {
         const id = parts[2].toUpperCase();
         const sess = sessions.get(id);
         if (!sess) return send(res, 404, { error: 'session not found' });
+
+        if (req.method === 'DELETE' && parts.length === 3) {
+            if (!isMaster(req, sess)) return send(res, 403, { error: 'master only' });
+            broadcast(id, 'session-end', { id: id });
+            const live = streams.get(id);
+            if (live) {
+                live.forEach((client) => { try { client.res.end(); } catch (e) {} });
+                streams.delete(id);
+            }
+            sessions.delete(id);
+            try { fs.unlinkSync(sessionFile(id)); } catch (e) {}
+            return send(res, 200, { ok: true });
+        }
 
         if (req.method === 'GET' && parts.length === 3) {
             return send(res, 200, publicState(sess, req));
@@ -287,6 +303,20 @@ async function handleApi(req, res, u) {
             return send(res, 200, { ok: true });
         }
 
+        if (req.method === 'POST' && parts[3] === 'notes') {
+            if (!isMaster(req, sess)) return send(res, 403, { error: 'master only' });
+            const body = await readBody(req);
+            const list = Array.isArray(body.notes) ? body.notes : [];
+            sess.masterNotes = list.map((n) => ({
+                id: String((n && n.id) || ('note_' + Date.now())),
+                title: String((n && n.title) || '').slice(0, 80),
+                text: String((n && n.text) || '').slice(0, 8000)
+            })).filter((n) => n.title || n.text);
+            saveSession(sess);
+            broadcast(id, 'notes', { notes: sess.masterNotes, from: req.headers['x-client-id'] || '' });
+            return send(res, 200, { ok: true });
+        }
+
         if (req.method === 'POST' && parts[3] === 'chars') {
             const body = await readBody(req);
             const char = body.char;
@@ -313,7 +343,15 @@ async function handleApi(req, res, u) {
         }
 
         if (req.method === 'DELETE' && parts[3] === 'chars' && parts[4]) {
-            if (!isMaster(req, sess)) return send(res, 403, { error: 'master only' });
+            const char = sess.characters[parts[4]];
+            if (!char) return send(res, 404, { error: 'char not found' });
+            const masterOk = isMaster(req, sess);
+            if (!masterOk) {
+                const body = await readBody(req).catch(() => ({}));
+                if (char.pin && String((body && body.pin) || '') !== String(char.pin)) {
+                    return send(res, 403, { error: 'bad pin' });
+                }
+            }
             delete sess.characters[parts[4]];
             saveSession(sess);
             broadcast(id, 'char-delete', { id: parts[4], from: req.headers['x-client-id'] || '' });

@@ -10,10 +10,12 @@ const PipSession = (function () {
     api.masterToken = '';
     api.syncUrl = '';
     api.clientId = 'c' + Math.random().toString(36).slice(2, 10);
-    api.state = { characters: {}, map: [], db: null };
+    api.state = { characters: {}, map: [], db: null, masterNotes: [] };
     api.onChar = null;
     api.onMap = null;
     api.onDb = null;
+    api.onNotes = null;
+    api.onSessionEnd = null;
     api.onHello = null;
     api.onStatus = null;
 
@@ -84,9 +86,13 @@ const PipSession = (function () {
     }
 
     function applyHello(state) {
-        api.state = state || api.state;
-        try { if (state && state.db && typeof api.onDb === 'function') api.onDb(state.db); } catch (e) { console.warn('session db', e); }
-        try { if (state && state.map && typeof api.onMap === 'function') api.onMap(state.map); } catch (e) { console.warn('session map', e); }
+        if (!state) return;
+        const keepNotes = api.state && api.state.masterNotes;
+        api.state = state;
+        if (!Array.isArray(state.masterNotes) && keepNotes) api.state.masterNotes = keepNotes;
+        try { if (state.db && typeof api.onDb === 'function') api.onDb(state.db); } catch (e) { console.warn('session db', e); }
+        try { if (state.map && typeof api.onMap === 'function') api.onMap(state.map); } catch (e) { console.warn('session map', e); }
+        try { if (Array.isArray(api.state.masterNotes) && typeof api.onNotes === 'function') api.onNotes(api.state.masterNotes); } catch (e) { console.warn('session notes', e); }
         try { if (typeof api.onHello === 'function') api.onHello(state); } catch (e) { console.warn('session hello', e); }
     }
 
@@ -123,6 +129,17 @@ const PipSession = (function () {
             api.state.db = data.db;
             if (data.from === api.clientId) return;
             if (typeof api.onDb === 'function') api.onDb(data.db);
+        });
+        es.addEventListener('notes', (ev) => {
+            const data = JSON.parse(ev.data);
+            api.state.masterNotes = data.notes || [];
+            if (data.from === api.clientId) return;
+            if (typeof api.onNotes === 'function') api.onNotes(api.state.masterNotes);
+        });
+        es.addEventListener('session-end', () => {
+            const sid = api.sessionId;
+            if (typeof api.onSessionEnd === 'function') api.onSessionEnd(sid);
+            api.disconnect();
         });
         es.onerror = () => setStatus('СЕССИЯ ' + api.sessionId + ' · СВЯЗЬ…', false);
     }
@@ -229,7 +246,7 @@ const PipSession = (function () {
         api.connected = false;
         api.sessionId = '';
         api.masterToken = '';
-        api.state = { characters: {}, map: [], db: null };
+        api.state = { characters: {}, map: [], db: null, masterNotes: [] };
         try {
             localStorage.removeItem(credsKey());
             localStorage.removeItem('pipboy_session');
@@ -276,15 +293,26 @@ const PipSession = (function () {
         return req('POST', '/api/sessions/' + api.sessionId + '/db', { db: db });
     };
 
+    api.pushNotes = function (notes) {
+        if (!api.sessionId || api.role !== 'master') return;
+        api.state.masterNotes = Array.isArray(notes) ? notes : [];
+        return req('POST', '/api/sessions/' + api.sessionId + '/notes', { notes: api.state.masterNotes });
+    };
+
+    api.deleteSession = async function () {
+        if (!api.sessionId || api.role !== 'master') return;
+        const id = api.sessionId;
+        await req('DELETE', '/api/sessions/' + id, {});
+        api.disconnect();
+        return { ok: true, id: id };
+    };
+
     api.unlockChar = async function (charId, pin) {
         return req('POST', '/api/sessions/' + api.sessionId + '/unlock', { charId: charId, pin: pin || '' });
     };
 
-    api.deleteChar = async function (charId) {
-        return fetch(api.syncUrl + '/api/sessions/' + api.sessionId + '/chars/' + encodeURIComponent(charId), {
-            method: 'DELETE',
-            headers: headers()
-        }).then(r => r.json());
+    api.deleteChar = async function (charId, pin) {
+        return req('DELETE', '/api/sessions/' + api.sessionId + '/chars/' + encodeURIComponent(charId), { pin: pin || '' });
     };
 
     api.charsList = function () {

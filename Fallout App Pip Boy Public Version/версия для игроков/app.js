@@ -268,7 +268,8 @@ function charCardHtml(char, session) {
         if (val > 0) skillsHtml += '<span style="display:inline-block; margin:2px; padding:2px 4px; border:1px solid var(--theme-dim); background:rgba(20,254,20,0.1); border-radius:3px; font-size:0.85rem;">' + skill[0] + ' [' + val + ']</span>';
     });
     const extra = skillsHtml ? '<div style="margin-top: 5px; border-top: 1px dashed var(--theme-dim); padding-top: 5px; display: flex; flex-wrap: wrap;">' + skillsHtml + '</div>' : '';
-    const del = (session && PIP_MODE === 'player') ? '' : '<button class="char-card-del" onclick="deleteChar(event, \'' + char.id + '\')">X</button>';
+    const mine = !(session && PIP_MODE === 'player') || (typeof hubFindChar === 'function' && PipSession.sessionId && hubFindChar(PipSession.sessionId, char.id));
+    const del = mine ? '<button class="char-card-del" onclick="deleteChar(event, \'' + char.id + '\')">X</button>' : '';
     return del + '<div class="char-card-name">' + (char['cs-name'] || 'БЕЗ ИМЕНИ') + '</div><div class="char-card-info">' + (session ? 'СЕССИЯ · ' : '') + 'УР: ' + (char['cs-lvl'] || 1) + ' | ' + (char['cs-origin'] || 'ВЫЖИВШИЙ') + '</div><div class="char-card-special"><span>С<br>' + (char['cs-str']||5) + '</span> <span>В<br>' + (char['cs-per']||5) + '</span> <span>В<br>' + (char['cs-end']||5) + '</span> <span>Х<br>' + (char['cs-cha']||5) + '</span> <span>И<br>' + (char['cs-int']||5) + '</span> <span>Л<br>' + (char['cs-agi']||5) + '</span> <span>У<br>' + (char['cs-luc']||5) + '</span></div>' + extra;
 }
 
@@ -314,7 +315,7 @@ function createChar() {
     const newChar = {
         id: 'char_' + Date.now(), 'cs-name': 'Новый Персонаж', 'cs-lvl': 1, 'cs-xp': '', 'cs-origin': 'Выживший',
         'cs-str': 5, 'cs-per': 5, 'cs-end': 5, 'cs-cha': 5, 'cs-int': 5, 'cs-agi': 5, 'cs-luc': 5, 'cs-hp-cur': 10, 'cs-hp-max': 10,
-        inventory: [], perks: []
+        inventory: [], perks: [], notes: []
     };
     masterChars.push(newChar); localStorage.setItem('pipboy_master_chars', JSON.stringify(masterChars));
     renderChars(); openChar(newChar.id);
@@ -325,11 +326,14 @@ function deleteChar(e, id) {
     if(!confirm('Удалить этого персонажа навсегда?')) return;
     if (activeCharId === id) closeCharEditor();
     if (sessionCharById(id)) {
-        if (PIP_MODE === 'player') return;
-        if (typeof PipSession !== 'undefined') PipSession.deleteChar(id).then(() => {
+        const pin = (PIP_MODE === 'player' && typeof hubFindChar === 'function' && PipSession.sessionId)
+            ? ((hubFindChar(PipSession.sessionId, id) || {}).pin || '')
+            : '';
+        if (typeof PipSession !== 'undefined') PipSession.deleteChar(id, pin).then(() => {
             delete PipSession.state.characters[id];
+            if (PIP_MODE === 'player' && typeof hubRemoveChar === 'function') hubRemoveChar(PipSession.sessionId, id);
             renderChars();
-        });
+        }).catch((err) => alert((err && err.message) || 'Не удалось удалить'));
         return;
     }
     masterChars = masterChars.filter(c => c.id !== id);
@@ -366,6 +370,8 @@ function openChar(id) {
     enforceCharLimits();
     applyEquippedArmor(char, false);
     switchCharTab('perks'); renderInventoryAndPerks(char);
+    migrateCharNotes(char);
+    renderCharNotes(char);
     document.querySelectorAll('#char-drawer .term-textarea').forEach(ta => { autoResize.call(ta); });
     if (PIP_MODE === 'player' && typeof enterPlayerPlay === 'function') enterPlayerPlay();
     if (PIP_MODE === 'player') {
@@ -393,7 +399,8 @@ function saveActiveCharLive() {
         id: activeCharId,
         inventory: prev.inventory || [],
         perks: prev.perks || [],
-        drBase: prev.drBase || null
+        drBase: prev.drBase || null,
+        notes: Array.isArray(prev.notes) ? prev.notes : []
     });
     document.querySelectorAll('#char-drawer .term-input, #char-drawer .term-textarea, #char-drawer .cs-skill-val').forEach(el => {
         if (el.id) charData[el.id] = el.value;
@@ -497,6 +504,90 @@ function updateCharAvatar(cur, max) {
     }, 160);
 }
 
+function newNoteId() {
+    return 'note_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
+}
+function migrateCharNotes(char) {
+    if (!char) return [];
+    if (!Array.isArray(char.notes)) char.notes = [];
+    const legacy = String(char['cs-text-notes'] || '').trim();
+    if (legacy && !char.notes.length) {
+        char.notes.push({ id: newNoteId(), title: 'Заметка', text: legacy });
+        char['cs-text-notes'] = '';
+    }
+    return char.notes;
+}
+function renderCharNotes(char) {
+    const host = document.getElementById('cs-notes-list');
+    if (!host) return;
+    const notes = migrateCharNotes(char);
+    if (!notes.length) {
+        host.innerHTML = '<div class="notes-empty">Нет заметок. Нажмите «+ Заметка».</div>';
+        return;
+    }
+    host.innerHTML = notes.map(n => {
+        const title = escapePipHtml(n.title || 'Заметка');
+        const text = escapePipHtml(n.text || '');
+        return '<div class="note-card" onclick="openCharNoteSheet(\'' + n.id + '\')">' +
+            '<button type="button" class="note-card-del" onclick="event.stopPropagation(); deleteCharNote(\'' + n.id + '\')">X</button>' +
+            '<div class="note-card-title">' + title + '</div>' +
+            '<div class="note-card-text">' + text + '</div></div>';
+    }).join('');
+}
+function openCharNoteSheet(noteId) {
+    const char = (typeof liveChar === 'function' && liveChar()) || findChar(activeCharId);
+    if (!char) return;
+    migrateCharNotes(char);
+    const note = noteId ? char.notes.find(n => n.id === noteId) : null;
+    window.__noteSheetKind = 'char';
+    window.__noteSheetId = note ? note.id : '';
+    const titleEl = document.getElementById('note-modal-title');
+    const title = document.getElementById('note-title');
+    const text = document.getElementById('note-text');
+    if (titleEl) titleEl.textContent = note ? 'ИЗМЕНИТЬ ЗАМЕТКУ' : 'НОВАЯ ЗАМЕТКА';
+    if (title) title.value = note ? (note.title || '') : '';
+    if (text) text.value = note ? (note.text || '') : '';
+    const modal = document.getElementById('note-modal');
+    if (modal) modal.classList.add('active');
+    if (title) title.focus();
+}
+function closeNoteSheet() {
+    const modal = document.getElementById('note-modal');
+    if (modal) modal.classList.remove('active');
+}
+function saveNoteSheet() {
+    const title = (document.getElementById('note-title') && document.getElementById('note-title').value.trim()) || '';
+    const text = (document.getElementById('note-text') && document.getElementById('note-text').value) || '';
+    if (!title && !String(text).trim()) { closeNoteSheet(); return; }
+    if (window.__noteSheetKind === 'master' && typeof saveMasterNote === 'function') {
+        saveMasterNote(window.__noteSheetId, title, text);
+    } else {
+        saveCharNote(window.__noteSheetId, title, text);
+    }
+    closeNoteSheet();
+}
+function saveCharNote(noteId, title, text) {
+    const char = (typeof liveChar === 'function' && liveChar()) || findChar(activeCharId);
+    if (!char) return;
+    migrateCharNotes(char);
+    if (noteId) {
+        const note = char.notes.find(n => n.id === noteId);
+        if (note) { note.title = title; note.text = text; }
+    } else {
+        char.notes.unshift({ id: newNoteId(), title: title, text: text });
+    }
+    persistLiveChar();
+    renderCharNotes(char);
+}
+function deleteCharNote(noteId) {
+    const char = (typeof liveChar === 'function' && liveChar()) || findChar(activeCharId);
+    if (!char) return;
+    migrateCharNotes(char);
+    char.notes = char.notes.filter(n => n.id !== noteId);
+    persistLiveChar();
+    renderCharNotes(char);
+}
+
 function switchCharTab(tabId) {
     const tab = document.getElementById('tab-' + tabId);
     const btn = document.getElementById('btn-tab-' + tabId);
@@ -505,6 +596,13 @@ function switchCharTab(tabId) {
     document.querySelectorAll('.cs-tab-btn').forEach(b => b.classList.remove('active'));
     tab.classList.add('active');
     btn.classList.add('active');
+    if (tabId === 'notes') {
+        const char = typeof liveChar === 'function' ? liveChar() : findChar(activeCharId);
+        if (char) {
+            migrateCharNotes(char);
+            renderCharNotes(char);
+        }
+    }
 }
 
 function autoResize() { this.style.height = 'auto'; this.style.height = (this.scrollHeight) + 'px'; }

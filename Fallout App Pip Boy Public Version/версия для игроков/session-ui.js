@@ -8,7 +8,7 @@ function blankSessionChar(name) {
         'cs-lvl': 1, 'cs-xp': '', 'cs-origin': 'Выживший',
         'cs-str': 5, 'cs-per': 5, 'cs-end': 5, 'cs-cha': 5, 'cs-int': 5, 'cs-agi': 5, 'cs-luc': 5,
         'cs-hp-cur': 10, 'cs-hp-max': 10,
-        inventory: [], perks: [], _session: true
+        inventory: [], perks: [], notes: [], _session: true
     };
 }
 
@@ -75,6 +75,69 @@ function hubFindChar(sessionId, charId) {
     return rec ? rec.chars.find(c => c.id === charId) : null;
 }
 
+function hubRemoveChar(sessionId, charId) {
+    const data = loadPlayerHub();
+    const rec = data.sessions.find(s => s.id === String(sessionId || '').toUpperCase());
+    if (!rec) return;
+    rec.chars = (rec.chars || []).filter(c => c.id !== charId);
+    savePlayerHub(data);
+}
+
+function hubRemoveSession(sessionId) {
+    const id = String(sessionId || '').toUpperCase();
+    const data = loadPlayerHub();
+    data.sessions = data.sessions.filter(s => s.id !== id);
+    savePlayerHub(data);
+    try { localStorage.removeItem('pipboy_claim_' + id); } catch (e) {}
+    if (hubExpandedId === id) hubExpandedId = '';
+}
+
+async function playerDeleteHubChar(sessionId, charId) {
+    if (!confirm('Удалить этого персонажа навсегда?')) return;
+    const pin = ((hubFindChar(sessionId, charId) || {}).pin) || '';
+    try {
+        await ensurePlayerSession(sessionId);
+        await PipSession.deleteChar(charId, pin);
+        if (PipSession.state && PipSession.state.characters) delete PipSession.state.characters[charId];
+    } catch (err) {
+        if (!(err && err.status === 404)) {
+            setPlayerGateStatus((err && err.message) || 'Не удалось удалить персонажа', true);
+        }
+    }
+    hubRemoveChar(sessionId, charId);
+    if (typeof activeCharId !== 'undefined' && activeCharId === charId) {
+        activeCharId = null;
+        const drawer = document.getElementById('char-drawer');
+        if (drawer) drawer.classList.remove('open');
+    }
+    renderPlayerHub();
+}
+
+async function playerDeleteHubSession(sessionId) {
+    const id = String(sessionId || '').toUpperCase();
+    if (!id) return;
+    if (!confirm('Убрать стол ' + id + ' из вашего списка? Ваши персонажи на этом столе тоже будут удалены. Сам стол останется, пока мастер его не удалит.')) return;
+    const rec = loadPlayerHub().sessions.find(s => s.id === id);
+    const chars = ((rec && rec.chars) || []).slice();
+    try {
+        await ensurePlayerSession(id);
+        for (let i = 0; i < chars.length; i++) {
+            try { await PipSession.deleteChar(chars[i].id, chars[i].pin || ''); } catch (e) {}
+        }
+    } catch (e) {}
+    if (typeof PipSession !== 'undefined' && PipSession.sessionId === id) {
+        PipSession.disconnect();
+        try {
+            const url = new URL(location.href);
+            url.searchParams.delete('s');
+            history.replaceState({}, '', url.pathname + url.search);
+        } catch (e) {}
+    }
+    hubRemoveSession(id);
+    setPlayerGateStatus('Стол убран из списка');
+    renderPlayerHub();
+}
+
 function hubHasSession(sessionId) {
     return loadPlayerHub().sessions.some(s => s.id === String(sessionId || '').toUpperCase());
 }
@@ -138,17 +201,19 @@ function renderPlayerHub() {
             const cur = parseInt(ch.hpCur, 10) || 0;
             const pct = Math.max(0, Math.min(100, max ? (cur / max) * 100 : 0));
             return '<div class="hub-char-card" onclick="event.stopPropagation(); playerOpenHubChar(\'' + sess.id + '\',\'' + ch.id + '\')">' +
+                '<button type="button" class="hub-del hub-char-del" onclick="event.stopPropagation(); playerDeleteHubChar(\'' + sess.id + '\',\'' + ch.id + '\')">X</button>' +
                 '<div class="hub-char-name">' + escapeHub(ch.name || 'Без имени') + '</div>' +
                 '<div class="hub-char-info">УР ' + escapeHub(ch.lvl || 1) + ' · ' + escapeHub(ch.origin || 'Выживший') + ' · HP ' + cur + '/' + max + '</div>' +
                 '<div class="hub-char-hp"><span style="width:' + pct + '%"></span></div></div>';
         }).join('');
         const addBtn = '<button class="term-btn" type="button" onclick="event.stopPropagation(); playerAddCharToSession(\'' + sess.id + '\')">СОЗДАТЬ ПЕРСОНАЖА</button>';
+        const delSess = '<button class="term-btn danger" type="button" onclick="event.stopPropagation(); playerDeleteHubSession(\'' + sess.id + '\')">УДАЛИТЬ СТОЛ ИЗ СПИСКА</button>';
         return '<div class="hub-session' + open + '" data-sid="' + sess.id + '">' +
             '<div class="hub-session-head" onclick="toggleHubSession(\'' + sess.id + '\')">' +
             '<div><div class="hub-session-code">' + escapeHub(sess.id) + '</div>' +
             '<div class="hub-session-meta">' + count + ' перс.</div></div>' +
-            '<div class="hub-session-chevron">▶</div></div>' +
-            '<div class="hub-session-body">' + (cards || '<div class="player-hub-empty">В этом столе пока нет вашего персонажа</div>') + addBtn + '</div></div>';
+            '<div class="hub-session-tools"><span class="hub-session-chevron">▶</span></div></div>' +
+            '<div class="hub-session-body">' + (cards || '<div class="player-hub-empty">В этом столе пока нет вашего персонажа</div>') + addBtn + delSess + '</div></div>';
     }).join('');
 }
 
@@ -357,15 +422,22 @@ function wirePipSession() {
         }
     };
     PipSession.onCharDelete = function (id) {
+        if (PipSession.sessionId) hubRemoveChar(PipSession.sessionId, id);
         if (typeof activeCharId !== 'undefined' && activeCharId === id) {
             activeCharId = null;
             showPlayerHub({ keepSession: true });
         }
         if (typeof renderChars === 'function') renderChars();
+        renderPlayerHub();
     };
     PipSession.onMap = function (map) { applySessionMap(map); };
     PipSession.onDb = function (db) { applySessionDb(db); };
     PipSession.onStatus = function () { updateSessionUi(); };
+    PipSession.onSessionEnd = function (sid) {
+        if (sid) hubRemoveSession(sid);
+        setPlayerGateStatus('Стол закрыт мастером', true);
+        showPlayerHub();
+    };
 
     const urlInp = document.getElementById('session-url');
     if (urlInp) urlInp.value = PipSession.defaultUrl();

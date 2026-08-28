@@ -5,7 +5,7 @@ function blankSessionChar(name) {
         'cs-lvl': 1, 'cs-xp': '', 'cs-origin': 'Выживший',
         'cs-str': 5, 'cs-per': 5, 'cs-end': 5, 'cs-cha': 5, 'cs-int': 5, 'cs-agi': 5, 'cs-luc': 5,
         'cs-hp-cur': 10, 'cs-hp-max': 10,
-        inventory: [], perks: [], _session: true
+        inventory: [], perks: [], notes: [], _session: true
     };
 }
 
@@ -96,6 +96,12 @@ function wirePipSession() {
     };
     PipSession.onMap = function (map) { applySessionMap(map); };
     PipSession.onDb = function (db) { applySessionDb(db); };
+    PipSession.onNotes = function (notes) { renderMasterNotes(notes); };
+    PipSession.onSessionEnd = function () {
+        updateSessionUi();
+        renderChars();
+        renderMasterNotes([]);
+    };
     PipSession.onStatus = function () { updateSessionUi(); };
 
     const urlInp = document.getElementById('session-url');
@@ -162,6 +168,122 @@ function updateSessionUi() {
     const block = document.getElementById('session-block');
     if (block && PIP_MODE !== 'player') block.hidden = !live;
     refreshMasterKeyDownload();
+    setSessionNotesTab(live);
+    if (live) renderMasterNotes();
+    else renderMasterNotes([]);
+}
+
+function setSessionNotesTab(live) {
+    const tab = document.getElementById('nav-session-notes');
+    if (tab) {
+        if (live) tab.removeAttribute('hidden');
+        else tab.setAttribute('hidden', '');
+    }
+    if (!live) {
+        const view = document.getElementById('view-notes');
+        if (view && view.classList.contains('active')) {
+            const stat = document.querySelector('.nav-item[data-target="view-stat"]');
+            if (stat) stat.click();
+        }
+    }
+}
+
+function masterNotesList() {
+    if (typeof PipSession === 'undefined') return [];
+    return Array.isArray(PipSession.state.masterNotes) ? PipSession.state.masterNotes : [];
+}
+
+function renderMasterNotes(list) {
+    const host = document.getElementById('master-notes-list');
+    if (!host) return;
+    const notes = Array.isArray(list) ? list : masterNotesList();
+    if (!notes.length) {
+        host.innerHTML = '<div class="notes-empty">Нет заметок стола. Нажмите «+ Заметка».</div>';
+        return;
+    }
+    const esc = (typeof escapePipHtml === 'function') ? escapePipHtml : function (s) {
+        return String(s || '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+    };
+    host.innerHTML = notes.map(n => {
+        const title = esc(n.title || 'Заметка');
+        const text = esc(n.text || '');
+        return '<div class="note-card" onclick="openMasterNoteSheet(\'' + n.id + '\')">' +
+            '<button type="button" class="note-card-del" onclick="event.stopPropagation(); deleteMasterNote(\'' + n.id + '\')">X</button>' +
+            '<div class="note-card-title">' + title + '</div>' +
+            '<div class="note-card-text">' + text + '</div></div>';
+    }).join('');
+}
+
+function openMasterNoteSheet(noteId) {
+    if (typeof PipSession === 'undefined' || !PipSession.sessionId) return;
+    const note = noteId ? masterNotesList().find(n => n.id === noteId) : null;
+    window.__noteSheetKind = 'master';
+    window.__noteSheetId = note ? note.id : '';
+    const titleEl = document.getElementById('note-modal-title');
+    const title = document.getElementById('note-title');
+    const text = document.getElementById('note-text');
+    if (titleEl) titleEl.textContent = note ? 'ИЗМЕНИТЬ ЗАМЕТКУ' : 'НОВАЯ ЗАМЕТКА';
+    if (title) title.value = note ? (note.title || '') : '';
+    if (text) text.value = note ? (note.text || '') : '';
+    const modal = document.getElementById('note-modal');
+    if (modal) modal.classList.add('active');
+    if (title) title.focus();
+}
+
+function saveMasterNote(noteId, title, text) {
+    if (typeof PipSession === 'undefined' || !PipSession.sessionId) return;
+    const notes = masterNotesList().map(n => Object.assign({}, n));
+    if (noteId) {
+        const note = notes.find(n => n.id === noteId);
+        if (note) { note.title = title; note.text = text; }
+        else notes.unshift({ id: noteId, title: title, text: text });
+    } else {
+        notes.unshift({
+            id: 'note_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+            title: title,
+            text: text
+        });
+    }
+    PipSession.state.masterNotes = notes;
+    PipSession.pushNotes(notes);
+    renderMasterNotes(notes);
+}
+
+function deleteMasterNote(noteId) {
+    if (typeof PipSession === 'undefined' || !PipSession.sessionId) return;
+    const notes = masterNotesList().filter(n => n.id !== noteId);
+    PipSession.state.masterNotes = notes;
+    PipSession.pushNotes(notes);
+    renderMasterNotes(notes);
+}
+
+function copySessionCode() {
+    const code = typeof PipSession !== 'undefined' && PipSession.sessionId;
+    if (!code) return;
+    const status = document.getElementById('session-copy-status');
+    copyTextToClipboard(code).then(function () {
+        if (status) status.textContent = 'Код стола скопирован';
+    }).catch(function () {
+        if (status) status.textContent = 'Не удалось скопировать код';
+    });
+}
+
+function masterDeleteSession() {
+    if (typeof PipSession === 'undefined' || !PipSession.sessionId) return;
+    if (!confirm('Удалить стол ' + PipSession.sessionId + ' и всех персонажей навсегда?')) return;
+    PipSession.deleteSession().then(function () {
+        try { history.replaceState({}, '', location.pathname); } catch (e) {}
+        hideMasterJoinForm();
+        updateSessionUi();
+        renderChars();
+        renderMasterNotes([]);
+        const copy = document.getElementById('session-copy-status');
+        if (copy) copy.textContent = 'Стол удалён.';
+        const modal = document.getElementById('session-modal');
+        if (modal) modal.classList.add('active');
+    }).catch(function (err) {
+        setSessionStatus((err && err.message) || 'Не удалось удалить стол', true);
+    });
 }
 
 function setSessionStatus(text, asError) {

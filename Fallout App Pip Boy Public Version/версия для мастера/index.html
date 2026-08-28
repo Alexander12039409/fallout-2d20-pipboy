@@ -20,6 +20,7 @@
                 <div class="nav-item" data-target="view-map">КАРТА</div>
                 <div class="nav-item" data-target="view-radio">РАДИО</div>
                 <div class="nav-item" data-target="view-help">ПОМОЩЬ</div>
+                <div class="nav-item nav-session-notes" id="nav-session-notes" data-target="view-notes" hidden>ЗАМЕТКИ</div>
                 <div class="nav-item nav-master" data-target="view-master">МАСТЕРУ</div>
             </div>
             <div class="sys-actions">
@@ -63,7 +64,11 @@
                     <div style="font-size: 1.8rem; border-bottom: 2px solid var(--pip-green); margin-bottom: 20px; padding-bottom: 5px;">БАЗА ПЕРСОНАЖЕЙ</div>
                     <div class="char-grid" id="char-grid"></div>
                     <div id="session-block" class="session-block" hidden>
-                        <div class="session-block-title">СЕССИЯ <span id="session-block-id"></span></div>
+                        <div class="session-block-title">СЕССИЯ <span id="session-block-id"></span>
+                            <button type="button" class="session-copy-code-btn" onclick="copySessionCode()" title="Копировать код стола" aria-label="Копировать код стола">
+                                <svg viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+                            </button>
+                        </div>
                         <p class="session-block-hint">Персонажи игроков появляются здесь сразу, как только они создают лист.</p>
                         <div class="char-grid" id="session-char-grid"></div>
                     </div>
@@ -167,7 +172,8 @@
                             <div id="cs-inv-list" class="custom-scrollbar" style="display: flex; flex-direction: column; gap: 10px; overflow-y: auto; flex-grow: 1;"></div>
                         </div>
                         <div class="cs-tab-content" id="tab-notes">
-                            <textarea id="cs-text-notes" class="term-textarea custom-scrollbar" placeholder="ЛИЧНЫЕ ЗАМЕТКИ, ЗАДАЧИ, КОДЫ..."></textarea>
+                            <button class="term-btn" type="button" onclick="openCharNoteSheet()" style="margin-bottom:10px;">+ ЗАМЕТКА</button>
+                            <div id="cs-notes-list" class="notes-card-list custom-scrollbar"></div>
                         </div>
                     </div>
                 </div>
@@ -224,6 +230,18 @@
                         </div>
                     </div>
                 </div>
+                </div>
+            </div>
+
+            <!-- ================= ВКЛАДКА: ЗАМЕТКИ СТОЛА ================= -->
+            <div id="view-notes" class="view-section">
+                <div class="notes-board">
+                    <div class="notes-board-head">
+                        <div class="notes-board-title">ЗАМЕТКИ СТОЛА</div>
+                        <button class="term-btn" type="button" onclick="openMasterNoteSheet()">+ ЗАМЕТКА</button>
+                    </div>
+                    <p class="notes-board-hint">Только для мастера. Игроки эти заметки не видят.</p>
+                    <div id="master-notes-list" class="notes-card-list custom-scrollbar"></div>
                 </div>
             </div>
 
@@ -336,6 +354,16 @@
         </div>
     </div>
 
+    <div class="modal-overlay" id="note-modal">
+        <div class="terminal-modal" role="dialog" aria-modal="true">
+            <div class="sheet-handle" aria-hidden="true"></div>
+            <h2 id="note-modal-title">НОВАЯ ЗАМЕТКА</h2>
+            <input type="text" id="note-title" class="term-input" placeholder="НАЗВАНИЕ" maxlength="80">
+            <textarea id="note-text" class="term-textarea custom-scrollbar" placeholder="ТЕКСТ ЗАМЕТКИ..."></textarea>
+            <div class="term-actions"><button class="term-btn danger" onclick="closeNoteSheet()">ОТМЕНА</button><button class="term-btn" onclick="saveNoteSheet()">ЗАПИСАТЬ</button></div>
+        </div>
+    </div>
+
     <div class="modal-overlay" id="db-picker-modal">
         <div class="terminal-modal db-picker-modal-box">
             <div class="sheet-handle" aria-hidden="true"></div>
@@ -398,7 +426,11 @@
                 </div>
             </div>
             <div id="session-live-box" hidden>
-                <div class="session-live-code">СТОЛ <span id="session-code-val">—</span></div>
+                <div class="session-live-code">СТОЛ <span id="session-code-val">—</span>
+                    <button type="button" class="session-copy-code-btn" onclick="copySessionCode()" title="Копировать код стола" aria-label="Копировать код стола">
+                        <svg viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+                    </button>
+                </div>
                 <div class="session-field-label">Ссылка игрокам</div>
                 <input type="text" id="session-play-link" class="term-input" readonly onclick="copyPlayLink()">
                 <div id="session-tg-wrap" hidden>
@@ -411,6 +443,7 @@
                     <button class="term-btn" type="button" id="session-tg-copy" hidden onclick="copyTelegramLink()">КОПИРОВАТЬ TELEGRAM</button>
                     <a class="term-btn" id="session-key-dl" href="#" download="pipboy-session.txt">СКАЧАТЬ КЛЮЧ</a>
                 </div>
+                <button class="term-btn danger" style="width:100%; margin-top:10px;" type="button" onclick="masterDeleteSession()">УДАЛИТЬ СТОЛ</button>
                 <button class="term-btn danger" style="width:100%; margin-top:10px;" type="button" onclick="masterLeaveSession()">УЙТИ С ЭТОГО УСТРОЙСТВА</button>
             </div>
             <button class="term-btn" style="width:100%; margin-top:14px;" type="button" onclick="document.getElementById('session-modal').classList.remove('active')">ЗАКРЫТЬ</button>
