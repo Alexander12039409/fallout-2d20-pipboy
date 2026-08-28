@@ -216,7 +216,8 @@ body.sys-open .sys-menu { display: flex; }
 .cs-special-box { border: 2px solid var(--theme-dim); width: 100%; max-width: 52px; aspect-ratio: 1; display: flex; justify-content: center; align-items: center; padding: 2px; }
 .cs-special-box input { width: 100%; height: 100%; font-size: 1.6rem; border: none; text-align: center; background: rgba(0,0,0,0.4); color: var(--pip-green); font-family: 'Anonymous Pro', monospace; outline: none;}
 .cs-special-label { font-size: 0.72rem; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 2px; }
-.cs-special-name { font-size: 0.68rem; letter-spacing: 0; line-height: 1.1; overflow-wrap: break-word; word-break: break-word; }
+.cs-special-name { font-size: 0.68rem; letter-spacing: 0; line-height: 1.1; }
+.cs-name-br { display: none; }
 .cs-special-letter { border: 1px solid var(--pip-green); border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-size: 0.9rem; font-weight: bold; }
 .cs-hp-row { display:flex; align-items:flex-end; gap:5px; font-size:1.2rem; flex-shrink:0; }
 .cs-hp-row #cs-hp-cur, .cs-hp-row #cs-hp-max { border-bottom: none; }
@@ -659,12 +660,19 @@ body.player-playing #char-drawer {
     .cs-id-field.cs-id-wide .cs-label { width: 40px; }
     .cs-id-stats { gap: 6px; }
     .cs-identity-fields { gap: 5px; }
-    .cs-special-container { padding: 8px 2px; margin: 10px 0; gap: 3px; }
-    .cs-special-box { max-width: 44px; }
+    .cs-special-container {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        padding: 8px 4px;
+        gap: 8px 6px;
+        margin: 10px 0;
+    }
+    .cs-special-box { max-width: 48px; }
     .cs-special-box input { font-size: 1.15rem; }
-    .cs-special-label { font-size: 0.68rem; }
-    .cs-special-name { display: block; font-size: 0.68rem; line-height: 1.1; }
+    .cs-special-label { font-size: 0.7rem; }
+    .cs-special-name { display: block; font-size: 0.7rem; line-height: 1.12; }
     .cs-special-letter { display: none; }
+    .cs-name-br { display: block; }
 
     .cs-vault-boy {
         height: 300px;
@@ -890,18 +898,6 @@ body.player-playing #char-drawer {
     .cs-id-field .cs-label { width: 28px; font-size: 0.85rem; }
     .cs-id-field.cs-id-wide .cs-label { width: 36px; }
     .cs-input-num { width: 42px; }
-    .cs-special-container {
-        display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-        padding: 8px 4px;
-        gap: 8px 6px;
-        margin: 8px 0;
-    }
-    .cs-special-box { max-width: 48px; border-width: 2px; }
-    .cs-special-box input { font-size: 1.12rem; }
-    .cs-special-letter { display: none; }
-    .cs-special-label { font-size: 0.7rem; gap: 2px; }
-    .cs-special-name { display: block; font-size: 0.7rem; line-height: 1.12; }
     .footer { font-size: 0.88rem; }
 }
 
