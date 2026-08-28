@@ -1,3 +1,9 @@
+function openSessionModal() {
+    if (typeof closeSysMenu === 'function') closeSysMenu();
+    const sm = document.getElementById('session-modal');
+    if (sm) sm.classList.add('active');
+}
+
 function blankSessionChar(name) {
     return {
         id: 'char_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
@@ -161,8 +167,11 @@ function updateSessionUi() {
     if (box) box.hidden = !live;
     if (idle) idle.hidden = live;
     if (join && live) join.hidden = true;
-    const btn = document.getElementById('btn-session');
-    if (btn) btn.classList.toggle('is-live', live && PipSession.connected);
+    const liveBtns = live && PipSession.connected;
+    ['btn-session', 'btn-session-home'].forEach(function (id) {
+        const btn = document.getElementById(id);
+        if (btn) btn.classList.toggle('is-live', liveBtns);
+    });
     const footer = document.getElementById('session-status-label');
     if (footer && !live) footer.textContent = '';
     const block = document.getElementById('session-block');
