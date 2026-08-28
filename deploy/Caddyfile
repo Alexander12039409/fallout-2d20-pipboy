@@ -1,0 +1,16 @@
+{
+	# Не слушаем :80 — на этом VPS порт 80 не трогаем (VPN).
+	auto_https disable_redirects
+	http_port 8877
+	https_port 443
+}
+
+https://{$PIPBOY_HTTPS_HOST:89-125-90-225.sslip.io} {
+	tls {
+		issuer acme {
+			disable_http_challenge
+		}
+	}
+	encode gzip
+	reverse_proxy 127.0.0.1:8787
+}

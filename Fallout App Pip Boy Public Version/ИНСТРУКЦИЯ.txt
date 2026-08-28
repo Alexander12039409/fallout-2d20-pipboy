@@ -129,12 +129,16 @@ Railway жив, но с домашнего интернета не открыв�
 
    TELEGRAM_BOT_TOKEN=123456:ABC...
    PIPBOY_PUBLIC_URL=http://89.125.90.225:8787
+   TELEGRAM_WEBAPP_URL=https://89-125-90-225.sslip.io/play/
 
 5. systemctl enable --now pipboy-telegram
    или заново: bash /opt/pipboy/deploy/install.sh
 
-После этого /start в боте показывает кнопку «ОТКРЫТЬ PIP-BOY».
+После этого /start в боте показывает кнопку Mini App «ОТКРЫТЬ PIP-BOY».
 Ссылка на стол: https://t.me/USERNAME?start=КОД
 (появится в модалке мастера, когда бот хотя бы раз успешно запустится)
 
-Mini App внутри Telegram (без перехода в браузер) нужен HTTPS. Пока сайт на http://IP:8787 — кнопка открывает ту же страницу /play/ в клиенте Telegram.
+HTTPS для Mini App:
+  Caddy слушает 443, сертификат Let's Encrypt через TLS-ALPN (порт 80 не нужен).
+  Адрес: https://89-125-90-225.sslip.io/play/
+  В панели adminvps должен быть открыт входящий TCP 443 (как 8787). VPN и порт 80 не трогаем.
