@@ -1429,10 +1429,8 @@ document.querySelectorAll('.modal-overlay .terminal-modal').forEach(modal => {
     });
 });
 
-function pipFsRoot() { return document.querySelector('.crt-monitor'); }
 function isPipFullscreen() {
-    const el = pipFsRoot();
-    return !!(el && (document.fullscreenElement === el || document.webkitFullscreenElement === el));
+    return document.body.classList.contains('pip-fill-window');
 }
 function syncFullscreenIcon() {
     const on = isPipFullscreen();
@@ -1444,15 +1442,21 @@ function syncFullscreenIcon() {
     if (btn) btn.title = on ? 'Свернуть в окно' : 'Развернуть на весь экран';
 }
 function togglePipFullscreen() {
-    const el = pipFsRoot();
-    if (!el || window.matchMedia('(max-width: 860px)').matches) return;
-    if (isPipFullscreen()) {
-        const exit = document.exitFullscreen || document.webkitExitFullscreen;
-        if (exit) exit.call(document);
-    } else {
-        const req = el.requestFullscreen || el.webkitRequestFullscreen;
-        if (req) req.call(el);
-    }
+    if (window.matchMedia('(max-width: 860px)').matches) return;
+    document.body.classList.toggle('pip-fill-window');
+    try { localStorage.setItem('pipboy_fill_window', isPipFullscreen() ? '1' : '0'); } catch (e) {}
+    syncFullscreenIcon();
+    setTimeout(function () { try { if (map && map.invalidateSize) map.invalidateSize(); } catch (e) {} }, 150);
 }
-document.addEventListener('fullscreenchange', syncFullscreenIcon);
-document.addEventListener('webkitfullscreenchange', syncFullscreenIcon);
+(function bootFillWindow() {
+    try {
+        const exit = document.exitFullscreen || document.webkitExitFullscreen;
+        if (document.fullscreenElement && exit) exit.call(document);
+    } catch (e) {}
+    try {
+        if (localStorage.getItem('pipboy_fill_window') === '1' && !window.matchMedia('(max-width: 860px)').matches) {
+            document.body.classList.add('pip-fill-window');
+        }
+    } catch (e) {}
+    syncFullscreenIcon();
+})();
