@@ -216,7 +216,7 @@ body.sys-open .sys-menu { display: flex; }
 .cs-special-box { border: 2px solid var(--theme-dim); width: 100%; max-width: 52px; aspect-ratio: 1; display: flex; justify-content: center; align-items: center; padding: 2px; }
 .cs-special-box input { width: 100%; height: 100%; font-size: 1.6rem; border: none; text-align: center; background: rgba(0,0,0,0.4); color: var(--pip-green); font-family: 'Anonymous Pro', monospace; outline: none;}
 .cs-special-label { font-size: 0.72rem; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 2px; }
-.cs-special-name { font-size: 0.68rem; letter-spacing: 0; line-height: 1.1; }
+.cs-special-name { font-size: 0.68rem; letter-spacing: 0; line-height: 1.1; overflow-wrap: break-word; word-break: break-word; }
 .cs-special-letter { border: 1px solid var(--pip-green); border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-size: 0.9rem; font-weight: bold; }
 .cs-hp-row { display:flex; align-items:flex-end; gap:5px; font-size:1.2rem; flex-shrink:0; }
 .cs-hp-row #cs-hp-cur, .cs-hp-row #cs-hp-max { border-bottom: none; }
@@ -544,6 +544,11 @@ body.player-playing #char-drawer {
    На узких экранах — полноэкранный интерфейс и нижние шторки вместо модалок.
    ========================================================================== */
 @media (max-width: 860px) {
+    html { font-size: 17px; }
+    body.player-mode { cursor: pointer; }
+    body.player-mode input,
+    body.player-mode textarea,
+    body.player-mode select { cursor: text; user-select: text; -webkit-user-select: text; }
     body {
         height: 100dvh;
         height: 100svh;
@@ -566,7 +571,7 @@ body.player-playing #char-drawer {
         gap: 8px;
     }
     .nav-item {
-        font-size: 1rem;
+        font-size: 1.08rem;
         padding: 4px 10px;
         letter-spacing: 0.5px;
     }
@@ -574,7 +579,7 @@ body.player-playing #char-drawer {
     .fs-btn { display: none !important; }
     .footer {
         margin-top: 8px;
-        font-size: 0.85rem;
+        font-size: 0.95rem;
         gap: 8px;
         flex-wrap: nowrap;
     }
@@ -650,16 +655,16 @@ body.player-playing #char-drawer {
     .cs-avatar { width: 72px; height: 72px; }
     .cs-avatar-img { width: 60px; height: 60px; }
     .cs-id-field { gap: 6px; }
-    .cs-id-field .cs-label { width: 32px; font-size: 0.88rem; }
+    .cs-id-field .cs-label { width: 32px; font-size: 0.95rem; }
     .cs-id-field.cs-id-wide .cs-label { width: 40px; }
     .cs-id-stats { gap: 6px; }
     .cs-identity-fields { gap: 5px; }
-    .cs-special-container { padding: 8px 2px; margin: 10px 0; gap: 2px; }
+    .cs-special-container { padding: 8px 2px; margin: 10px 0; gap: 3px; }
     .cs-special-box { max-width: 44px; }
     .cs-special-box input { font-size: 1.15rem; }
-    .cs-special-label { font-size: 0.62rem; }
-    .cs-special-name { font-size: 0.58rem; }
-    .cs-special-letter { width: 18px; height: 18px; font-size: 0.75rem; }
+    .cs-special-label { font-size: 0.68rem; }
+    .cs-special-name { display: block; font-size: 0.68rem; line-height: 1.1; }
+    .cs-special-letter { display: none; }
 
     .cs-vault-boy {
         height: 300px;
@@ -679,12 +684,12 @@ body.player-playing #char-drawer {
         margin: 0;
     }
 
-    .cs-combat-stats { font-size: 0.9rem; padding: 10px 0; }
-    .cs-combat-stats span.val { font-size: 1.2rem; }
+    .cs-combat-stats { font-size: 0.98rem; padding: 10px 0; }
+    .cs-combat-stats span.val { font-size: 1.28rem; }
     .cs-skills-grid { grid-template-columns: 1fr; }
     .cs-tabs-header { overflow-x: auto; scrollbar-width: none; }
     .cs-tab-btn {
-        font-size: 0.85rem;
+        font-size: 0.95rem;
         padding: 10px 8px;
         white-space: nowrap;
         min-height: 42px;
@@ -878,28 +883,34 @@ body.player-playing #char-drawer {
 }
 
 @media (max-width: 480px) {
-    .nav-item { font-size: 0.88rem; padding: 4px 8px; letter-spacing: 0; }
+    .nav-item { font-size: 1rem; padding: 4px 8px; letter-spacing: 0; }
     .cs-identity { grid-template-columns: 58px 1fr; gap: 6px 8px; }
     .cs-avatar { width: 58px; height: 58px; }
     .cs-avatar-img { width: 48px; height: 48px; }
-    .cs-id-field .cs-label { width: 28px; font-size: 0.78rem; }
+    .cs-id-field .cs-label { width: 28px; font-size: 0.85rem; }
     .cs-id-field.cs-id-wide .cs-label { width: 36px; }
     .cs-input-num { width: 42px; }
-    .cs-special-name { display: none; }
-    .cs-special-container { padding: 6px 1px; gap: 1px; margin: 8px 0; }
-    .cs-special-box { max-width: none; border-width: 1px; }
-    .cs-special-box input { font-size: 1.02rem; }
-    .cs-special-letter { width: 16px; height: 16px; font-size: 0.68rem; }
-    .cs-special-label { font-size: 0.55rem; gap: 1px; }
-    .footer { font-size: 0.75rem; }
+    .cs-special-container {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        padding: 8px 4px;
+        gap: 8px 6px;
+        margin: 8px 0;
+    }
+    .cs-special-box { max-width: 48px; border-width: 2px; }
+    .cs-special-box input { font-size: 1.12rem; }
+    .cs-special-letter { display: none; }
+    .cs-special-label { font-size: 0.7rem; gap: 2px; }
+    .cs-special-name { display: block; font-size: 0.7rem; line-height: 1.12; }
+    .footer { font-size: 0.88rem; }
 }
 
 @media (max-width: 360px) {
     .cs-identity { grid-template-columns: 52px 1fr; }
     .cs-avatar { width: 52px; height: 52px; }
     .cs-avatar-img { width: 42px; height: 42px; }
-    .cs-special-box input { font-size: 0.95rem; }
-    .cs-special-letter { width: 15px; height: 15px; font-size: 0.64rem; }
+    .cs-special-name { font-size: 0.64rem; }
+    .cs-special-box input { font-size: 1.05rem; }
 }
 
 @media (max-width: 860px) and (orientation: landscape) {

@@ -30,4 +30,35 @@
 
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
     else boot();
+
+    function keepKeyboard(el) {
+        let n = el;
+        if (n && n.nodeType === 3) n = n.parentElement;
+        if (!n || !n.closest) return false;
+        return !!n.closest('input, textarea, select, button, a, label, [contenteditable="true"]');
+    }
+
+    function focusedField() {
+        const ae = document.activeElement;
+        if (!ae) return null;
+        const tag = (ae.tagName || '').toUpperCase();
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || ae.isContentEditable) return ae;
+        return null;
+    }
+
+    function dismissKeyboard() {
+        const field = focusedField();
+        if (!field) return;
+        try { field.blur(); } catch (e) {}
+        const tg = window.Telegram && window.Telegram.WebApp;
+        try { if (tg && typeof tg.hideKeyboard === 'function') tg.hideKeyboard(); } catch (e) {}
+    }
+
+    function onBackgroundTap(e) {
+        if (keepKeyboard(e.target)) return;
+        dismissKeyboard();
+    }
+
+    document.addEventListener('pointerdown', onBackgroundTap, true);
+    document.addEventListener('touchend', onBackgroundTap, { capture: true, passive: true });
 })();

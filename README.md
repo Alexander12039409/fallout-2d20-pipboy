@@ -37,6 +37,7 @@ node pipboy-sync/server.js
 | --- | --- |
 | `Fallout App Pip Boy Public Version/версия для мастера` | Приложение мастера (рабочая копия) |
 | `Fallout App Pip Boy Public Version/версия для игроков` | Приложение игрока (рабочая копия) |
+| `Fallout App Pip Boy Public Version v3` | Снимок V3 на диске (git tag `v3`) |
 | `pipboy-sync` | Сервер: сессии, живое обновление, раздача обоих UI |
 | `adaptive-v3`, `adaptive-v2`, `adaptive` | Старые копии, не править |
 

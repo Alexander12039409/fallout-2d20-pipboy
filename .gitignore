@@ -4,8 +4,15 @@ adaptive-v2/
 "adaptive — "*
 "adaptive — копия"/
 "adaptive — копия (2)"/
-# Снимок рабочей копии на ПК, не в git
+# Локальные копии и черновики
+adaptive/
+adaptive-v2/
+"adaptive — "*
+"adaptive — копия"/
+"adaptive — копия (2)"/
+# Снимки рабочей копии на ПК, не в git
 Fallout App Pip Boy Public Version v2/
+Fallout App Pip Boy Public Version v3/
 
 
 # Сессии — живые данные сервера, не исходники

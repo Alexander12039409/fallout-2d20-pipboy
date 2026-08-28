@@ -1,52 +1,62 @@
-Fallout 2d20 — Pip-Boy (публичная версия)
-==========================================
+Fallout 2d20 — Pip-Boy  (снимок V3, 2026-08-28)
+================================================
 Сохрани этот файл. Если чат потерял контекст — вставь его целиком в новый диалог.
 
-РАБОЧАЯ ПАПКА (сюда вносим правки):
+
+РАБОЧИЕ ПАПКИ НА ЭТОМ ПК
+------------------------
+Править ЖИВУЮ копию (её же качает VPS из git):
   E:\fall app\Fallout App Pip Boy Public Version
     версия для мастера     — Pip-Boy мастера
     версия для игроков     — Pip-Boy игрока
     ИНСТРУКЦИЯ.txt         — этот файл
+    запустить-локально.bat
 
-Git-репозиторий (корень, пуш на GitHub идёт отсюда):
+Снимок V3 (не править, запас на диске):
+  E:\fall app\Fallout App Pip Boy Public Version v3
+
+Снимок V2 (не править):
+  E:\fall app\Fallout App Pip Boy Public Version v2
+
+Корень git (пуш на GitHub отсюда):
   E:\fall app
 
 Сервер сессий (не удалять):
   E:\fall app\pipboy-sync
 
-СТАРЫЕ КОПИИ (не править, это запас):
+Старые копии (не править):
   E:\fall app\adaptive
   E:\fall app\adaptive-v2
   E:\fall app\adaptive-v3
   E:\fall app\adaptive-v3-player
-  E:\fall app\Fallout App Pip Boy Public Version v2   — снимок после UX v2 (git tag v2)
 
 
-1) ЖИВОЙ САЙТ (VPS adminvps, Германия)
---------------------------------------
-Мастер:
+1) ЖИВЫЕ ССЫЛКИ
+---------------
+Мастер (браузер):
   http://89.125.90.225:8787/master/
 
-Игрок (без кода сессии — сначала логотип Fallout):
+Игрок (браузер, хаб без кода):
   http://89.125.90.225:8787/play/
+
+Игрок к столу (подставьте КОД):
+  http://89.125.90.225:8787/play/?s=КОД
 
 Проверка, что сервер жив:
   http://89.125.90.225:8787/api/health
 
-Как играть:
-  1. Мастер открывает /master/ → меню → Сессия → Новый стол
-  2. Ссылка игрокам копируется, ключ мастера скачивается файлом .txt
-  3. Игрок открывает ссылку → видит стол (даже пустой) → Создать персонажа
-  4. С другого устройства мастер вставляет ключ из файла (одна строка КОД-ТОКЕН)
+Игрок в Telegram Mini App (нужен HTTPS):
+  https://89-125-90-225.sslip.io/play/
+  Бот: https://t.me/pipboy_play_bot
+  Стол из бота: https://t.me/pipboy_play_bot?start=КОД
 
-Сессия живёт на сервере. Мастеру не обязательно быть онлайн.
-
-Порт только 8787. VPN на этом же VPS не трогаем (Amnezia, UDP 30463).
-ОС сервера не переустанавливаем.
+Локально на ПК (после запустить-локально.bat):
+  http://localhost:8787/master/
+  http://localhost:8787/play/
 
 
-2) GITHUB (исходники, чтобы не потерять)
-----------------------------------------
+2) GITHUB
+---------
 Репозиторий:
   https://github.com/Alexander12039409/fallout-2d20-pipboy
 
@@ -54,15 +64,38 @@ Clone:
   https://github.com/Alexander12039409/fallout-2d20-pipboy.git
 
 Ветка: main
+Тег этого снимка: v3
+  https://github.com/Alexander12039409/fallout-2d20-pipboy/tree/v3
+  https://github.com/Alexander12039409/fallout-2d20-pipboy/releases/tag/v3
+
+Тег предыдущего UX-снимка: v2
+  https://github.com/Alexander12039409/fallout-2d20-pipboy/tree/v2
 
 Скрипт установки / обновления VPS:
   https://raw.githubusercontent.com/Alexander12039409/fallout-2d20-pipboy/main/deploy/install.sh
 
 
-3) КАК ВНОСИТЬ ИЗМЕНЕНИЯ
+3) КАК ИГРАТЬ
+-------------
+1. Мастер открывает /master/ → меню → Сессия → Новый стол
+2. Ссылка игрокам копируется, ключ мастера скачивается файлом pipboy-КОД.txt
+3. Игрок открывает ссылку (браузер или бот) → видит стол → Создать персонажа
+4. С другого устройства мастер вставляет ключ из файла (одна строка КОД-ТОКЕН)
+
+Сессия живёт на сервере. Мастеру не обязательно быть онлайн.
+
+В Telegram Mini App хаб (столы, персонажи, PIN) пишется в CloudStorage аккаунта —
+с телефона и с компьютера в том же Telegram они общие.
+В обычном браузере — localStorage этого устройства.
+
+Порт только 8787. VPN на этом же VPS не трогаем (Amnezia, UDP 30463).
+ОС сервера не переустанавливаем.
+
+
+4) КАК ВНОСИТЬ ИЗМЕНЕНИЯ
 ------------------------
-1. Правим файлы в этой папке:
-     «версия для мастера» и/или «версия для игроков»
+1. Правим файлы в «Fallout App Pip Boy Public Version»
+   (версия для мастера и/или версия для игроков)
 2. Коммит + пуш в GitHub (ветка main, корень git — E:\fall app)
 3. На VPS подтягиваем код (сессии игроков при этом НЕ стираются):
 
@@ -76,11 +109,10 @@ Clone:
 Локальная проверка на ПК (нужен Node.js):
   запустить-локально.bat
   или:  node "E:\fall app\pipboy-sync\server.js"
-  затем: http://localhost:8787/master/
 
 
-4) VPS (adminvps)
------------------
+5) VPS (adminvps, Германия)
+---------------------------
 IP:              89.125.90.225
 Хост:            popkov (Ubuntu)
 SSH:             root@89.125.90.225
@@ -91,56 +123,58 @@ SSH:             root@89.125.90.225
   ssh -i C:\Users\Popkov\.ssh\pipboy_vps_rsa -o IdentitiesOnly=yes root@89.125.90.225
 
 На сервере:
-  Код:     /opt/pipboy
-  Node:    /opt/pipboy-node   (системный Node не трогаем)
-  Сессии:  /opt/pipboy/pipboy-sync/data/sessions
-  Сервис:  pipboy.service     порт 8787
+  Код:       /opt/pipboy
+  Node:      /opt/pipboy-node   (системный Node не трогаем)
+  Сессии:    /opt/pipboy/pipboy-sync/data/sessions
+  Сервис:    pipboy.service          порт 8787
+  HTTPS:     pipboy-https.service    порт 443 (Caddy, sslip.io)
+  Бот:       pipboy-telegram.service
+  Токен бота (не в git): /opt/pipboy/pipboy-sync/telegram.env
 
 Пароль root в чат не писать.
 
 
-5) ЧТО НЕ ИСПОЛЬЗОВАТЬ ИЗ РОССИИ
+6) ЧТО НЕ ИСПОЛЬЗОВАТЬ ИЗ РОССИИ
 --------------------------------
 Railway жив, но с домашнего интернета не открывается:
   https://fallout-2d20-pipboy-production.up.railway.app
 
-Рабочий адрес только VPS:
-  http://89.125.90.225:8787/master/
+Рабочие адреса только VPS (см. раздел 1).
 
 
-6) ПРАВИЛА, ЧТОБЫ НИЧЕГО НЕ СЛОМАТЬ
+7) ПРАВИЛА, ЧТОБЫ НИЧЕГО НЕ СЛОМАТЬ
 -----------------------------------
 - Не менять список оружия в db.js без явной просьбы.
 - Не ломать функции мастера.
 - Не трогать VPN, порт 80, файрвол и не переустанавливать ОС на VPS.
-- Папки adaptive / adaptive-v2 / adaptive-v3 — запас, не рабочая копия.
+- Папки adaptive / v2 / v3 — запас, не рабочая копия.
+- telegram.env не коммитить.
 
 
-7) TELEGRAM-БОТ ИГРОКА
+8) TELEGRAM-БОТ ИГРОКА
 ----------------------
-Игроки открывают бота → стартовая страница хаба Pip-Boy (логотип, код стола, создать персонажа).
+Игроки: https://t.me/pipboy_play_bot → кнопка Mini App «ОТКРЫТЬ PIP-BOY».
 
-1. В Telegram откройте @BotFather
-2. /newbot — имя например «Pip-Boy игрок», username например pipboy_play_bot
-3. Скопируйте токен (цифры:буквы). Никому не отправляйте, кроме этого чата если нужно включить бота на VPS.
-4. На VPS файл (не в git):
+Файл на VPS (не в git):
+  /opt/pipboy/pipboy-sync/telegram.env
 
-   /opt/pipboy/pipboy-sync/telegram.env
+  TELEGRAM_BOT_TOKEN=...
+  PIPBOY_PUBLIC_URL=http://89.125.90.225:8787
+  TELEGRAM_WEBAPP_URL=https://89-125-90-225.sslip.io/play/
 
-   TELEGRAM_BOT_TOKEN=123456:ABC...
-   PIPBOY_PUBLIC_URL=http://89.125.90.225:8787
-   TELEGRAM_WEBAPP_URL=https://89-125-90-225.sslip.io/play/
-
-5. systemctl enable --now pipboy-telegram
-   или заново: bash /opt/pipboy/deploy/install.sh
-
-После этого /start в боте показывает кнопку Mini App «ОТКРЫТЬ PIP-BOY».
-В Mini App персонажи и столы пишутся в CloudStorage Telegram (общий для аккаунта на всех устройствах).
-В обычном браузере по-прежнему localStorage на этом устройстве.
-Ссылка на стол: https://t.me/USERNAME?start=КОД
-(появится в модалке мастера, когда бот хотя бы раз успешно запустится)
+После правок: systemctl restart pipboy-telegram
+или заново: bash /opt/pipboy/deploy/install.sh
 
 HTTPS для Mini App:
-  Caddy слушает 443, сертификат Let's Encrypt через TLS-ALPN (порт 80 не нужен).
-  Адрес: https://89-125-90-225.sslip.io/play/
-  В панели adminvps должен быть открыт входящий TCP 443 (как 8787). VPN и порт 80 не трогаем.
+  Caddy на 443, сертификат Let's Encrypt (TLS-ALPN, порт 80 не нужен).
+  https://89-125-90-225.sslip.io/play/
+  В панели adminvps должен быть открыт входящий TCP 443 (как 8787).
+
+
+9) ЧТО ВОШЛО В V3
+-----------------
+- Живые сессии мастер + игрок, хаб игрока, ключ мастера КОД-ТОКЕН
+- Telegram Mini App + CloudStorage для хаба игрока
+- HTTPS sslip.io для бота
+- Игрок на мобилке: полные названия SPECIAL (сила, ловкость…), чуть крупнее шрифт,
+  тап по пустому полю закрывает клавиатуру iOS
