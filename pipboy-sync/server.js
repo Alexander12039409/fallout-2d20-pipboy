@@ -365,6 +365,12 @@ const server = http.createServer(async (req, res) => {
         return;
     }
 
+    if (u.pathname === '/play' || u.pathname === '/master') {
+        res.writeHead(308, { Location: u.pathname + '/' + (u.search || '') });
+        res.end();
+        return;
+    }
+
     if (u.pathname.startsWith('/master')) {
         const rel = u.pathname.replace(/^\/master\/?/, '/');
         serveDir(res, req.url, MASTER_DIR, rel === '/' ? '/index.html' : rel);

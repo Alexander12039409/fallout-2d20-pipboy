@@ -40,8 +40,16 @@ function playUrl(code) {
 }
 
 function webappUrl(code) {
-    const w = String(process.env.TELEGRAM_WEBAPP_URL || '').trim().replace(/\/$/, '');
+    let w = String(process.env.TELEGRAM_WEBAPP_URL || '').trim();
     if (!w || !/^https:\/\//i.test(w)) return '';
+    const hashAt = w.indexOf('#');
+    const frag = hashAt >= 0 ? w.slice(hashAt) : '';
+    if (hashAt >= 0) w = w.slice(0, hashAt);
+    const qAt = w.indexOf('?');
+    let path = qAt >= 0 ? w.slice(0, qAt) : w;
+    const query = qAt >= 0 ? w.slice(qAt) : '';
+    if (!path.endsWith('/')) path += '/';
+    w = path + query + frag;
     const id = String(code || '').trim().toUpperCase();
     if (!id) return w;
     return w + (w.indexOf('?') >= 0 ? '&' : '?') + 's=' + encodeURIComponent(id);
