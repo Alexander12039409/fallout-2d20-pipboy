@@ -211,3 +211,30 @@ HTTPS для Mini App:
 - HTTPS Caddy не останавливается вместе с pipboy (Mini App в Telegram не падает после выкладки)
 - Игрок: непривязанные персонажи в хабе + кнопка «Стол» чтобы добавить копию на сессию
 - Инвентарь, перки и заметки персонажа обновляются у мастера и игрока налету, без смены вкладки
+- Карточки перков и шапки модалок: заголовок слева, крестик справа (как у остальных карточек)
+- Поиск в базе предметов/перков ищет по всем категориям (таб не режет выдачу, пока в поле есть текст); табы крупнее, на мобилке горизонтальный скролл, высота 44px
+- Свой предмет: выбор иконки, типа (стрелковое/энерго/холодное/тяжёлое/взрывчатка/броня/патроны/аптечка/химия/еда) и полей под тип
+- Иконка патронов: два патрона, файл icons/inventory/патроны.svg (мастер и игрок)
+- Очки удачи рядом с HP, кнопки +/−, максимум = УДЧ (LCK) по книге. Поле персонажа: cs-luck-cur
+- Инвентарь: первая карточка «Крышки», иконка map/569.svg (Nuka Cola), кнопки −10 / − / число / + / +10. Поле: caps
+- Превью персонажа у мастера: сил / восп / вын / хар / инт / лов / уд вместо одной буквы
+
+Git с этого ПК (не трогать git config):
+  GIT_AUTHOR_NAME=Popkov
+  GIT_AUTHOR_EMAIL=popkov@users.noreply.github.com
+  Если системного git нет: C:\Windows\Temp\mingit\cmd\git.exe
+  Корень репозитория: E:\fall app
+  origin: https://github.com/Alexander12039409/fallout-2d20-pipboy  ветка main
+  Не коммитить: telegram.env, session JSON, корень app.js/db.js/index.html, папки adaptive / v2 / v3 / v4
+  Коммитить живую копию: Fallout App Pip Boy Public Version + pipboy-sync (без data/sessions)
+
+Выкладка на VPS (сессии игроков не стирать):
+  git -C /opt/pipboy fetch origin
+  git -C /opt/pipboy reset --hard origin/main
+  systemctl restart pipboy
+  pipboy-telegram — только если менялся бот
+  pipboy-https — только если менялся Caddyfile
+  Проверка: http://89.125.90.225:8787/api/health  (число sessions не должно обнулиться)
+
+Cursor workspace v3/v4 — снимки, править только «Fallout App Pip Boy Public Version».
+BUILTIN_DB_VERSION в db.js сейчас 5; UI-правки каталог не бампают.

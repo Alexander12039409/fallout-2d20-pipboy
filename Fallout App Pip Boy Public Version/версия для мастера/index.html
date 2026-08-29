@@ -117,7 +117,18 @@
 
                         <!-- HP и CND -->
                         <div class="cs-hp-row">
-                            HP <input type="number" id="cs-hp-cur" class="term-input cs-input-num" value="10"> / <input type="number" id="cs-hp-max" class="term-input cs-input-num" value="10" readonly>
+                            <div class="cs-hp-block">
+                                HP <input type="number" id="cs-hp-cur" class="term-input cs-input-num" value="10"> / <input type="number" id="cs-hp-max" class="term-input cs-input-num" value="10" readonly>
+                            </div>
+                            <div class="cs-luck-block">
+                                <span class="cs-luck-label">ОЧКИ УДАЧИ</span>
+                                <div class="cs-luck-controls">
+                                    <button type="button" class="hp-step" onclick="nudgeLuck(-1)" aria-label="Минус удача">−</button>
+                                    <span id="cs-luck-cur">5</span>
+                                    <span class="cs-luck-max">/<span id="cs-luck-max">5</span></span>
+                                    <button type="button" class="hp-step" onclick="nudgeLuck(1)" aria-label="Плюс удача">+</button>
+                                </div>
+                            </div>
                         </div>
                         <div class="cs-hp-bar">
                             <button type="button" class="hp-step" onclick="nudgeHp(-1)" aria-label="Минус HP">−</button>
@@ -347,10 +358,69 @@
     </div>
 
     <div class="modal-overlay" id="inv-modal">
-        <div class="terminal-modal" role="dialog" aria-modal="true">
+        <div class="terminal-modal inv-custom-modal" role="dialog" aria-modal="true">
             <div class="sheet-handle" aria-hidden="true"></div>
-            <h2>ДОБАВЛЕНИЕ ПРЕДМЕТА</h2>
-            <input type="text" id="inv-title" class="term-input" placeholder="НАЗВАНИЕ ПРЕДМЕТА">
+            <div class="sheet-head">
+                <h2>СВОЙ ПРЕДМЕТ</h2>
+                <button type="button" class="sheet-close" onclick="closeInvModal()" aria-label="Закрыть">X</button>
+            </div>
+            <label class="inv-field-label">ТИП</label>
+            <select id="inv-kind" class="term-input" onchange="syncInvKindFields()">
+                <option value="item">Предмет / прочее</option>
+                <option value="weapon-ballistic">Стрелковое оружие</option>
+                <option value="weapon-energy">Энергетическое</option>
+                <option value="weapon-melee">Холодное / рукопашное</option>
+                <option value="weapon-heavy">Тяжелое</option>
+                <option value="weapon-explosive">Взрывчатка</option>
+                <option value="armor">Броня</option>
+                <option value="ammo">Патроны</option>
+                <option value="med">Аптечка</option>
+                <option value="chem">Препараты</option>
+                <option value="food">Еда / напитки</option>
+            </select>
+            <input type="text" id="inv-title" class="term-input" placeholder="НАЗВАНИЕ">
+            <label class="inv-field-label">ИКОНКА</label>
+            <div id="inv-icon-grid" class="inv-icon-grid custom-scrollbar"></div>
+            <div id="inv-weapon-fields" class="inv-extra-fields" hidden>
+                <div class="inv-field-row">
+                    <label>УРОН (БК)<input type="number" id="inv-wep-dmg" class="term-input" value="4" min="0"></label>
+                    <label>ТИП УРОНА
+                        <select id="inv-wep-type" class="term-input">
+                            <option>Физический</option>
+                            <option>Энергетический</option>
+                            <option>Радиационный</option>
+                            <option>Яд</option>
+                        </select>
+                    </label>
+                </div>
+                <div class="inv-field-row" id="inv-wep-ranged-row">
+                    <label>СКОРОСТР.<input type="number" id="inv-wep-fr" class="term-input" value="2" min="0"></label>
+                    <label>ДИСТАНЦИЯ
+                        <select id="inv-wep-range" class="term-input">
+                            <option>Вплотную</option>
+                            <option selected>Ближняя</option>
+                            <option>Средняя</option>
+                            <option>Дальняя</option>
+                        </select>
+                    </label>
+                </div>
+                <div class="inv-field-row" id="inv-wep-ammo-row">
+                    <label>ТИП ПАТРОН<input type="text" id="inv-wep-ammo-type" class="term-input" placeholder="10-мм"></label>
+                    <label>КОЛ-ВО<input type="number" id="inv-wep-ammo" class="term-input" value="0" min="0"></label>
+                </div>
+                <label class="inv-field-label">СВОЙСТВА</label>
+                <input type="text" id="inv-wep-qual" class="term-input" placeholder="Жестокий, Надежное">
+            </div>
+            <div id="inv-armor-fields" class="inv-extra-fields" hidden>
+                <div class="inv-field-row">
+                    <label>ФИЗ СУ<input type="number" id="inv-arm-phys" class="term-input" value="0" min="0"></label>
+                    <label>ЭНГ СУ<input type="number" id="inv-arm-eng" class="term-input" value="0" min="0"></label>
+                    <label>РАД СУ<input type="number" id="inv-arm-rad" class="term-input" value="0" min="0"></label>
+                </div>
+            </div>
+            <div id="inv-qty-fields" class="inv-extra-fields" hidden>
+                <label>КОЛИЧЕСТВО<input type="number" id="inv-qty" class="term-input" value="0" min="0"></label>
+            </div>
             <textarea id="inv-desc" class="term-textarea custom-scrollbar" placeholder="ОПИСАНИЕ..."></textarea>
             <div class="term-actions"><button class="term-btn danger" onclick="closeInvModal()">ОТМЕНА</button><button class="term-btn" onclick="saveInvItem()">ДОБАВИТЬ</button></div>
         </div>
@@ -359,7 +429,10 @@
     <div class="modal-overlay" id="note-modal">
         <div class="terminal-modal" role="dialog" aria-modal="true">
             <div class="sheet-handle" aria-hidden="true"></div>
-            <h2 id="note-modal-title">НОВАЯ ЗАМЕТКА</h2>
+            <div class="sheet-head">
+                <h2 id="note-modal-title">НОВАЯ ЗАМЕТКА</h2>
+                <button type="button" class="sheet-close" onclick="closeNoteSheet()" aria-label="Закрыть">X</button>
+            </div>
             <input type="text" id="note-title" class="term-input" placeholder="НАЗВАНИЕ" maxlength="80">
             <textarea id="note-text" class="term-textarea custom-scrollbar" placeholder="ТЕКСТ ЗАМЕТКИ..."></textarea>
             <div class="term-actions"><button class="term-btn danger" onclick="closeNoteSheet()">ОТМЕНА</button><button class="term-btn" onclick="saveNoteSheet()">ЗАПИСАТЬ</button></div>
@@ -370,11 +443,11 @@
         <div class="terminal-modal db-picker-modal-box">
             <div class="sheet-handle" aria-hidden="true"></div>
             <div class="sheet-head">
-                <button type="button" class="sheet-close" onclick="closeDbPicker()" aria-label="Закрыть">X</button>
                 <h2 id="db-picker-title">БАЗА ДАННЫХ</h2>
+                <button type="button" class="sheet-close" onclick="closeDbPicker()" aria-label="Закрыть">X</button>
             </div>
-            <div class="cs-tabs-header" id="db-tabs-container" style="margin-top: 0; margin-bottom: 10px;"></div>
-            <input type="text" id="db-picker-search" class="term-input" placeholder="ПОИСК..." onkeyup="filterDbPicker()">
+            <div class="picker-tabs" id="db-tabs-container"></div>
+            <input type="text" id="db-picker-search" class="term-input" placeholder="ПОИСК ПО ВСЕМ КАТЕГОРИЯМ..." oninput="filterDbPicker()">
             <div id="db-picker-list" class="custom-scrollbar" style="max-height: 400px; overflow-y:auto; margin-top:15px; display:flex; flex-direction:column; gap:10px;"></div>
         </div>
     </div>
@@ -382,7 +455,10 @@
     <div class="modal-overlay" id="mod-modal">
         <div class="terminal-modal" role="dialog" aria-modal="true">
             <div class="sheet-handle" aria-hidden="true"></div>
-            <h2 id="mod-modal-title">ВЫБОР МОДИФИКАЦИИ</h2>
+            <div class="sheet-head">
+                <h2 id="mod-modal-title">ВЫБОР МОДИФИКАЦИИ</h2>
+                <button type="button" class="sheet-close" onclick="document.getElementById('mod-modal').classList.remove('active')" aria-label="Закрыть">X</button>
+            </div>
             <div id="mod-modal-body" class="custom-scrollbar" style="max-height: 400px; overflow-y:auto; display:flex; flex-direction:column; gap:10px;"></div>
             <button class="term-btn danger" style="margin-top:15px; width: 100%;" onclick="document.getElementById('mod-modal').classList.remove('active')">ОТМЕНА</button>
         </div>
@@ -391,7 +467,10 @@
     <div class="modal-overlay" id="qual-modal">
         <div class="terminal-modal qual-sheet" role="dialog" aria-modal="true">
             <div class="sheet-handle" aria-hidden="true"></div>
-            <h2 id="qual-title">СВОЙСТВО</h2>
+            <div class="sheet-head">
+                <h2 id="qual-title">СВОЙСТВО</h2>
+                <button type="button" class="sheet-close" onclick="closeQualSheet()" aria-label="Закрыть">X</button>
+            </div>
             <p id="qual-body" class="qual-body"></p>
             <button class="term-btn" style="width:100%;" onclick="closeQualSheet()">ЗАКРЫТЬ</button>
         </div>
@@ -400,7 +479,10 @@
     <div class="modal-overlay" id="equip-slot-modal">
         <div class="terminal-modal" role="dialog" aria-modal="true">
             <div class="sheet-handle" aria-hidden="true"></div>
-            <h2>НАДЕТЬ НА</h2>
+            <div class="sheet-head">
+                <h2>НАДЕТЬ НА</h2>
+                <button type="button" class="sheet-close" onclick="document.getElementById('equip-slot-modal').classList.remove('active')" aria-label="Закрыть">X</button>
+            </div>
             <div id="equip-slot-body" class="equip-slot-grid"></div>
             <button class="term-btn danger" style="width:100%; margin-top:10px;" onclick="document.getElementById('equip-slot-modal').classList.remove('active')">ОТМЕНА</button>
         </div>

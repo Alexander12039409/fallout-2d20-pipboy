@@ -11,6 +11,7 @@ function blankSessionChar(name) {
         'cs-lvl': 1, 'cs-xp': '', 'cs-origin': 'Выживший',
         'cs-str': 5, 'cs-per': 5, 'cs-end': 5, 'cs-cha': 5, 'cs-int': 5, 'cs-agi': 5, 'cs-luc': 5,
         'cs-hp-cur': 10, 'cs-hp-max': 10,
+        'cs-luck-cur': 5, caps: 0,
         inventory: [], perks: [], notes: [], _session: true
     };
 }

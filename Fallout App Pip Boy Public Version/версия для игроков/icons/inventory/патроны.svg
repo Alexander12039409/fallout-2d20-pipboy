@@ -1,0 +1,7 @@
+<!-- Two rifle cartridges. Original silhouette for Pip-Boy (public domain). -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <g fill="currentColor">
+    <path d="M20 3c3.2 0 8 2.4 8 7.2V14h-2.2v24.4c0 2.2-1.2 4-3.8 5.2V52h7.2v5H11v-5h7.2V43.6c-2.6-1.2-3.8-3-3.8-5.2V14H12V10.2C12 5.4 16.8 3 20 3zm0 3.2c-1.7 0-4.2 1-4.2 4V14h8.4V10.2c0-3-2.5-4-4.2-4z"/>
+    <path d="M44 3c3.2 0 8 2.4 8 7.2V14h-2.2v24.4c0 2.2-1.2 4-3.8 5.2V52h7.2v5H35v-5h7.2V43.6c-2.6-1.2-3.8-3-3.8-5.2V14H36V10.2C36 5.4 40.8 3 44 3zm0 3.2c-1.7 0-4.2 1-4.2 4V14h8.4V10.2c0-3-2.5-4-4.2-4z"/>
+  </g>
+</svg>

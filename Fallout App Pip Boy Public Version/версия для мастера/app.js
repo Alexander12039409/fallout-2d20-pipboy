@@ -20,7 +20,7 @@ function applyRemoteChar(char) {
     const keepFocusId = (focused && drawer.contains(focused) && focused.id) ? focused.id : '';
     const keepTabBtn = document.querySelector('.cs-tab-btn.active');
     const keepTabId = keepTabBtn && keepTabBtn.id ? keepTabBtn.id.replace(/^btn-tab-/, '') : '';
-    const skip = { inventory: 1, perks: 1, notes: 1, drBase: 1, pin: 1, _session: 1, _vault: 1, updatedAt: 1 };
+    const skip = { inventory: 1, perks: 1, notes: 1, drBase: 1, pin: 1, _session: 1, _vault: 1, updatedAt: 1, caps: 1, 'cs-luck-cur': 1 };
     for (const key in char) {
         if (skip[key]) continue;
         const el = document.getElementById(key);
@@ -39,6 +39,7 @@ function applyRemoteChar(char) {
     if (typeof migrateCharNotes === 'function') migrateCharNotes(char);
     if (typeof renderCharNotes === 'function') renderCharNotes(char);
     if (typeof calcCharSecondary === 'function') calcCharSecondary();
+    if (typeof updateLuckUi === 'function') updateLuckUi();
     if (keepTabId && typeof switchCharTab === 'function') switchCharTab(keepTabId);
     if (keepFocusId) {
         const el = document.getElementById(keepFocusId);
@@ -308,7 +309,7 @@ function charCardHtml(char, session) {
     const extra = skillsHtml ? '<div style="margin-top: 5px; border-top: 1px dashed var(--theme-dim); padding-top: 5px; display: flex; flex-wrap: wrap;">' + skillsHtml + '</div>' : '';
     const mine = !(session && PIP_MODE === 'player') || (typeof hubFindChar === 'function' && PipSession.sessionId && hubFindChar(PipSession.sessionId, char.id));
     const del = mine ? '<button class="char-card-del" onclick="deleteChar(event, \'' + char.id + '\')">X</button>' : '';
-    return del + '<div class="char-card-name">' + (char['cs-name'] || 'БЕЗ ИМЕНИ') + '</div><div class="char-card-info">' + (session ? 'СЕССИЯ · ' : '') + 'УР: ' + (char['cs-lvl'] || 1) + ' | ' + (char['cs-origin'] || 'ВЫЖИВШИЙ') + '</div><div class="char-card-special"><span>С<br>' + (char['cs-str']||5) + '</span> <span>В<br>' + (char['cs-per']||5) + '</span> <span>В<br>' + (char['cs-end']||5) + '</span> <span>Х<br>' + (char['cs-cha']||5) + '</span> <span>И<br>' + (char['cs-int']||5) + '</span> <span>Л<br>' + (char['cs-agi']||5) + '</span> <span>У<br>' + (char['cs-luc']||5) + '</span></div>' + extra;
+    return del + '<div class="char-card-name">' + (char['cs-name'] || 'БЕЗ ИМЕНИ') + '</div><div class="char-card-info">' + (session ? 'СЕССИЯ · ' : '') + 'УР: ' + (char['cs-lvl'] || 1) + ' | ' + (char['cs-origin'] || 'ВЫЖИВШИЙ') + '</div><div class="char-card-special"><span><span class="sp-lab">сил</span>' + (char['cs-str']||5) + '</span><span><span class="sp-lab">восп</span>' + (char['cs-per']||5) + '</span><span><span class="sp-lab">вын</span>' + (char['cs-end']||5) + '</span><span><span class="sp-lab">хар</span>' + (char['cs-cha']||5) + '</span><span><span class="sp-lab">инт</span>' + (char['cs-int']||5) + '</span><span><span class="sp-lab">лов</span>' + (char['cs-agi']||5) + '</span><span><span class="sp-lab">уд</span>' + (char['cs-luc']||5) + '</span></div>' + extra;
 }
 
 function renderSessionCharGrid() {
@@ -353,6 +354,7 @@ function createChar() {
     const newChar = {
         id: 'char_' + Date.now(), 'cs-name': 'Новый Персонаж', 'cs-lvl': 1, 'cs-xp': '', 'cs-origin': 'Выживший',
         'cs-str': 5, 'cs-per': 5, 'cs-end': 5, 'cs-cha': 5, 'cs-int': 5, 'cs-agi': 5, 'cs-luc': 5, 'cs-hp-cur': 10, 'cs-hp-max': 10,
+        'cs-luck-cur': 5, caps: 0,
         inventory: [], perks: [], notes: []
     };
     masterChars.push(newChar); localStorage.setItem('pipboy_master_chars', JSON.stringify(masterChars));
@@ -391,7 +393,9 @@ function openChar(id) {
     });
     for (const key in char) {
         const el = document.getElementById(key);
-        if(el) el.value = char[key];
+        if (!el) continue;
+        if (el.tagName === 'SPAN' || el.tagName === 'DIV' || el.tagName === 'BUTTON') continue;
+        el.value = char[key];
     }
     const drawer = document.getElementById('char-drawer');
     const vc = document.getElementById('view-characters');
@@ -438,6 +442,8 @@ function saveActiveCharLive() {
     document.querySelectorAll('#char-drawer .term-input, #char-drawer .term-textarea, #char-drawer .cs-skill-val').forEach(el => {
         if (el.id) charData[el.id] = el.value;
     });
+    charData.caps = parseInt(prev.caps, 10) || 0;
+    if (prev['cs-luck-cur'] != null) charData['cs-luck-cur'] = prev['cs-luck-cur'];
     if (sessionCharById(activeCharId) || prev._session) {
         charData._session = true;
         if (typeof PipSession !== 'undefined') PipSession.state.characters[activeCharId] = charData;
@@ -492,6 +498,7 @@ function calcCharSecondary() {
     if (live && typeof getEquippedCarryBonus === 'function') carryWeight += getEquippedCarryBonus(live.inventory);
     document.getElementById('cs-stat-carry').textContent = carryWeight + " Ф.";
     calcCharTNs(); updateCharVisualHP();
+    if (typeof updateLuckUi === 'function') updateLuckUi();
 }
 
 function calcCharTNs() {
@@ -521,6 +528,65 @@ function nudgeHp(delta) {
     el.value = cur;
     updateCharVisualHP();
     saveActiveCharLive();
+}
+
+function luckMaxFromChar(char) {
+    const lucEl = document.getElementById('cs-luc');
+    if (lucEl && lucEl.value !== '') return Math.max(0, parseInt(lucEl.value, 10) || 0);
+    return Math.max(0, parseInt(char && char['cs-luc'], 10) || 0);
+}
+function ensureLuck(char) {
+    if (!char) return 0;
+    const max = luckMaxFromChar(char);
+    let cur = parseInt(char['cs-luck-cur'], 10);
+    if (!Number.isFinite(cur)) cur = max;
+    if (cur < 0) cur = 0;
+    if (cur > max) cur = max;
+    char['cs-luck-cur'] = cur;
+    return cur;
+}
+function updateLuckUi() {
+    const char = typeof liveChar === 'function' ? liveChar() : null;
+    const maxEl = document.getElementById('cs-luck-max');
+    const curEl = document.getElementById('cs-luck-cur');
+    if (!maxEl || !curEl) return;
+    const max = luckMaxFromChar(char);
+    maxEl.textContent = String(max);
+    if (char) curEl.textContent = String(ensureLuck(char));
+    else curEl.textContent = String(max);
+}
+function nudgeLuck(delta) {
+    const char = typeof liveChar === 'function' ? liveChar() : null;
+    if (!char) return;
+    const max = luckMaxFromChar(char);
+    let cur = ensureLuck(char) + (parseInt(delta, 10) || 0);
+    if (cur < 0) cur = 0;
+    if (cur > max) cur = max;
+    char['cs-luck-cur'] = cur;
+    updateLuckUi();
+    persistLiveChar();
+}
+
+function changeCaps(delta) {
+    const char = typeof liveChar === 'function' ? liveChar() : null;
+    if (!char) return;
+    let n = (parseInt(char.caps, 10) || 0) + (parseInt(delta, 10) || 0);
+    if (n < 0) n = 0;
+    char.caps = n;
+    persistLiveChar();
+    const el = document.getElementById('caps-val');
+    if (el) el.textContent = String(n);
+}
+
+function changeCustomQty(idx, delta) {
+    const char = typeof liveChar === 'function' ? liveChar() : null;
+    if (!char || !char.inventory || !char.inventory[idx]) return;
+    let n = (parseInt(char.inventory[idx].qty, 10) || 0) + (parseInt(delta, 10) || 0);
+    if (n < 0) n = 0;
+    char.inventory[idx].qty = n;
+    persistLiveChar();
+    const el = document.getElementById('custom-qty-' + idx);
+    if (el) el.textContent = String(n);
 }
 
 function updateCharAvatar(cur, max) {
@@ -878,18 +944,176 @@ function updateAmmoTotal(idx, val) {
     if (shown) shown.innerText = char.inventory[idx].ammo;
 }
 
-function openInvModal() { document.getElementById('inv-title').value = ''; document.getElementById('inv-desc').value = ''; document.getElementById('inv-modal').classList.add('active'); }
-function closeInvModal() { document.getElementById('inv-modal').classList.remove('active'); }
-function saveInvItem() {
-    if(!activeCharId) return;
-    const title = document.getElementById('inv-title').value.trim(); const desc = document.getElementById('inv-desc').value.trim();
-    if(!title) return; const char = liveChar();
-    if(char) {
-        if(!char.inventory) char.inventory = [];
-        char.inventory.push({ type: 'custom', id: Date.now().toString(), title, desc });
-        persistLiveChar(); renderInventoryAndPerks(char);
+let selectedInvIcon = '';
+
+function invIconChoices() {
+    const list = [];
+    if (typeof PIP_ICONS === 'undefined') return list;
+    Object.keys(PIP_ICONS.gun || {}).forEach(k => list.push(PIP_ICONS.gun[k]));
+    Object.keys(PIP_ICONS.inventory || {}).forEach(k => list.push(PIP_ICONS.inventory[k]));
+    if (PIP_ICONS.armor) list.push(PIP_ICONS.armor);
+    list.push('map/569.svg');
+    const uniq = [];
+    list.forEach(p => { if (p && uniq.indexOf(p) === -1) uniq.push(p); });
+    return uniq;
+}
+function defaultInvIcon(kind) {
+    if (typeof PIP_ICONS === 'undefined') return 'inventory/отмычки.svg';
+    if (kind === 'weapon-energy') return PIP_ICONS.gun.energy;
+    if (kind === 'weapon-melee') return PIP_ICONS.gun.machete;
+    if (kind === 'weapon-heavy') return PIP_ICONS.gun.minigun;
+    if (kind === 'weapon-explosive') return PIP_ICONS.gun.mine;
+    if (String(kind).indexOf('weapon') === 0) return PIP_ICONS.gun.pistol;
+    if (kind === 'armor') return PIP_ICONS.armor;
+    if (kind === 'ammo') return PIP_ICONS.inventory.ammo;
+    if (kind === 'med') return PIP_ICONS.inventory.medkit;
+    if (kind === 'chem') return PIP_ICONS.inventory.drugs;
+    if (kind === 'food') return PIP_ICONS.inventory.food;
+    return PIP_ICONS.inventory.lockpick;
+}
+function renderInvIconGrid() {
+    const grid = document.getElementById('inv-icon-grid');
+    if (!grid) return;
+    if (!selectedInvIcon) selectedInvIcon = defaultInvIcon((document.getElementById('inv-kind') || {}).value || 'item');
+    grid.innerHTML = '';
+    invIconChoices().forEach(rel => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'inv-icon-pick' + (rel === selectedInvIcon ? ' active' : '');
+        btn.innerHTML = pipGlyph(rel);
+        btn.onclick = () => { selectedInvIcon = rel; renderInvIconGrid(); };
+        grid.appendChild(btn);
+    });
+}
+function syncInvKindFields() {
+    const kindEl = document.getElementById('inv-kind');
+    const kind = kindEl ? kindEl.value : 'item';
+    const wep = document.getElementById('inv-weapon-fields');
+    const arm = document.getElementById('inv-armor-fields');
+    const qty = document.getElementById('inv-qty-fields');
+    const isWep = String(kind).indexOf('weapon-') === 0;
+    const isMelee = kind === 'weapon-melee';
+    if (wep) wep.hidden = !isWep;
+    if (arm) arm.hidden = kind !== 'armor';
+    if (qty) qty.hidden = isWep || kind === 'armor';
+    const ammoRow = document.getElementById('inv-wep-ammo-row');
+    if (ammoRow) ammoRow.hidden = isMelee;
+    if (isMelee) {
+        const range = document.getElementById('inv-wep-range');
+        if (range) range.value = 'Вплотную';
     }
+    selectedInvIcon = defaultInvIcon(kind);
+    renderInvIconGrid();
+}
+function openInvModal() {
+    const title = document.getElementById('inv-title');
+    const desc = document.getElementById('inv-desc');
+    const kind = document.getElementById('inv-kind');
+    if (title) title.value = '';
+    if (desc) desc.value = '';
+    if (kind) kind.value = 'item';
+    const qty = document.getElementById('inv-qty');
+    if (qty) qty.value = '1';
+    const dmg = document.getElementById('inv-wep-dmg');
+    if (dmg) dmg.value = '4';
+    const fr = document.getElementById('inv-wep-fr');
+    if (fr) fr.value = '2';
+    const ammo = document.getElementById('inv-wep-ammo');
+    if (ammo) ammo.value = '0';
+    const ammoType = document.getElementById('inv-wep-ammo-type');
+    if (ammoType) ammoType.value = '';
+    const qual = document.getElementById('inv-wep-qual');
+    if (qual) qual.value = '';
+    ['inv-arm-phys', 'inv-arm-eng', 'inv-arm-rad'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '0';
+    });
+    selectedInvIcon = defaultInvIcon('item');
+    syncInvKindFields();
+    document.getElementById('inv-modal').classList.add('active');
+}
+function closeInvModal() { document.getElementById('inv-modal').classList.remove('active'); }
+function customWeaponCategory(kind) {
+    if (kind === 'weapon-energy') return 'Энергетическое';
+    if (kind === 'weapon-melee') return 'Холодное';
+    if (kind === 'weapon-heavy') return 'Тяжелое';
+    if (kind === 'weapon-explosive') return 'Взрывчатка';
+    return 'Стрелковое';
+}
+function saveInvItem() {
+    if (!activeCharId) return;
+    const title = (document.getElementById('inv-title').value || '').trim();
+    const desc = (document.getElementById('inv-desc').value || '').trim();
+    if (!title) return;
+    const char = liveChar();
+    if (!char) { closeInvModal(); return; }
+    if (!char.inventory) char.inventory = [];
+    const kind = (document.getElementById('inv-kind') || {}).value || 'item';
+    const iconRel = selectedInvIcon || defaultInvIcon(kind);
+    let packed;
+    if (String(kind).indexOf('weapon-') === 0) {
+        const quals = String((document.getElementById('inv-wep-qual') || {}).value || '').split(',').map(s => s.trim()).filter(Boolean);
+        packed = {
+            type: 'weapon', custom: true, id: Date.now().toString(),
+            title, baseId: title, desc, iconRel,
+            category: customWeaponCategory(kind),
+            baseDamage: parseInt((document.getElementById('inv-wep-dmg') || {}).value, 10) || 0,
+            fireRate: parseInt((document.getElementById('inv-wep-fr') || {}).value, 10) || 0,
+            dmgType: (document.getElementById('inv-wep-type') || {}).value || 'Физический',
+            range: (document.getElementById('inv-wep-range') || {}).value || 'Ближняя',
+            ammoType: (document.getElementById('inv-wep-ammo-type') || {}).value || '',
+            ammo: parseInt((document.getElementById('inv-wep-ammo') || {}).value, 10) || 0,
+            qualities: quals, mods: {}, slots: {}
+        };
+    } else if (kind === 'armor') {
+        packed = {
+            type: 'armor', custom: true, id: Date.now().toString(),
+            title, baseId: title, desc, iconRel, category: 'Броня',
+            phys: parseInt((document.getElementById('inv-arm-phys') || {}).value, 10) || 0,
+            eng: parseInt((document.getElementById('inv-arm-eng') || {}).value, 10) || 0,
+            rad: parseInt((document.getElementById('inv-arm-rad') || {}).value, 10) || 0,
+            mods: {}, equipped: []
+        };
+    } else {
+        const catMap = { ammo: 'Боеприпасы', med: 'Аптечка', chem: 'Препараты', food: 'Еда', item: 'Разное' };
+        packed = {
+            type: kind === 'ammo' ? 'ammo' : 'custom',
+            kind, custom: true, id: Date.now().toString(),
+            title, desc, iconRel,
+            category: catMap[kind] || 'Разное',
+            qty: parseInt((document.getElementById('inv-qty') || {}).value, 10) || 0
+        };
+    }
+    char.inventory.push(packed);
+    persistLiveChar();
+    renderInventoryAndPerks(char);
     closeInvModal();
+}
+
+function resolveWeaponData(item) {
+    if (!item || item.type !== 'weapon') return null;
+    if (!item.custom && typeof masterDB !== 'undefined' && masterDB.weapons && masterDB.weapons[item.baseId]) {
+        return masterDB.weapons[item.baseId];
+    }
+    if (item.custom) {
+        const quals = Array.isArray(item.qualities)
+            ? item.qualities.slice()
+            : String(item.qualities || '').split(',').map(s => s.trim()).filter(Boolean);
+        return {
+            category: item.category || 'Стрелковое',
+            baseDamage: parseInt(item.baseDamage, 10) || 0,
+            fireRate: parseInt(item.fireRate, 10) || 0,
+            type: item.dmgType || 'Физический',
+            range: item.range || 'Ближняя',
+            qualities: quals,
+            slots: item.slots || {},
+            ammoType: item.ammoType || ''
+        };
+    }
+    if (typeof masterDB !== 'undefined' && masterDB.weapons && masterDB.weapons[item.baseId]) {
+        return masterDB.weapons[item.baseId];
+    }
+    return null;
 }
 
 function deleteCharItem(idx) {
@@ -966,24 +1190,31 @@ function checkRequirements(reqStr, char) {
     return pass;
 }
 
+function pickerQueryMatch(q, parts) {
+    if (!q) return true;
+    return String(parts || '').toLowerCase().indexOf(q) !== -1;
+}
+
 function filterDbPicker() {
-    const q = document.getElementById('db-picker-search').value.toLowerCase();
+    const searchEl = document.getElementById('db-picker-search');
+    const q = searchEl ? searchEl.value.trim().toLowerCase() : '';
     const list = document.getElementById('db-picker-list'); list.innerHTML = '';
     const char = liveChar();
     if (!char) return;
     if(typeof masterDB === 'undefined') { list.innerHTML = 'База данных не подключена'; return; }
+    const useTab = !q;
 
     if (dbPickerMode === 'inv') {
         Object.keys(masterDB.weapons || {}).forEach(wKey => {
             const w = masterDB.weapons[wKey];
-            let matchTab = activeDbTab === 'Все' ||
+            let matchTab = !useTab || activeDbTab === 'Все' ||
                            (activeDbTab === 'Стрелковое' && w.category === 'Стрелковое') ||
                            (activeDbTab === 'Энерго' && w.category === 'Энергетическое') ||
                            (activeDbTab === 'Холодное' && (w.category === 'Холодное' || w.category === 'Рукопашное' || w.category === 'Оружие ближнего боя')) ||
                            (activeDbTab === 'Тяжелое' && w.category === 'Тяжелое') ||
                            (activeDbTab === 'Взрывчатка' && w.category === 'Взрывчатка');
 
-            if(matchTab && wKey.toLowerCase().includes(q)) {
+            if(matchTab && pickerQueryMatch(q, [wKey, w.category, w.type, (w.qualities || []).join(' ')].join(' '))) {
                 let div = document.createElement('div'); div.className = 'db-item-row'; div.innerHTML = `${pipGlyph(weaponIconRel(wKey, w.category), 'db-item-glyph')}<span>[${w.category.toUpperCase()}] ${wKey}</span>`;
                 div.onclick = () => {
                     let newWep = { type: 'weapon', baseId: wKey, mods: {}, ammo: 0, totalAmmo: 0 };
@@ -996,7 +1227,7 @@ function filterDbPicker() {
             }
         });
         (masterDB.items || []).forEach(i => {
-            let matchTab = activeDbTab === 'Все' ||
+            let matchTab = !useTab || activeDbTab === 'Все' ||
                            (activeDbTab === 'Броня' && (i.type === 'armor' || /одежд|брон|шлем|комбинезон|обмундир|силов|голов|собак/i.test(i.category || ''))) ||
                            (activeDbTab === 'Аптечка' && i.category === 'Аптечка') ||
                            (activeDbTab === 'Препараты' && i.category === 'Препараты') ||
@@ -1004,7 +1235,7 @@ function filterDbPicker() {
                            (activeDbTab === 'Патроны' && i.category === 'Боеприпасы') ||
                            (activeDbTab === 'Прочее' && i.category === 'Разное');
 
-            if(matchTab && i.name.toLowerCase().includes(q)) {
+            if(matchTab && pickerQueryMatch(q, [i.name, i.category, i.desc, i.type].join(' '))) {
                 let div = document.createElement('div'); div.className = 'db-item-row'; div.innerHTML = `${pipGlyph(itemIconRel(i), 'db-item-glyph')}<span>[${(i.category||'Предмет').toUpperCase()}] ${i.name}</span>`;
                 div.onclick = () => { 
                     if(!char.inventory) char.inventory = [];
@@ -1020,13 +1251,13 @@ function filterDbPicker() {
         });
     } else {
         (masterDB.perks || []).forEach(p => {
-            let matchTab = activeDbTab === 'Все' || (p.reqStr || '').includes(activeDbTab.replace('ВСПР', 'ВСП'));
-            if(matchTab && p.name.toLowerCase().includes(q)) {
+            let matchTab = !useTab || activeDbTab === 'Все' || (p.reqStr || '').includes(activeDbTab.replace('ВСПР', 'ВСП'));
+            if(matchTab && pickerQueryMatch(q, [p.name, p.desc, p.reqStr].join(' '))) {
                 const isPass = checkRequirements(p.reqStr, char);
                 let div = document.createElement('div');
                 div.className = 'db-perk-card' + (isPass ? ' is-ready' : ' is-locked');
                 const badge = isPass ? 'ДОСТУПНО' : (p.reqStr || 'НЕДОСТУПНО');
-                div.innerHTML = `<div class="db-perk-head"><span class="db-perk-badge ${isPass ? 'req-pass' : 'req-fail'}">${escapePipHtml(badge)}</span><b class="db-perk-name ${isPass ? 'req-pass' : 'req-fail'}">${escapePipHtml(p.name)}</b></div><div class="db-perk-desc">${escapePipHtml(p.desc || '')}</div>`;
+                div.innerHTML = `<div class="db-perk-head"><b class="db-perk-name ${isPass ? 'req-pass' : 'req-fail'}">${escapePipHtml(p.name)}</b><span class="db-perk-badge ${isPass ? 'req-pass' : 'req-fail'}">${escapePipHtml(badge)}</span></div><div class="db-perk-desc">${escapePipHtml(p.desc || '')}</div>`;
                 div.onclick = () => {
                     if(!char.perks) char.perks = [];
                     if(!char.perks.includes(p.name)) { char.perks.push(p.name); persistLiveChar(); renderInventoryAndPerks(char);}
@@ -1109,15 +1340,30 @@ function openModPicker(itemIdx, slot) {
 function renderInventoryAndPerks(char) {
     const invList = document.getElementById('cs-inv-list');
     invList.innerHTML = '';
+    const caps = parseInt(char.caps, 10) || 0;
+    invList.insertAdjacentHTML('beforeend', `
+        <div class="cs-inv-card caps-card">
+            <div class="cs-inv-icon">${pipGlyph('map/569.svg')}</div>
+            <div class="cs-inv-body">
+                <div class="cs-inv-title">Крышки</div>
+                <div class="caps-controls">
+                    <button type="button" class="caps-btn" onclick="event.stopPropagation(); changeCaps(-10)">-10</button>
+                    <button type="button" class="caps-btn" onclick="event.stopPropagation(); changeCaps(-1)">−</button>
+                    <span class="caps-val" id="caps-val">${caps}</span>
+                    <button type="button" class="caps-btn" onclick="event.stopPropagation(); changeCaps(1)">+</button>
+                    <button type="button" class="caps-btn" onclick="event.stopPropagation(); changeCaps(10)">+10</button>
+                </div>
+            </div>
+        </div>`);
     let magDirty = false;
     if (char.inventory) {
         char.inventory.forEach((item, index) => {
-            if (item.type === 'weapon' && typeof masterDB !== 'undefined' && masterDB.weapons && masterDB.weapons[item.baseId]) {
-                const wData = masterDB.weapons[item.baseId];
+            const wData = resolveWeaponData(item);
+            if (wData) {
                 let cDmg = wData.baseDamage, cFr = wData.fireRate, cQual = [...(wData.qualities || [])], cRng = wData.range;
                 
-                for (let slot in item.mods) {
-                    if (wData.slots[slot]) {
+                for (let slot in (item.mods || {})) {
+                    if (wData.slots && wData.slots[slot]) {
                         const modIdx = item.mods[slot];
                         if (modIdx !== undefined && wData.slots[slot][modIdx]) {
                             const modEf = wData.slots[slot][modIdx].effects;
@@ -1131,7 +1377,7 @@ function renderInventoryAndPerks(char) {
                     }
                 }
                 if (syncWeaponMagazine(item)) magDirty = true;
-                const ammoType = (typeof getWeaponAmmoType === 'function') ? getWeaponAmmoType(item.baseId, item) : '';
+                const ammoType = item.ammoType || ((typeof getWeaponAmmoType === 'function') ? getWeaponAmmoType(item.baseId, item) : '') || wData.ammoType || '';
                 
                 let isMelee = (wData.category === 'Холодное' || wData.category === 'Рукопашное' || wData.category === 'Оружие ближнего боя');
                 let ammoHtml = isMelee ? '' : `
@@ -1140,13 +1386,14 @@ function renderInventoryAndPerks(char) {
                         ${ammoType ? `<div class="ammo-type-label">ТИП: ${escapePipHtml(ammoType)}</div>` : ''}
                     </div>`;
 
+                const wepIcon = pipGlyph(item.iconRel || weaponIconRel(item.baseId || item.title, wData.category));
                 let html = `
                     <div class="wep-card-v2">
                         <div class="wep-top-v2">
-                            <div class="wep-img-box">${getWeaponCategoryIcon(wData.category, item.baseId)}</div>
+                            <div class="wep-img-box">${wepIcon}</div>
                             <div class="wep-info-v2">
                                 <div class="wep-header-v2">
-                                    <div><h2 class="wep-title-v2">${escapePipHtml(item.baseId)}</h2><p class="wep-cat-v2">${escapePipHtml(wData.category)}</p></div>
+                                    <div><h2 class="wep-title-v2">${escapePipHtml(item.title || item.baseId)}</h2><p class="wep-cat-v2">${escapePipHtml(wData.category)}</p></div>
                                     <button class="term-btn danger" style="padding: 2px 5px;" onclick="deleteCharItem(${index})">X</button>
                                 </div>
                                 <div class="wep-stats-grid">
@@ -1158,21 +1405,22 @@ function renderInventoryAndPerks(char) {
                                 <div class="wep-qualities">Свойства: ${renderQualities(cQual)}</div>
                             </div>
                         </div>
-                        ${ammoHtml}
-                        <div class="wep-slots-v2">`;
+                        ${ammoHtml}`;
                 
-                for (let slot in wData.slots) {
+                let slotsInner = '';
+                for (let slot in (wData.slots || {})) {
                     const modsArray = wData.slots[slot];
                     if (!modsArray || modsArray.length === 0) continue;
-                    const modIdx = (item.mods[slot] !== undefined && item.mods[slot] < modsArray.length) ? item.mods[slot] : 0;
+                    const modIdx = (item.mods && item.mods[slot] !== undefined && item.mods[slot] < modsArray.length) ? item.mods[slot] : 0;
                     const mData = modsArray[modIdx];
-                    html += `<div class="slot-card-v2 ${modIdx > 0 ? 'active' : ''}" onclick="openModPicker(${index}, '${slot}')">
+                    slotsInner += `<div class="slot-card-v2 ${modIdx > 0 ? 'active' : ''}" onclick="openModPicker(${index}, '${slot}')">
                                 <div class="slot-icon-v2">${getIconForSlot(slot)}</div>
                                 <div class="slot-title-v2">${escapePipHtml(slot)}</div>
                                 <div class="slot-desc-v2">${modIdx > 0 && mData ? escapePipHtml(mData.name) : '<i>Нажмите для выбора</i>'}</div>
                              </div>`;
                 }
-                html += `</div></div>`;
+                if (slotsInner) html += `<div class="wep-slots-v2">${slotsInner}</div>`;
+                html += `</div>`;
                 invList.insertAdjacentHTML('beforeend', html);
             } else if (typeof isArmorItem === 'function' && isArmorItem(item)) {
                 normalizeArmorItem(item);
@@ -1229,7 +1477,7 @@ function renderInventoryAndPerks(char) {
                         ${slotsHtml ? `<div class="wep-slots-v2">${slotsHtml}</div>` : ''}
                     </div>`);
             } else {
-                invList.insertAdjacentHTML('beforeend', `<div class="cs-inv-card"><button class="cs-inv-del" onclick="deleteCharItem(${index})">X</button><div class="cs-inv-icon">${pipGlyph(itemIconRel(item))}</div><div class="cs-inv-body"><div class="cs-inv-title">${escapePipHtml(item.title || item.name)}</div><div class="cs-inv-desc">${escapePipHtml(item.desc || '')}</div></div></div>`);
+                invList.insertAdjacentHTML('beforeend', `<div class="cs-inv-card"><button class="cs-inv-del" onclick="deleteCharItem(${index})">X</button><div class="cs-inv-icon">${pipGlyph(itemIconRel(item))}</div><div class="cs-inv-body"><div class="cs-inv-title">${escapePipHtml(item.title || item.name)}</div><div class="cs-inv-desc">${escapePipHtml(item.desc || '')}</div>${item.qty != null ? `<div class="caps-controls"><button type="button" class="caps-btn" onclick="event.stopPropagation(); changeCustomQty(${index}, -1)">−</button><span class="caps-val" id="custom-qty-${index}">${parseInt(item.qty, 10) || 0}</span><button type="button" class="caps-btn" onclick="event.stopPropagation(); changeCustomQty(${index}, 1)">+</button></div>` : ''}</div></div>`);
             }
         });
     }
@@ -1241,7 +1489,7 @@ function renderInventoryAndPerks(char) {
             const pData = (masterDB.perks && Array.isArray(masterDB.perks)) ? masterDB.perks.find(p => p.name === pName) : null;
             const req = (pData && pData.reqStr && pData.reqStr !== 'Нет') ? `<div class="perk-card-req">${escapePipHtml(pData.reqStr)}</div>` : '';
             const desc = pData ? `<div class="perk-card-desc">${escapePipHtml(pData.desc || '')}</div>` : '';
-            perksList.insertAdjacentHTML('beforeend', `<div class="perk-card"><div class="perk-card-head"><button type="button" class="perk-card-del" onclick="deleteCharPerk(${index})" aria-label="Удалить">X</button><div class="perk-card-title">${escapePipHtml(pName)}</div></div>${req}${desc}</div>`);
+            perksList.insertAdjacentHTML('beforeend', `<div class="perk-card"><div class="perk-card-head"><div class="perk-card-title">${escapePipHtml(pName)}</div><button type="button" class="perk-card-del" onclick="deleteCharPerk(${index})" aria-label="Удалить">X</button></div>${req}${desc}</div>`);
         });
     }
 }

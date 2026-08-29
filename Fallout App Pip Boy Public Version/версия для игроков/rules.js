@@ -362,6 +362,10 @@ function inferArmorDef(item) {
     const pm = desc.match(/физ:?\s*(\d+)/i); if (pm) phys = parseInt(pm[1], 10);
     const em = desc.match(/энерг:?\s*(\d+)/i); if (em) eng = parseInt(em[1], 10);
     const rm = desc.match(/рад:?\s*(\d+)/i); if (rm) rad = parseInt(rm[1], 10);
+    if (item && item.phys != null) phys = parseInt(item.phys, 10) || 0;
+    if (item && item.eng != null) eng = parseInt(item.eng, 10) || 0;
+    if (item && item.rad != null) rad = parseInt(item.rad, 10) || 0;
+    if (item && item.custom) mods = [];
     if (mods === undefined) {
         if (family === 'power') mods = [];
         else if (family === 'clothes') mods = coverage === 'head' ? [] : ['lining'];

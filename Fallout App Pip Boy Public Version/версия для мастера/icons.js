@@ -28,6 +28,7 @@ const PIP_ICONS = {
         chems: 'inventory/химикаты.svg',
         drugs: 'inventory/таблетки наркотики.svg',
         food: 'inventory/еда.svg',
+        ammo: 'inventory/патроны.svg',
         caps: 'inventory/крышки валюта.svg',
         lockpick: 'inventory/отмычки.svg'
     },
@@ -77,15 +78,14 @@ function weaponIconRel(name, category) {
 
 function itemIconRel(item) {
     if (!item) return PIP_ICONS.inventory.lockpick;
+    if (item.iconRel) return item.iconRel;
     if (item.type === 'weapon') return weaponIconRel(item.baseId || item.title || item.name, item.category);
     const type = `${item.itemType || item.type || ''}`.toLowerCase();
     const cat = `${item.category || ''}`.toLowerCase();
     const n = `${item.title || item.name || ''}`.toLowerCase();
     if (type === 'armor' || /брон|одежд|шлем|нагрудн|понож|наруч|комбинезон|халат|пальто|форма|рейдер|кожан|металл|синтов|силов|каркас|капюшон|противогаз|каска|обмундир/.test(n + ' ' + cat)) return PIP_ICONS.armor;
-    if (cat.includes('боеприпас') || /^(патрон|заряд плазм|ядерн|ракет|шприц|гвозд|гамма-патрон|2-мм|топливо для|сигнальн)/.test(n)) {
-        if (/батаре|плазм|гамма|2-мм|эк/.test(n)) return PIP_ICONS.gun.energy;
-        if (/ядерн|ракет|минизаряд|5-мм|топлив|блок/.test(n)) return PIP_ICONS.gun.minigun;
-        return PIP_ICONS.gun.pistol;
+    if (cat.includes('боеприпас') || type === 'ammo' || /^(патрон|заряд плазм|ядерн|ракет|шприц|гвозд|гамма-патрон|2-мм|топливо для|сигнальн)/.test(n)) {
+        return PIP_ICONS.inventory.ammo;
     }
     if (/стимпак|стимул/.test(n)) return PIP_ICONS.inventory.stimpak;
     if (cat.includes('препарат') || /психо|винт|баффаут|ментат|мед-х|ярость|глюконафт|успокоин|перегруз|ультравинт|шик\b|баффвинт|бафтаты|x-клетк|слюна скито|реактивное топливо/.test(n)) return PIP_ICONS.inventory.drugs;
