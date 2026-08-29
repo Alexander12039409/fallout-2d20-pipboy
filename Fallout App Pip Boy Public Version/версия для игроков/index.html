@@ -355,11 +355,13 @@
     <div class="modal-overlay" id="db-picker-modal">
         <div class="terminal-modal db-picker-modal-box">
             <div class="sheet-handle" aria-hidden="true"></div>
-            <h2 id="db-picker-title">БАЗА ДАННЫХ</h2>
+            <div class="sheet-head">
+                <button type="button" class="sheet-close" onclick="closeDbPicker()" aria-label="Закрыть">X</button>
+                <h2 id="db-picker-title">БАЗА ДАННЫХ</h2>
+            </div>
             <div class="cs-tabs-header" id="db-tabs-container" style="margin-top: 0; margin-bottom: 10px;"></div>
             <input type="text" id="db-picker-search" class="term-input" placeholder="ПОИСК..." onkeyup="filterDbPicker()">
             <div id="db-picker-list" class="custom-scrollbar" style="max-height: 400px; overflow-y:auto; margin-top:15px; display:flex; flex-direction:column; gap:10px;"></div>
-            <button class="term-btn danger" style="margin-top:15px; width: 100%;" onclick="document.getElementById('db-picker-modal').classList.remove('active')">ЗАКРЫТЬ</button>
         </div>
     </div>
 

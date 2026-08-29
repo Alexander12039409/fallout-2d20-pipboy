@@ -135,8 +135,20 @@
         saveTimer = setTimeout(flushNow, 400);
     }
 
+    function stampOf(raw) {
+        try {
+            const o = JSON.parse(raw);
+            if (!o || typeof o !== 'object') return 0;
+            if (typeof o.savedAt === 'number') return o.savedAt;
+            if (typeof o.at === 'number') return o.at;
+        } catch (e) {}
+        return 0;
+    }
+
     function flushNow() {
-        if (saving) { flushSoon(); return; }
+        clearTimeout(saveTimer);
+        saveTimer = null;
+        if (saving) return;
         const keys = Object.keys(pending);
         if (!keys.length) return;
         saving = true;
@@ -148,7 +160,7 @@
         });
         Promise.all(job).catch(function (e) { console.warn('telegram cloud', e); }).then(function () {
             saving = false;
-            if (Object.keys(pending).length) flushSoon();
+            if (Object.keys(pending).length) flushNow();
         });
     }
 
@@ -222,6 +234,7 @@
         window.addEventListener('pagehide', onHide);
         const tg = window.Telegram && window.Telegram.WebApp;
         try { if (tg && typeof tg.onEvent === 'function') tg.onEvent('deactivated', onHide); } catch (e) {}
+        window.pipFlushTelegramCloud = flushNow;
     }
 
     function applyLoaded(cloud) {
@@ -229,6 +242,9 @@
         Object.keys(cloud).forEach(function (k) { mem[k] = cloud[k]; });
         Object.keys(local).forEach(function (k) {
             if (!Object.prototype.hasOwnProperty.call(mem, k) && local[k] != null) {
+                mem[k] = local[k];
+                queueSet(k, local[k]);
+            } else if (local[k] != null && mem[k] != null && stampOf(local[k]) > stampOf(mem[k])) {
                 mem[k] = local[k];
                 queueSet(k, local[k]);
             }
@@ -253,12 +269,14 @@
             window.pipUsingTelegramCloud = false;
             return Promise.resolve();
         }
-        return withTimeout(loadCloud(), 6000).then(applyLoaded).catch(function (err) {
+        function once() { return withTimeout(loadCloud(), 8000); }
+        return once().catch(function () { return once(); }).then(applyLoaded).catch(function (err) {
             console.warn('telegram cloud load', err);
             window.pipUsingTelegramCloud = false;
         });
     }
 
+    window.pipFlushTelegramCloud = function () {};
     window.pipStorageReady = new Promise(function (resolve) {
         setTimeout(function () { bootCloud().then(resolve, resolve); }, 0);
     });

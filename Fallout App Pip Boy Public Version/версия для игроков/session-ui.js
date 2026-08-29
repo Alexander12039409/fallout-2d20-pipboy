@@ -1,4 +1,5 @@
 const PLAYER_HUB_KEY = 'pipboy_player_hub';
+const LAST_SESSION_KEY = 'pipboy_last_session';
 let hubExpandedId = '';
 
 function blankSessionChar(name) {
@@ -12,11 +13,80 @@ function blankSessionChar(name) {
     };
 }
 
+function flushPlayerCloud() {
+    try { if (typeof window.pipFlushTelegramCloud === 'function') window.pipFlushTelegramCloud(); } catch (e) {}
+}
+
+function rememberLastSession(sessionId) {
+    const id = String(sessionId || '').toUpperCase();
+    if (!id) return;
+    try { localStorage.setItem(LAST_SESSION_KEY, JSON.stringify({ id: id, at: Date.now() })); } catch (e) {}
+    flushPlayerCloud();
+}
+
+function forgetLastSession(sessionId) {
+    const want = String(sessionId || '').toUpperCase();
+    try {
+        const rec = JSON.parse(localStorage.getItem(LAST_SESSION_KEY) || 'null');
+        if (!want || (rec && String(rec.id || '').toUpperCase() === want)) {
+            localStorage.removeItem(LAST_SESSION_KEY);
+        }
+    } catch (e) {
+        try { localStorage.removeItem(LAST_SESSION_KEY); } catch (e2) {}
+    }
+    try {
+        const saved = JSON.parse(localStorage.getItem('pipboy_session_player') || 'null');
+        if (saved && (!want || String(saved.sessionId || '').toUpperCase() === want)) {
+            localStorage.removeItem('pipboy_session_player');
+        }
+    } catch (e) {}
+    const data = loadPlayerHub();
+    if (!want || data.lastSessionId === want) {
+        data.lastSessionId = '';
+        savePlayerHub(data);
+    } else {
+        flushPlayerCloud();
+    }
+}
+
+function readLastSessionId() {
+    try {
+        const rec = JSON.parse(localStorage.getItem(LAST_SESSION_KEY) || 'null');
+        if (rec && rec.id) return String(rec.id).toUpperCase();
+    } catch (e) {}
+    try {
+        const saved = JSON.parse(localStorage.getItem('pipboy_session_player') || 'null');
+        if (saved && saved.sessionId) return String(saved.sessionId).toUpperCase();
+    } catch (e) {}
+    const data = loadPlayerHub();
+    if (data.lastSessionId) return String(data.lastSessionId).toUpperCase();
+    return '';
+}
+
+function isHubSessionChar(charId) {
+    const id = String(charId || '');
+    if (!id) return false;
+    return loadPlayerHub().sessions.some(s => (s.chars || []).some(c => c && c.id === id));
+}
+
+function pruneHubInPlace(data) {
+    if (!data) return false;
+    const ids = Object.create(null);
+    (data.sessions || []).forEach(s => (s.chars || []).forEach(c => { if (c && c.id) ids[c.id] = true; }));
+    const before = (data.vault || []).length;
+    data.vault = (data.vault || []).filter(c => c && c.id && !ids[c.id]);
+    return data.vault.length !== before;
+}
+
 function loadPlayerHub() {
     try {
         const data = JSON.parse(localStorage.getItem(PLAYER_HUB_KEY) || 'null');
         if (data && Array.isArray(data.sessions)) {
             if (!Array.isArray(data.vault)) data.vault = [];
+            if (pruneHubInPlace(data)) {
+                try { localStorage.setItem(PLAYER_HUB_KEY, JSON.stringify(data)); } catch (e) {}
+                flushPlayerCloud();
+            }
             return data;
         }
     } catch (e) {}
@@ -24,7 +94,10 @@ function loadPlayerHub() {
 }
 
 function savePlayerHub(data) {
+    if (!data) return;
+    data.savedAt = Date.now();
     try { localStorage.setItem(PLAYER_HUB_KEY, JSON.stringify(data)); } catch (e) {}
+    flushPlayerCloud();
 }
 
 function hubPreviewFromChar(char, pin) {
@@ -50,8 +123,10 @@ function hubUpsertSession(sessionId) {
     } else {
         rec.lastAt = Date.now();
     }
+    data.lastSessionId = id;
     data.sessions.sort((a, b) => (b.lastAt || 0) - (a.lastAt || 0));
     savePlayerHub(data);
+    rememberLastSession(id);
     return rec;
 }
 
@@ -66,11 +141,13 @@ function hubRememberChar(char, pin) {
         data.sessions.unshift(rec);
     }
     rec.lastAt = Date.now();
+    data.lastSessionId = sid;
     const preview = hubPreviewFromChar(char, pin);
     const idx = rec.chars.findIndex(c => c.id === char.id);
     if (idx === -1) rec.chars.push(preview);
     else rec.chars[idx] = Object.assign({}, rec.chars[idx], preview);
     savePlayerHub(data);
+    rememberLastSession(sid);
 }
 
 function hubFindChar(sessionId, charId) {
@@ -90,7 +167,9 @@ function hubRemoveSession(sessionId) {
     const id = String(sessionId || '').toUpperCase();
     const data = loadPlayerHub();
     data.sessions = data.sessions.filter(s => s.id !== id);
+    if (data.lastSessionId === id) data.lastSessionId = (data.sessions[0] && data.sessions[0].id) || '';
     savePlayerHub(data);
+    forgetLastSession(id);
     try { localStorage.removeItem('pipboy_claim_' + id); } catch (e) {}
     if (hubExpandedId === id) hubExpandedId = '';
 }
@@ -103,6 +182,7 @@ function vaultFind(id) {
 }
 function vaultUpsert(char) {
     if (!char || !char.id) return;
+    if (char._session || isHubSessionChar(char.id)) return;
     const data = loadPlayerHub();
     if (!Array.isArray(data.vault)) data.vault = [];
     const stored = JSON.parse(JSON.stringify(char));
@@ -604,6 +684,20 @@ function wirePipSession() {
                 setPlayerGateStatus((err && err.message) || 'Стол не найден', true);
                 const form2 = document.getElementById('player-gate-form');
                 if (form2) form2.hidden = false;
+            });
+            return;
+        }
+        const last = readLastSessionId();
+        if (last) {
+            migrateOldClaim(last);
+            if (codeInp) codeInp.value = last;
+            enterPlayerSession(last, 'Возвращаюсь к столу ' + last + '…').catch((err) => {
+                forgetLastSession(last);
+                if (err && err.status === 404 && typeof hubRemoveSession === 'function') hubRemoveSession(last);
+                setPlayerGateStatus((err && err.message) || 'Последний стол не найден. Введите код.', true);
+                const form2 = document.getElementById('player-gate-form');
+                if (form2) form2.hidden = false;
+                renderPlayerHub();
             });
             return;
         }

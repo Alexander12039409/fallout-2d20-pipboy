@@ -70,19 +70,22 @@ function persistMap() {
 function persistLiveChar() {
     const char = typeof liveChar === 'function' ? liveChar() : null;
     if (!char) {
-        try { localStorage.setItem('pipboy_master_chars', JSON.stringify(masterChars)); } catch (e) {}
+        if (PIP_MODE !== 'player') {
+            try { localStorage.setItem('pipboy_master_chars', JSON.stringify(masterChars)); } catch (e) {}
+        }
         return;
     }
-    if (char._session || sessionCharById(char.id)) {
+    if (char._session || sessionCharById(char.id) || (typeof isHubSessionChar === 'function' && isHubSessionChar(char.id))) {
         if (typeof PipSession !== 'undefined' && PipSession.sessionId) PipSession.pushChar(char, char.pin);
         if (PIP_MODE === 'player' && typeof hubRememberChar === 'function') hubRememberChar(char);
         return;
     }
-    if (PIP_MODE === 'player' && typeof vaultUpsert === 'function') {
+    if (PIP_MODE === 'player' && typeof vaultUpsert === 'function' && (char._vault || (typeof vaultFind === 'function' && vaultFind(char.id)))) {
         vaultUpsert(char);
         if (typeof renderPlayerHub === 'function') renderPlayerHub();
         return;
     }
+    if (PIP_MODE === 'player') return;
     try { localStorage.setItem('pipboy_master_chars', JSON.stringify(masterChars)); } catch (e) {}
 }
 
@@ -941,18 +944,32 @@ const dbTabsConfig = {
     'perks': ["Все", "СИЛ", "ВСП", "ВЫН", "ХАР", "ИНТ", "ЛВК", "УДЧ"]
 };
 
-function openMasterInvModal() { 
-    dbPickerMode = 'inv'; activeDbTab = 'Все';
-    document.getElementById('db-picker-title').innerText = 'БАЗА: ПРЕДМЕТЫ И ОРУЖИЕ'; 
-    document.getElementById('db-picker-modal').classList.add('active'); 
-    renderDbTabs(); filterDbPicker(); 
+function resetDbPickerFilters() {
+    activeDbTab = 'Все';
+    const search = document.getElementById('db-picker-search');
+    if (search) search.value = '';
 }
 
-function openContextPerks() { 
-    dbPickerMode = 'perks'; activeDbTab = 'Все';
-    document.getElementById('db-picker-title').innerText = 'БАЗА: ПЕРКИ'; 
-    document.getElementById('db-picker-modal').classList.add('active'); 
-    renderDbTabs(); filterDbPicker(); 
+function closeDbPicker() {
+    const modal = document.getElementById('db-picker-modal');
+    if (modal) modal.classList.remove('active');
+    resetDbPickerFilters();
+}
+
+function openMasterInvModal() {
+    dbPickerMode = 'inv';
+    resetDbPickerFilters();
+    document.getElementById('db-picker-title').innerText = 'БАЗА: ПРЕДМЕТЫ И ОРУЖИЕ';
+    document.getElementById('db-picker-modal').classList.add('active');
+    renderDbTabs(); filterDbPicker();
+}
+
+function openContextPerks() {
+    dbPickerMode = 'perks';
+    resetDbPickerFilters();
+    document.getElementById('db-picker-title').innerText = 'БАЗА: ПЕРКИ';
+    document.getElementById('db-picker-modal').classList.add('active');
+    renderDbTabs(); filterDbPicker();
 }
 
 function renderDbTabs() {
@@ -1005,8 +1022,8 @@ function filterDbPicker() {
                     let newWep = { type: 'weapon', baseId: wKey, mods: {}, ammo: 0, totalAmmo: 0 };
                     for(let s in w.slots) newWep.mods[s] = 0;
                     if(!char.inventory) char.inventory = [];
-                    char.inventory.push(newWep); persistLiveChar(); 
-                    document.getElementById('db-picker-modal').classList.remove('active'); renderInventoryAndPerks(char);
+                    char.inventory.push(newWep); persistLiveChar();
+                    closeDbPicker(); renderInventoryAndPerks(char);
                 };
                 list.appendChild(div);
             }
@@ -1028,23 +1045,25 @@ function filterDbPicker() {
                     const packed = isArm
                         ? { type: 'armor', baseId: i.name, title: i.name, desc: i.desc, itemType: 'armor', category: i.category, mods: { lining: 0, material: 0, upgrade: 0 }, equipped: [] }
                         : { type:'db_item', title: i.name, desc: i.desc, itemType: i.type, category: i.category };
-                    char.inventory.push(packed); persistLiveChar(); 
-                    document.getElementById('db-picker-modal').classList.remove('active'); renderInventoryAndPerks(char);
+                    char.inventory.push(packed); persistLiveChar();
+                    closeDbPicker(); renderInventoryAndPerks(char);
                 };
                 list.appendChild(div);
             }
         });
     } else {
         (masterDB.perks || []).forEach(p => {
-            let matchTab = activeDbTab === 'Все' || p.reqStr.includes(activeDbTab.replace('ВСПР', 'ВСП'));
+            let matchTab = activeDbTab === 'Все' || (p.reqStr || '').includes(activeDbTab.replace('ВСПР', 'ВСП'));
             if(matchTab && p.name.toLowerCase().includes(q)) {
                 const isPass = checkRequirements(p.reqStr, char);
-                let div = document.createElement('div'); div.className = 'db-item-row'; div.style.flexDirection = 'column';
-                div.innerHTML = `<div style="display:flex; justify-content:space-between;"><b class="${isPass ? 'req-pass' : 'req-fail'}">${p.name}</b><span class="${isPass ? 'req-pass' : 'req-fail'}" style="font-size:0.8rem;">${isPass ? '[ДОСТУПНО]' : '[ТРЕБОВАНИЯ: '+p.reqStr+']'}</span></div><div style="font-size:0.9rem; opacity:0.8;">${p.desc}</div>`;
+                let div = document.createElement('div');
+                div.className = 'db-perk-card' + (isPass ? ' is-ready' : ' is-locked');
+                const badge = isPass ? 'ДОСТУПНО' : (p.reqStr || 'НЕДОСТУПНО');
+                div.innerHTML = `<div class="db-perk-head"><span class="db-perk-badge ${isPass ? 'req-pass' : 'req-fail'}">${escapePipHtml(badge)}</span><b class="db-perk-name ${isPass ? 'req-pass' : 'req-fail'}">${escapePipHtml(p.name)}</b></div><div class="db-perk-desc">${escapePipHtml(p.desc || '')}</div>`;
                 div.onclick = () => {
                     if(!char.perks) char.perks = [];
                     if(!char.perks.includes(p.name)) { char.perks.push(p.name); persistLiveChar(); renderInventoryAndPerks(char);}
-                    document.getElementById('db-picker-modal').classList.remove('active');
+                    closeDbPicker();
                 };
                 list.appendChild(div);
             }
@@ -1253,7 +1272,9 @@ function renderInventoryAndPerks(char) {
     if (char.perks) {
         char.perks.forEach((pName, index) => {
             const pData = (masterDB.perks && Array.isArray(masterDB.perks)) ? masterDB.perks.find(p => p.name === pName) : null;
-            perksList.insertAdjacentHTML('beforeend', `<div class="db-item-row" style="flex-direction:column; gap:5px; border-color:var(--pip-green);"><div style="display:flex; justify-content:space-between;"><b style="color:var(--pip-green)">${escapePipHtml(pName)}</b><button class="term-btn danger" style="padding: 2px 5px;" onclick="deleteCharPerk(${index})">X</button></div>${pData ? `<span style="font-size:0.9rem; opacity:0.8;">${escapePipHtml(pData.desc)}</span>` : ''}</div>`);
+            const req = (pData && pData.reqStr && pData.reqStr !== 'Нет') ? `<div class="perk-card-req">${escapePipHtml(pData.reqStr)}</div>` : '';
+            const desc = pData ? `<div class="perk-card-desc">${escapePipHtml(pData.desc || '')}</div>` : '';
+            perksList.insertAdjacentHTML('beforeend', `<div class="perk-card"><div class="perk-card-head"><button type="button" class="perk-card-del" onclick="deleteCharPerk(${index})" aria-label="Удалить">X</button><div class="perk-card-title">${escapePipHtml(pName)}</div></div>${req}${desc}</div>`);
         });
     }
 }
@@ -1528,6 +1549,8 @@ document.querySelectorAll('.modal-overlay').forEach(overlay => {
             const cancel = document.getElementById('radio-modal-cancel');
             if (cancel) cancel.click();
             else overlay.classList.remove('active');
+        } else if (overlay.id === 'db-picker-modal' && typeof closeDbPicker === 'function') {
+            closeDbPicker();
         }
         else overlay.classList.remove('active');
     });
@@ -1540,7 +1563,7 @@ function bindSheetSwipe(sheet, onClose) {
 
     const begin = (clientY, target) => {
         if (!isCompactUI()) return;
-        startOnHandle = !!(target && target.closest && target.closest('.sheet-handle, .cs-header, .drawer-header, .search-sheet-title'));
+        startOnHandle = !!(target && target.closest && target.closest('.sheet-handle, .sheet-head, .cs-header, .drawer-header, .search-sheet-title'));
         if (!startOnHandle) return;
         dragging = true;
         startY = clientY;
@@ -1580,6 +1603,8 @@ document.querySelectorAll('.modal-overlay .terminal-modal').forEach(modal => {
             const cancel = document.getElementById('radio-modal-cancel');
             if (cancel) cancel.click();
             else overlay.classList.remove('active');
+        } else if (overlay.id === 'db-picker-modal' && typeof closeDbPicker === 'function') {
+            closeDbPicker();
         }
         else overlay.classList.remove('active');
     });

@@ -118,7 +118,7 @@ function startHtml(code) {
     if (code) {
         return '<b>ROBCO INDUSTRIES — PIP-BOY</b>\n\nСтол <code>' + code + '</code>\nОткройте терминал игрока. Если персонажа ещё нет — нажмите «Создать персонажа».';
     }
-    return '<b>ROBCO INDUSTRIES — PIP-BOY</b>\n\nТерминал игрока.\nМастер пришлёт код стола. Нажмите кнопку — откроется стартовая страница Pip-Boy.';
+    return '<b>ROBCO INDUSTRIES — PIP-BOY</b>\n\nТерминал игрока.\nМастер пришлёт код стола. Если вы уже заходили за стол — кнопка «Pip-Boy» в меню откроет последний стол.';
 }
 
 function parseCode(text) {

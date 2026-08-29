@@ -367,7 +367,7 @@ body.sys-open .sys-menu { display: flex; }
 .qual-body { font-size: 1.05rem; line-height: 1.45; text-transform: none; opacity: 0.95; }
 .equip-slot-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .ammo-type-label { font-size: 0.8rem; opacity: 0.7; width: 100%; }
-.db-picker-modal-box { width: 700px; max-width: 95%; overflow: hidden; }
+.db-picker-modal-box { width: 700px; max-width: 95%; overflow-x: hidden; overflow-y: auto; }
 #db-tabs-container {
     display: flex; flex-wrap: wrap; gap: 4px;
     overflow: hidden;
@@ -436,6 +436,24 @@ body.sys-open .sys-menu { display: flex; }
 .db-item-glyph { width: 28px; height: 28px; flex-shrink: 0; }
 .req-pass { color: var(--pip-green); }
 .req-fail { color: var(--pip-red); opacity: 0.6;}
+.sheet-head { display: flex; align-items: center; gap: 12px; border-bottom: 2px solid var(--pip-green); padding-bottom: 10px; margin: 0; min-width: 0; }
+.terminal-modal .sheet-head h2 { flex: 1; min-width: 0; margin: 0 !important; padding: 0 !important; border: none !important; text-align: right; font-size: 1.15rem; line-height: 1.25; }
+.sheet-close { flex-shrink: 0; background: transparent; border: 1px solid var(--pip-red); color: var(--pip-red); width: 32px; height: 32px; min-width: 32px; display: flex; justify-content: center; align-items: center; cursor: pointer; font-family: monospace; font-size: 1.15rem; line-height: 1; }
+.sheet-close:hover { background: var(--pip-red); color: #000; }
+.perk-card { border: 1px solid var(--pip-green); padding: 12px 14px; background: rgba(3, 15, 3, 0.9); box-shadow: inset 0 0 10px rgba(0,0,0,0.5); }
+.perk-card-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px dashed var(--theme-dim); }
+.perk-card-del { flex-shrink: 0; background: transparent; border: 1px solid var(--pip-red); color: var(--pip-red); width: 24px; height: 24px; display: flex; justify-content: center; align-items: center; cursor: pointer; font-family: monospace; }
+.perk-card-del:hover { background: var(--pip-red); color: #000; }
+.perk-card-title { flex: 1; text-align: right; font-weight: bold; font-size: 1.22rem; letter-spacing: 0.8px; color: var(--pip-green); word-wrap: break-word; }
+.perk-card-req { font-size: 0.78rem; opacity: 0.7; text-align: right; margin-bottom: 6px; letter-spacing: 0.4px; }
+.perk-card-desc { font-size: 0.95rem; opacity: 0.88; text-transform: none; line-height: 1.4; word-wrap: break-word; }
+.db-perk-card { border: 1px solid var(--theme-dim); padding: 12px 14px; cursor: pointer; background: rgba(0,0,0,0.45); display: flex; flex-direction: column; gap: 8px; }
+.db-perk-card:hover { border-color: var(--pip-green); background: rgba(20,254,20,0.1); }
+.db-perk-head { display: flex; align-items: flex-start; gap: 10px; }
+.db-perk-badge { flex-shrink: 0; font-size: 0.7rem; letter-spacing: 0.4px; border: 1px solid currentColor; padding: 3px 6px; max-width: 46%; text-align: left; }
+.db-perk-name { flex: 1; text-align: right; font-size: 1.05rem; word-wrap: break-word; }
+.db-perk-desc { font-size: 0.92rem; opacity: 0.85; text-transform: none; line-height: 1.4; }
+.db-perk-card.is-locked { opacity: 0.78; }
 .cs-hit-loc.is-worn { border-color: var(--pip-green); box-shadow: 0 0 8px rgba(20,254,20,0.18); }
 .loc-title { display: flex; flex-direction: column; align-items: center; gap: 1px; }
 .cs-close-mobile { display: none; }
@@ -518,7 +536,7 @@ body.sys-open .sys-menu { display: flex; }
 .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 4000; background: rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; opacity: 0; pointer-events: none; transition: 0.2s; }
 .modal-overlay.active { opacity: 1; pointer-events: auto; }
 .terminal-modal { background: var(--pip-bg); border: 2px solid var(--pip-green); padding: 20px; width: 400px; box-shadow: 0 0 20px rgba(20, 254, 20, 0.4); display: flex; flex-direction: column; gap: 15px; }
-.terminal-modal.db-picker-modal-box { width: 700px; max-width: 95%; overflow: hidden; }
+.terminal-modal.db-picker-modal-box { width: 700px; max-width: 95%; overflow-x: hidden; overflow-y: auto; }
 .terminal-modal h2 { font-size: 1.5rem; border-bottom: 1px solid var(--pip-green); padding-bottom: 5px; margin-bottom: 10px; text-transform: uppercase;}
 .term-actions { display: flex; justify-content: space-between; margin-top: 10px; }
 html { height: 100%; }
