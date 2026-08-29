@@ -76,29 +76,44 @@ function weaponIconRel(name, category) {
 }
 
 function itemIconRel(item) {
-    if (!item) return PIP_ICONS.inventory.medkit;
-    if (item.type === 'weapon') return weaponIconRel(item.baseId, item.category);
+    if (!item) return PIP_ICONS.inventory.lockpick;
+    if (item.type === 'weapon') return weaponIconRel(item.baseId || item.title || item.name, item.category);
     const type = `${item.itemType || item.type || ''}`.toLowerCase();
     const cat = `${item.category || ''}`.toLowerCase();
-    const n = `${item.title || item.name || ''} ${item.desc || ''} ${cat} ${type}`.toLowerCase();
-    if (type === 'armor' || /брон|одежд|шлем|нагрудн|понож|наруч|комбинезон|халат|пальто|форма|рейдер|кожан|металл|синтов|силов|каркас|капюшон|противогаз|каска/.test(n)) return PIP_ICONS.armor;
-    if (/стимул|стимпак/.test(n)) return PIP_ICONS.inventory.stimpak;
-    if (/крышк|валют|монет/.test(n)) return PIP_ICONS.inventory.caps;
-    if (/отмыч|взлом|замок/.test(n)) return PIP_ICONS.inventory.lockpick;
-    if (/психо|винт|баффаут|бафф|ментат|нарк|таблет|препарат|аддикт|меди-х|мед-х|ярость|глюконафт|успокоин|перегруз|ультравинт|шик\b/.test(n) || cat.includes('препарат')) return PIP_ICONS.inventory.drugs;
+    const n = `${item.title || item.name || ''}`.toLowerCase();
+    if (type === 'armor' || /брон|одежд|шлем|нагрудн|понож|наруч|комбинезон|халат|пальто|форма|рейдер|кожан|металл|синтов|силов|каркас|капюшон|противогаз|каска|обмундир/.test(n + ' ' + cat)) return PIP_ICONS.armor;
+    if (cat.includes('боеприпас') || /^(патрон|заряд плазм|ядерн|ракет|шприц|гвозд|гамма-патрон|2-мм|топливо для|сигнальн)/.test(n)) {
+        if (/батаре|плазм|гамма|2-мм|эк/.test(n)) return PIP_ICONS.gun.energy;
+        if (/ядерн|ракет|минизаряд|5-мм|топлив|блок/.test(n)) return PIP_ICONS.gun.minigun;
+        return PIP_ICONS.gun.pistol;
+    }
+    if (/стимпак|стимул/.test(n)) return PIP_ICONS.inventory.stimpak;
+    if (cat.includes('препарат') || /психо|винт|баффаут|ментат|мед-х|ярость|глюконафт|успокоин|перегруз|ультравинт|шик\b|баффвинт|бафтаты|x-клетк|слюна скито|реактивное топливо/.test(n)) return PIP_ICONS.inventory.drugs;
+    if (cat.includes('еда') || cat.includes('напит') || /кола|пиво|виски|вода|сок |стейк|мясо|кекс|омлет|консерв|кукуруз|срам/.test(n)) return PIP_ICONS.inventory.food;
+    if (cat.includes('аптеч') || /антибиот|рад-х|антирад|аддиктол|целебн|мазь|суперстим/.test(n)) return PIP_ICONS.inventory.medkit;
+    if (/крышк|валют|монет/.test(n) && !/мина/.test(n)) return PIP_ICONS.inventory.caps;
+    if (/отмыч|взлом|замок|ремонтн|журнал|стелс/.test(n) || cat.includes('разное')) return /стелс/.test(n) ? PIP_ICONS.inventory.chems : PIP_ICONS.inventory.lockpick;
     if (/химикат/.test(n)) return PIP_ICONS.inventory.chems;
-    if (/еда|пищ|вода|напит|голод|кола|пиво|виски|сок |стейк|мясо|патрон|заряд|батаре|ракет|гвозд|шприц|ядерн|топлив/.test(n) || cat.includes('еда') || cat.includes('напит') || cat.includes('боеприпас')) return PIP_ICONS.inventory.food;
-    if (/аптеч|антибиот|рад-х|радх|антирад|медик|лечен|травм/.test(n) || cat.includes('аптеч')) return PIP_ICONS.inventory.medkit;
-    if (type === 'consumable' || cat.includes('расход')) return PIP_ICONS.inventory.medkit;
-    return PIP_ICONS.inventory.medkit;
+    if (type === 'consumable') {
+        if (cat.includes('аптеч')) return PIP_ICONS.inventory.medkit;
+        if (cat.includes('препарат')) return PIP_ICONS.inventory.drugs;
+        if (cat.includes('еда') || cat.includes('напит')) return PIP_ICONS.inventory.food;
+        return PIP_ICONS.inventory.lockpick;
+    }
+    return PIP_ICONS.inventory.lockpick;
 }
 
 function modIconRel(slotName) {
     const sl = String(slotName || '').toLowerCase();
     if (/прицел/.test(sl)) return PIP_ICONS.mod.sight;
-    if (/ствол|насадка|дуло|глушит|компенсатор|тормоз|тарелка/.test(sl)) return PIP_ICONS.mod.muzzle;
-    if (/подклад|слой|lining/.test(sl)) return PIP_ICONS.mod.other;
-    if (/материал/.test(sl)) return PIP_ICONS.armor;
-    if (/апгрейд|улучш/.test(sl)) return PIP_ICONS.mod.other;
+    if (/ствол|насадка|дуло|глушит|компенсатор|тормоз|тарелка|сопло|форсун|антенн/.test(sl)) return PIP_ICONS.mod.muzzle;
+    if (/клинок|меч|цепь|лезв|коготь/.test(sl)) return PIP_ICONS.gun.machete;
+    if (/боёк|боек|кувалд/.test(sl)) return PIP_ICONS.gun.hammer;
+    if (/кастет|перчат/.test(sl)) return PIP_ICONS.gun.knuckles;
+    if (/магазин/.test(sl)) return PIP_ICONS.gun.pistol;
+    if (/конденсатор|ресивер/.test(sl)) return PIP_ICONS.gun.energy;
+    if (/топлив|бак/.test(sl)) return PIP_ICONS.gun.minigun;
+    if (/материал|подклад|слой|lining/.test(sl)) return PIP_ICONS.armor;
+    if (/апгрейд|улучш|приклад|рукоять/.test(sl)) return PIP_ICONS.mod.other;
     return PIP_ICONS.mod.other;
 }

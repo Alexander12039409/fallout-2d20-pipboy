@@ -256,6 +256,56 @@ const ARMOR_CATALOG = {
     ARMOR_CATALOG[row[0]] = { family: row[1], coverage: row[2], phys: row[3], eng: row[4], rad: row[5], mods };
 });
 
+[
+    ['Портупея', 'clothes', 'clothes', 0, 0, 0, ['lining']],
+    ['Дорожная кожа', 'clothes', 'clothes', 1, 1, 0, ['lining']],
+    ['Прочная одежда', 'clothes', 'clothes', 1, 1, 0, ['lining']],
+    ['Комбинезон Убежища', 'clothes', 'clothes', 0, 1, 2, ['lining']],
+    ['Униформа Братства Стали', 'clothes', 'clothes', 1, 1, 1, ['lining']],
+    ['Формальная одежда', 'clothes', 'clothes', 0, 0, 0, ['lining']],
+    ['Облачение Братства Стали', 'clothes', 'clothes', 2, 2, 2, ['lining']],
+    ['Доспехи писца Братства', 'clothes', 'clothes', 1, 2, 2, ['lining']],
+    ['Бойцовская броня', 'clothes', 'clothes', 3, 4, 0, ['lining']],
+    ['Костюм бродяги', 'clothes', 'clothes', 1, 2, 0, ['lining']],
+    ['Броня инженера', 'clothes', 'clothes', 1, 1, 0, ['lining']],
+    ['Защитный костюм', 'clothes', 'clothes', 0, 0, 99, ['lining']],
+    ['Шипастая броня', 'clothes', 'clothes', 2, 2, 0, ['lining']],
+    ['Шкура', 'clothes', 'clothes', 1, 0, 0, ['lining']],
+    ['Армейский шлем', 'clothes', 'head', 2, 0, 0, []],
+    ['Капюшон Братства Стали', 'clothes', 'head', 0, 1, 0, []],
+    ['Шляпа писца Братства', 'clothes', 'head', 0, 2, 0, []],
+    ['Обычная шляпа', 'clothes', 'head', 0, 0, 0, []],
+    ['Формальная шляпа', 'clothes', 'head', 0, 0, 0, []],
+    ['Противогаз', 'clothes', 'head', 1, 0, 3, []],
+    ['Каска', 'clothes', 'head', 2, 0, 0, []],
+    ['Капюшон', 'clothes', 'head', 1, 0, 1, []],
+    ['Капюшон из мешковины', 'clothes', 'head', 0, 0, 2, []],
+    ['Щиток сварщика', 'clothes', 'head', 2, 2, 0, []],
+    ['Каркас силовой брони', 'power', 'clothes', 0, 0, 0, []],
+    ['Шлем силовой брони T-45', 'power', 'head', 4, 4, 4, []],
+    ['Нагрудник силовой брони T-45', 'power', 'torso', 7, 5, 5, []],
+    ['Наруч силовой брони T-45', 'power', 'arm', 4, 3, 3, []],
+    ['Понож силовой брони T-45', 'power', 'leg', 4, 3, 3, []],
+    ['Шлем силовой брони T-51', 'power', 'head', 5, 5, 5, []],
+    ['Нагрудник силовой брони T-51', 'power', 'torso', 8, 6, 6, []],
+    ['Наруч силовой брони T-51', 'power', 'arm', 5, 4, 4, []],
+    ['Понож силовой брони T-51', 'power', 'leg', 5, 4, 4, []],
+    ['Шлем силовой брони T-60', 'power', 'head', 6, 6, 6, []],
+    ['Нагрудник силовой брони T-60', 'power', 'torso', 9, 7, 7, []],
+    ['Наруч силовой брони T-60', 'power', 'arm', 6, 5, 5, []],
+    ['Понож силовой брони T-60', 'power', 'leg', 6, 5, 5, []],
+    ['Шлем X-01', 'power', 'head', 7, 7, 7, []],
+    ['Нагрудник X-01', 'power', 'torso', 10, 8, 8, []],
+    ['Наруч X-01', 'power', 'arm', 7, 6, 6, []],
+    ['Понож X-01', 'power', 'leg', 7, 6, 6, []],
+    ['Собачий шлем', 'leather', 'head', 2, 1, 0, []],
+    ['Лёгкая собачья броня', 'leather', 'torso', 1, 1, 0, []],
+    ['Средняя собачья броня', 'leather', 'torso', 2, 2, 0, []],
+    ['Тяжёлая собачья броня', 'leather', 'torso', 3, 3, 0, []]
+].forEach(row => {
+    ARMOR_CATALOG[row[0]] = { family: row[1], coverage: row[2], phys: row[3], eng: row[4], rad: row[5], mods: row[6] };
+});
+
 function normArmorName(s) {
     return String(s || '')
         .toLowerCase()
@@ -290,15 +340,19 @@ function inferArmorDef(item) {
     const n = normArmorName(raw);
     const desc = String((item && item.desc) || '');
     let family = 'leather';
-    if (/рейдер/.test(n)) family = 'raider';
+    let mods;
+    if (/нельзя с брон/i.test(desc)) { family = 'clothes'; mods = ['lining']; }
+    else if (/собач/.test(n)) { family = 'leather'; mods = []; }
+    else if (/силов|x-01|t-45|t-51|t-60|каркас/.test(n)) { family = 'power'; mods = []; }
+    else if (/рейдер/.test(n)) family = 'raider';
     else if (/синтов|\bсинт/.test(n)) family = 'synth';
-    else if (/силов|x-01|t-45|t-51|t-60/.test(n)) family = 'combat';
+    else if (/бойцовск|облачен|доспех писца|костюм бродяг|броня инженер|защитн|шипастая броня|\bшкура\b/.test(n)) { family = 'clothes'; mods = ['lining']; }
     else if (/боев/.test(n)) family = 'combat';
     else if (/металл/.test(n)) family = 'metal';
     else if (/кожан/.test(n)) family = 'leather';
-    else if (/одежд|халат|форма|комбинезон|пальто|портупея|шкура|костюм|облачен|доспех писца|бродяг|инженер|защитн/.test(n)) family = 'clothes';
+    else if (/одежд|халат|форма|комбинезон|пальто|портупея|униформ|шляпа|капюшон|каска|противогаз|щиток|обмундир/.test(n)) family = 'clothes';
     let coverage = 'torso';
-    if (/шлем|голов|капюшон|маска/.test(n) || /обл:\s*голов/i.test(desc)) coverage = 'head';
+    if (/шлем|голов|капюшон|маска|шляпа|каска|противогаз|щиток/.test(n) || /обл:\s*голов/i.test(desc)) coverage = 'head';
     else if (/понож\s*\/\s*наруч|нога\s*\/\s*рука/.test(n) || /обл:\s*нога\/рука/i.test(desc)) coverage = 'limb';
     else if ((/наруч/.test(n) && !/понож/.test(n)) || /обл:\s*рука/i.test(desc)) coverage = 'arm';
     else if (/понож/.test(n) || /обл:\s*нога/i.test(desc)) coverage = 'leg';
@@ -308,7 +362,11 @@ function inferArmorDef(item) {
     const pm = desc.match(/физ:?\s*(\d+)/i); if (pm) phys = parseInt(pm[1], 10);
     const em = desc.match(/энерг:?\s*(\d+)/i); if (em) eng = parseInt(em[1], 10);
     const rm = desc.match(/рад:?\s*(\d+)/i); if (rm) rad = parseInt(rm[1], 10);
-    const mods = family === 'clothes' ? ['lining'] : (coverage === 'head' ? ['material'] : ['material', 'upgrade']);
+    if (mods === undefined) {
+        if (family === 'power') mods = [];
+        else if (family === 'clothes') mods = coverage === 'head' ? [] : ['lining'];
+        else mods = coverage === 'head' ? ['material'] : ['material', 'upgrade'];
+    }
     return { family, coverage, phys, eng, rad, mods, inferred: true };
 }
 

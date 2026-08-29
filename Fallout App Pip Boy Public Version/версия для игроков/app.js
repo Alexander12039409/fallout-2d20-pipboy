@@ -937,7 +937,7 @@ function deleteCharPerk(idx) { const char = liveChar(); if(char && char.perks) {
 let dbPickerMode = 'inv';
 let activeDbTab = 'Все';
 const dbTabsConfig = {
-    'inv': ["Все", "Стрелковое", "Холодное/Рукопашн.", "Тяжелое", "Броня/Одежда", "Расходники"],
+    'inv': ["Все", "Стрелковое", "Энерго", "Холодное", "Тяжелое", "Взрывчатка", "Броня", "Аптечка", "Препараты", "Еда", "Патроны", "Прочее"],
     'perks': ["Все", "СИЛ", "ВСП", "ВЫН", "ХАР", "ИНТ", "ЛВК", "УДЧ"]
 };
 
@@ -992,10 +992,12 @@ function filterDbPicker() {
     if (dbPickerMode === 'inv') {
         Object.keys(masterDB.weapons || {}).forEach(wKey => {
             const w = masterDB.weapons[wKey];
-            let matchTab = activeDbTab === 'Все' || 
-                           (activeDbTab === 'Стрелковое' && (w.category === 'Стрелковое' || w.category === 'Энергетическое')) ||
-                           (activeDbTab === 'Холодное/Рукопашн.' && (w.category === 'Холодное' || w.category === 'Рукопашное' || w.category === 'Оружие ближнего боя')) ||
-                           (activeDbTab === 'Тяжелое' && (w.category === 'Тяжелое' || w.category === 'Взрывчатка'));
+            let matchTab = activeDbTab === 'Все' ||
+                           (activeDbTab === 'Стрелковое' && w.category === 'Стрелковое') ||
+                           (activeDbTab === 'Энерго' && w.category === 'Энергетическое') ||
+                           (activeDbTab === 'Холодное' && (w.category === 'Холодное' || w.category === 'Рукопашное' || w.category === 'Оружие ближнего боя')) ||
+                           (activeDbTab === 'Тяжелое' && w.category === 'Тяжелое') ||
+                           (activeDbTab === 'Взрывчатка' && w.category === 'Взрывчатка');
 
             if(matchTab && wKey.toLowerCase().includes(q)) {
                 let div = document.createElement('div'); div.className = 'db-item-row'; div.innerHTML = `${pipGlyph(weaponIconRel(wKey, w.category), 'db-item-glyph')}<span>[${w.category.toUpperCase()}] ${wKey}</span>`;
@@ -1010,9 +1012,13 @@ function filterDbPicker() {
             }
         });
         (masterDB.items || []).forEach(i => {
-            let matchTab = activeDbTab === 'Все' || 
-                           (activeDbTab === 'Броня/Одежда' && (i.type === 'armor' || /одежд|брон|шлем|комбинезон|обмундир|силов|голов/i.test(i.category || ''))) ||
-                           (activeDbTab === 'Расходники' && i.type === 'consumable');
+            let matchTab = activeDbTab === 'Все' ||
+                           (activeDbTab === 'Броня' && (i.type === 'armor' || /одежд|брон|шлем|комбинезон|обмундир|силов|голов|собак/i.test(i.category || ''))) ||
+                           (activeDbTab === 'Аптечка' && i.category === 'Аптечка') ||
+                           (activeDbTab === 'Препараты' && i.category === 'Препараты') ||
+                           (activeDbTab === 'Еда' && (i.category === 'Еда' || i.category === 'Напитки')) ||
+                           (activeDbTab === 'Патроны' && i.category === 'Боеприпасы') ||
+                           (activeDbTab === 'Прочее' && i.category === 'Разное');
 
             if(matchTab && i.name.toLowerCase().includes(q)) {
                 let div = document.createElement('div'); div.className = 'db-item-row'; div.innerHTML = `${pipGlyph(itemIconRel(i), 'db-item-glyph')}<span>[${(i.category||'Предмет').toUpperCase()}] ${i.name}</span>`;
