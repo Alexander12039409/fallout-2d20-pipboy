@@ -20,7 +20,7 @@ function applyRemoteChar(char) {
     const keepFocusId = (focused && drawer.contains(focused) && focused.id) ? focused.id : '';
     const keepTabBtn = document.querySelector('.cs-tab-btn.active');
     const keepTabId = keepTabBtn && keepTabBtn.id ? keepTabBtn.id.replace(/^btn-tab-/, '') : '';
-    const skip = { inventory: 1, perks: 1, notes: 1, drBase: 1, pin: 1, _session: 1, _vault: 1, updatedAt: 1, caps: 1, 'cs-luck-cur': 1 };
+    const skip = { inventory: 1, perks: 1, notes: 1, drBase: 1, pin: 1, _session: 1, _vault: 1, updatedAt: 1, caps: 1, 'cs-luck-cur': 1, taggedSkills: 1, survivorTraits: 1, extraPerk: 1, giftedAttrs: 1, bosTagSkill: 1 };
     for (const key in char) {
         if (skip[key]) continue;
         const el = document.getElementById(key);
@@ -40,6 +40,7 @@ function applyRemoteChar(char) {
     if (typeof renderCharNotes === 'function') renderCharNotes(char);
     if (typeof calcCharSecondary === 'function') calcCharSecondary();
     if (typeof updateLuckUi === 'function') updateLuckUi();
+    if (typeof syncSkillTagDots === 'function') syncSkillTagDots(char);
     if (keepTabId && typeof switchCharTab === 'function') switchCharTab(keepTabId);
     if (keepFocusId) {
         const el = document.getElementById(keepFocusId);
@@ -276,8 +277,35 @@ const skillsDefs = [
 const skillsContainer = document.getElementById('cs-skills-list');
 if (skillsContainer) skillsDefs.forEach(skill => {
     const [ruName, id, attr] = skill;
-    skillsContainer.innerHTML += `<div class="cs-skill-row"><span>${ruName}</span><div class="cs-skill-inputs"><input type="number" id="cs-skill-${id}" class="term-input cs-skill-val" data-attr="${attr}" value="0" min="0" max="6"><span class="cs-tn" id="cs-tn-${id}">[0]</span></div></div>`;
+    skillsContainer.innerHTML += `<div class="cs-skill-row" data-skill="${id}"><button type="button" class="skill-tag-dot" data-skill="${id}" title="Отмеченный навык" aria-pressed="false" onclick="toggleSkillTag('${id}')"></button><span class="cs-skill-name">${ruName}</span><div class="cs-skill-inputs"><input type="number" id="cs-skill-${id}" class="term-input cs-skill-val" data-attr="${attr}" value="0" min="0" max="6"><span class="cs-tn" id="cs-tn-${id}">[0]</span></div></div>`;
 });
+
+function taggedSkillsOf(char) {
+    return Array.isArray(char && char.taggedSkills) ? char.taggedSkills : [];
+}
+function syncSkillTagDots(char) {
+    const tagged = taggedSkillsOf(char);
+    document.querySelectorAll('#cs-skills-list .skill-tag-dot').forEach(btn => {
+        const id = btn.getAttribute('data-skill');
+        const on = tagged.indexOf(id) !== -1;
+        btn.classList.toggle('is-on', on);
+        btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+}
+function toggleSkillTag(id) {
+    const char = typeof liveChar === 'function' ? liveChar() : (typeof findChar === 'function' ? findChar(activeCharId) : null);
+    if (!char || !id) return;
+    if (!Array.isArray(char.taggedSkills)) char.taggedSkills = [];
+    const i = char.taggedSkills.indexOf(id);
+    if (i >= 0) char.taggedSkills.splice(i, 1);
+    else char.taggedSkills.push(id);
+    syncSkillTagDots(char);
+    if (typeof vaultUpsert === 'function' && (char._vault || (typeof vaultFind === 'function' && vaultFind(char.id)))) {
+        vaultUpsert(char);
+        return;
+    }
+    if (typeof persistLiveChar === 'function') persistLiveChar();
+}
 
 function renderChars() {
     if (PIP_MODE === 'player') {
@@ -351,11 +379,18 @@ function renderSessionCharGrid() {
 }
 
 function createChar() {
+    if (typeof openChargenChoice === 'function') {
+        openChargenChoice(PIP_MODE === 'player' ? 'player-vault' : 'master-vault');
+        return;
+    }
+    createCharImmediate();
+}
+function createCharImmediate() {
     const newChar = {
         id: 'char_' + Date.now(), 'cs-name': 'Новый Персонаж', 'cs-lvl': 1, 'cs-xp': '', 'cs-origin': 'Выживший',
         'cs-str': 5, 'cs-per': 5, 'cs-end': 5, 'cs-cha': 5, 'cs-int': 5, 'cs-agi': 5, 'cs-luc': 5, 'cs-hp-cur': 10, 'cs-hp-max': 10,
         'cs-luck-cur': 5, caps: 0,
-        inventory: [], perks: [], notes: []
+        inventory: [], perks: [], notes: [], taggedSkills: [], survivorTraits: []
     };
     masterChars.push(newChar); localStorage.setItem('pipboy_master_chars', JSON.stringify(masterChars));
     renderChars(); openChar(newChar.id);
@@ -411,6 +446,7 @@ function openChar(id) {
     migrateCharNotes(char);
     renderCharNotes(char);
     document.querySelectorAll('#char-drawer .term-textarea').forEach(ta => { autoResize.call(ta); });
+    if (typeof syncSkillTagDots === 'function') syncSkillTagDots(char);
     if (PIP_MODE === 'player' && typeof enterPlayerPlay === 'function') enterPlayerPlay();
 }
 
@@ -492,9 +528,12 @@ function calcCharSecondary() {
     let lvl = parseInt(document.getElementById('cs-lvl').value) || 1; let str = parseInt(document.getElementById('cs-str').value) || 5; let per = parseInt(document.getElementById('cs-per').value) || 5; let end = parseInt(document.getElementById('cs-end').value) || 5; let agi = parseInt(document.getElementById('cs-agi').value) || 5; let lck = parseInt(document.getElementById('cs-luc').value) || 5; let origin = document.getElementById('cs-origin').value;
     document.getElementById('cs-stat-init').textContent = per + agi; document.getElementById('cs-stat-def').textContent = agi >= 9 ? 2 : 1; document.getElementById('cs-hp-max').value = end + lck + (lvl > 1 ? lvl - 1 : 0);
     let meleeBonus = 0; if (str >= 11) meleeBonus = 3; else if (str >= 9) meleeBonus = 2; else if (str >= 7) meleeBonus = 1;
-    document.getElementById('cs-stat-melee').textContent = "+" + meleeBonus + " БК";
-    let carryWeight = 150 + (str * 10); if (origin === 'Мистер Помощник') carryWeight = 150;
     const live = findChar(activeCharId);
+    if (live && Array.isArray(live.survivorTraits) && live.survivorTraits.indexOf('heavy') !== -1) meleeBonus += 1;
+    document.getElementById('cs-stat-melee').textContent = "+" + meleeBonus + " БК";
+    let carryWeight = 150 + (str * 10);
+    if (origin === 'Мистер Помощник') carryWeight = 150;
+    else if (live && Array.isArray(live.survivorTraits) && live.survivorTraits.indexOf('small') !== -1) carryWeight = 150 + (str * 5);
     if (live && typeof getEquippedCarryBonus === 'function') carryWeight += getEquippedCarryBonus(live.inventory);
     document.getElementById('cs-stat-carry').textContent = carryWeight + " Ф.";
     calcCharTNs(); updateCharVisualHP();
@@ -531,9 +570,12 @@ function nudgeHp(delta) {
 }
 
 function luckMaxFromChar(char) {
+    let lck;
     const lucEl = document.getElementById('cs-luc');
-    if (lucEl && lucEl.value !== '') return Math.max(0, parseInt(lucEl.value, 10) || 0);
-    return Math.max(0, parseInt(char && char['cs-luc'], 10) || 0);
+    if (lucEl && lucEl.value !== '') lck = parseInt(lucEl.value, 10) || 0;
+    else lck = parseInt(char && char['cs-luc'], 10) || 0;
+    if (char && Array.isArray(char.survivorTraits) && char.survivorTraits.indexOf('gifted') !== -1) lck = Math.max(0, lck - 1);
+    return Math.max(0, lck);
 }
 function ensureLuck(char) {
     if (!char) return 0;
@@ -1175,6 +1217,7 @@ function renderDbTabs() {
 }
 
 function checkRequirements(reqStr, char) {
+    if (typeof perkMeetsChar === 'function') return perkMeetsChar(reqStr, char);
     if (!reqStr || reqStr === "Нет") return true;
     let reqs = reqStr.split(','); let pass = true;
     reqs.forEach(r => {
@@ -1185,7 +1228,8 @@ function checkRequirements(reqStr, char) {
         if(r.includes('ИНТ') && char['cs-int'] < parseInt(r.replace(/\D/g,''))) pass = false;
         if(r.includes('ЛВК') && char['cs-agi'] < parseInt(r.replace(/\D/g,''))) pass = false;
         if(r.includes('УДЧ') && char['cs-luc'] < parseInt(r.replace(/\D/g,''))) pass = false;
-        if(r.includes('Ур.') && char['cs-lvl'] < parseInt(r.replace(/\D/g,''))) pass = false;
+        if((r.includes('Ур.') || /Уровень/i.test(r)) && char['cs-lvl'] < parseInt(r.replace(/\D/g,''))) pass = false;
+        if(/не робот/i.test(r) && char['cs-origin'] === 'Мистер Помощник') pass = false;
     });
     return pass;
 }

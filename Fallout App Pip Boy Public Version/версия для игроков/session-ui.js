@@ -10,7 +10,7 @@ function blankSessionChar(name) {
         'cs-str': 5, 'cs-per': 5, 'cs-end': 5, 'cs-cha': 5, 'cs-int': 5, 'cs-agi': 5, 'cs-luc': 5,
         'cs-hp-cur': 10, 'cs-hp-max': 10,
         'cs-luck-cur': 5, caps: 0,
-        inventory: [], perks: [], notes: [], _session: true
+        inventory: [], perks: [], notes: [], taggedSkills: [], survivorTraits: [], _session: true
     };
 }
 
@@ -201,6 +201,13 @@ function vaultRemove(id) {
 }
 
 function playerCreateVaultChar() {
+    if (typeof openChargenChoice === 'function') {
+        openChargenChoice('player-vault');
+        return;
+    }
+    playerCreateVaultCharImmediate();
+}
+function playerCreateVaultCharImmediate() {
     const char = blankSessionChar('Новый Персонаж');
     delete char._session;
     char._vault = true;
@@ -539,14 +546,24 @@ async function enterPlayerSession(sessionId, statusText) {
     setPlayerGateStatus('Стол ' + id + ' · создайте персонажа или откройте свой лист');
 }
 
-async function playerCreateAndOpenChar(sessionId, name, pin) {
+async function playerCreateAndOpenChar(sessionId, name, pin, preset) {
     const sid = String(sessionId || (PipSession && PipSession.sessionId) || '').toUpperCase();
-    const char = blankSessionChar(name || 'Выживший');
-    if (pin) char.pin = pin;
+    let char;
+    if (preset && typeof preset === 'object') {
+        char = Object.assign({}, preset);
+        char['cs-name'] = name || char['cs-name'] || 'Выживший';
+        if (pin) char.pin = pin;
+        char._session = true;
+        delete char._vault;
+        if (!char.id) char.id = 'char_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
+    } else {
+        char = blankSessionChar(name || 'Выживший');
+        if (pin) char.pin = pin;
+    }
     PipSession.state.characters[char.id] = Object.assign({}, char);
-    await PipSession.pushCharNow(char, pin || '');
-    try { localStorage.setItem('pipboy_claim_' + sid, JSON.stringify({ id: char.id, pin: pin || '' })); } catch (e) {}
-    hubRememberChar(Object.assign({}, char, { _hubSession: sid }), pin || '');
+    await PipSession.pushCharNow(char, pin || char.pin || '');
+    try { localStorage.setItem('pipboy_claim_' + sid, JSON.stringify({ id: char.id, pin: pin || char.pin || '' })); } catch (e) {}
+    hubRememberChar(Object.assign({}, char, { _hubSession: sid }), pin || char.pin || '');
     window.__unlockedCharId = char.id;
     if (typeof openChar === 'function') openChar(char.id);
 }
@@ -582,6 +599,14 @@ function openCreateSessionChar() {
         setPlayerGateStatus('Сначала откройте стол', true);
         return;
     }
+    if (typeof openChargenChoice === 'function') {
+        openChargenChoice('session');
+        return;
+    }
+    openCreateSessionCharForm();
+}
+
+function openCreateSessionCharForm() {
     const modal = document.getElementById('session-char-modal');
     if (!modal) {
         playerCreateAndOpenChar(PipSession.sessionId);

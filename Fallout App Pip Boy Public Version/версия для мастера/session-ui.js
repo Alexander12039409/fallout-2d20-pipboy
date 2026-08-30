@@ -12,7 +12,7 @@ function blankSessionChar(name) {
         'cs-str': 5, 'cs-per': 5, 'cs-end': 5, 'cs-cha': 5, 'cs-int': 5, 'cs-agi': 5, 'cs-luc': 5,
         'cs-hp-cur': 10, 'cs-hp-max': 10,
         'cs-luck-cur': 5, caps: 0,
-        inventory: [], perks: [], notes: [], _session: true
+        inventory: [], perks: [], notes: [], taggedSkills: [], survivorTraits: [], _session: true
     };
 }
 
@@ -26,6 +26,14 @@ function openCreateSessionChar() {
         if (sm) sm.classList.add('active');
         return;
     }
+    if (typeof openChargenChoice === 'function') {
+        openChargenChoice('session');
+        return;
+    }
+    openCreateSessionCharForm();
+}
+
+function openCreateSessionCharForm() {
     const modal = document.getElementById('session-char-modal');
     if (!modal) return;
     const name = document.getElementById('session-char-name');
@@ -36,13 +44,10 @@ function openCreateSessionChar() {
     if (name) name.focus();
 }
 
-function confirmCreateSessionChar() {
-    const name = (document.getElementById('session-char-name') && document.getElementById('session-char-name').value.trim()) || 'Выживший';
-    const pin = (document.getElementById('session-char-pin') && document.getElementById('session-char-pin').value.trim()) || '';
-    const modal = document.getElementById('session-char-modal');
-    if (modal) modal.classList.remove('active');
-    const char = blankSessionChar(name);
-    char.pin = pin;
+function commitSessionChar(char) {
+    if (typeof PipSession === 'undefined' || !PipSession.sessionId) return;
+    const pin = char.pin || '';
+    char._session = true;
     PipSession.state.characters[char.id] = Object.assign({}, char);
     PipSession.pushCharNow(char, pin).then(() => {
         try { localStorage.setItem('pipboy_claim_' + PipSession.sessionId, JSON.stringify({ id: char.id, pin: pin })); } catch (e) {}
@@ -50,6 +55,16 @@ function confirmCreateSessionChar() {
         renderChars();
         openChar(char.id);
     }).catch(err => alert(err.message || 'Не удалось создать'));
+}
+
+function confirmCreateSessionChar() {
+    const name = (document.getElementById('session-char-name') && document.getElementById('session-char-name').value.trim()) || 'Выживший';
+    const pin = (document.getElementById('session-char-pin') && document.getElementById('session-char-pin').value.trim()) || '';
+    const modal = document.getElementById('session-char-modal');
+    if (modal) modal.classList.remove('active');
+    const char = blankSessionChar(name);
+    char.pin = pin;
+    commitSessionChar(char);
 }
 
 function applySessionDb(db) {

@@ -22,6 +22,14 @@ const PIP_ICONS = {
         mine: 'gun/мина.svg'
     },
     armor: 'armor/броня.svg',
+    origin: {
+        'Выживший': 'origin/survivor.svg',
+        'Братство Стали': 'origin/brotherhood.svg',
+        'Гуль': 'origin/ghoul.svg',
+        'Супермутант': 'origin/mutant.svg',
+        'Мистер Помощник': 'origin/handy.svg',
+        'Выходец из Убежища': 'origin/vault.svg'
+    },
     inventory: {
         stimpak: 'inventory/стимпак.svg',
         medkit: 'inventory/аптечка.svg',

@@ -161,7 +161,7 @@
                         <!-- Навыки -->
                         <div class="cs-framed-box">
                             <div class="cs-box-title">НАВЫКИ (SKILLS)</div>
-                            <div style="font-size:0.9rem; text-align:right; margin-bottom:5px;">РАНГ / ЦЕЛЬ</div>
+                            <div class="cs-skill-head"><span class="skill-tag-legend">● отмеченный</span><span>РАНГ / ЦЕЛЬ</span></div>
                             <div class="cs-skills-grid" id="cs-skills-list"></div>
                         </div>
 
@@ -536,6 +536,42 @@
         </div>
     </div>
 
+    <div class="modal-overlay" id="chargen-choice-modal">
+        <div class="terminal-modal chargen-choice-box" role="dialog" aria-modal="true">
+            <div class="sheet-handle" aria-hidden="true"></div>
+            <div class="sheet-head">
+                <h2>СОЗДАНИЕ ПЕРСОНАЖА</h2>
+                <button type="button" class="sheet-close" onclick="closeChargenChoice()" aria-label="Закрыть">X</button>
+            </div>
+            <p class="chargen-choice-lead">Как вы хотите заполнить лист?</p>
+            <button type="button" class="chargen-choice-btn" onclick="chargenStartGuided()">
+                <span class="chargen-choice-title">СОЗДАТЬ ПОШАГОВО</span>
+                <span class="chargen-choice-sub">Я новый игрок, помоги мне создать персонажа</span>
+            </button>
+            <button type="button" class="chargen-choice-btn" onclick="chargenStartManual()">
+                <span class="chargen-choice-title">ВСЁ УКАЖУ САМ</span>
+                <span class="chargen-choice-sub">Открыть пустой лист — как раньше</span>
+            </button>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="chargen-modal">
+        <div class="terminal-modal chargen-wizard-box" role="dialog" aria-modal="true">
+            <div class="sheet-handle" aria-hidden="true"></div>
+            <div class="sheet-head">
+                <h2>ПОШАГОВОЕ СОЗДАНИЕ</h2>
+                <button type="button" class="sheet-close" onclick="closeChargenWizard()" aria-label="Закрыть">X</button>
+            </div>
+            <div class="chargen-steps" id="chargen-steps"></div>
+            <div class="chargen-body custom-scrollbar" id="chargen-body"></div>
+            <p class="chargen-hint" id="chargen-hint" role="status"></p>
+            <div class="term-actions">
+                <button type="button" class="term-btn danger" id="chargen-back" onclick="chargenBack()">НАЗАД</button>
+                <button type="button" class="term-btn" id="chargen-next" onclick="chargenNext()">ПРОДОЛЖИТЬ</button>
+            </div>
+        </div>
+    </div>
+
     <div class="modal-overlay" id="session-char-modal">
         <div class="terminal-modal" role="dialog" aria-modal="true">
             <div class="sheet-handle" aria-hidden="true"></div>
@@ -557,5 +593,6 @@
     <script src="session.js"></script>
     <script src="app.js"></script>
     <script src="session-ui.js"></script>
+    <script src="chargen.js"></script>
 </body>
 </html>

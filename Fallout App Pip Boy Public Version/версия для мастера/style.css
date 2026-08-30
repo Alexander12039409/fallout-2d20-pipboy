@@ -332,7 +332,27 @@ body.sys-open .sys-menu { display: flex; }
 .cs-framed-box { border: 2px solid var(--theme-dim); padding: 15px; position: relative; box-shadow: inset 0 0 15px rgba(0, 0, 0, 0.5); margin-top: 10px;}
 .cs-box-title { position: absolute; top: -12px; left: 10px; background: #000; padding: 0 5px; font-weight: bold; font-size: 1.1rem; }
 .cs-skills-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 15px; margin-top: 15px; }
-.cs-skill-row { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed var(--theme-dim); padding-bottom: 3px; font-size: 1.1rem; }
+.cs-skill-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; border-bottom: 1px dashed var(--theme-dim); padding-bottom: 3px; font-size: 1.1rem; }
+.cs-skill-name { flex: 1; min-width: 0; text-align: left; }
+.cs-skill-head { display: flex; justify-content: space-between; align-items: center; font-size: 0.9rem; margin-bottom: 5px; opacity: 0.85; }
+.skill-tag-legend { letter-spacing: 0.4px; }
+.skill-tag-dot {
+    width: 28px; height: 28px; min-width: 28px; flex-shrink: 0;
+    border: none; background: transparent; cursor: pointer; padding: 0;
+    display: flex; align-items: center; justify-content: center;
+}
+.skill-tag-dot::after {
+    content: '';
+    width: 12px; height: 12px; border-radius: 50%;
+    border: 1px solid var(--pip-green);
+    box-shadow: 0 0 4px rgba(20,254,20,0.35);
+    background: transparent;
+}
+.skill-tag-dot.is-on::after {
+    background: var(--pip-green);
+    box-shadow: 0 0 8px var(--pip-green);
+}
+.skill-tag-dot.is-lock { cursor: default; }
 .cs-skill-inputs { display: flex; align-items: center; gap: 5px; }
 .cs-skill-inputs input { width: 35px !important; height: 25px; padding: 0; border: 1px dashed var(--pip-green); background: rgba(0,0,0,0.5); font-size: 1.1rem; color: var(--pip-green); font-family: inherit; text-align: center; outline: none;}
 .cs-tn { width: 35px; text-align: right; font-size: 1.1rem; font-weight: bold; opacity: 0.8;}
@@ -471,6 +491,89 @@ body.sys-open .sys-menu { display: flex; }
 .terminal-modal .sheet-head h2 { flex: 1; min-width: 0; margin: 0 !important; padding: 0 !important; border: none !important; text-align: left; font-size: 1.15rem; line-height: 1.25; }
 .sheet-close { flex-shrink: 0; margin-left: auto; background: transparent; border: 1px solid var(--pip-red); color: var(--pip-red); width: 32px; height: 32px; min-width: 32px; display: flex; justify-content: center; align-items: center; cursor: pointer; font-family: monospace; font-size: 1.15rem; line-height: 1; }
 .sheet-close:hover { background: var(--pip-red); color: #000; }
+
+.chargen-choice-box { width: 460px; max-width: 95%; }
+.chargen-choice-lead { margin: 0; opacity: 0.85; text-transform: none; font-size: 1.05rem; }
+.chargen-choice-btn {
+    display: flex; flex-direction: column; align-items: flex-start; gap: 6px;
+    width: 100%; text-align: left; cursor: pointer;
+    background: rgba(0,0,0,0.45); color: var(--pip-green);
+    border: 1px solid var(--theme-dim); padding: 14px 16px;
+    font-family: inherit; min-height: 64px;
+}
+.chargen-choice-btn:hover, .chargen-choice-btn:focus { border-color: var(--pip-green); background: rgba(20,254,20,0.1); }
+.chargen-choice-title { font-size: 1.2rem; font-weight: bold; letter-spacing: 0.6px; }
+.chargen-choice-sub { font-size: 0.95rem; opacity: 0.8; text-transform: none; line-height: 1.35; }
+.chargen-wizard-box { width: 760px; max-width: 95%; max-height: 88vh; overflow: hidden; }
+.chargen-steps { display: flex; flex-wrap: wrap; gap: 6px; }
+.chargen-step {
+    background: transparent; color: var(--pip-green); border: 1px solid var(--theme-dim);
+    font-family: inherit; font-size: 0.78rem; padding: 6px 8px; cursor: pointer; opacity: 0.45;
+}
+.chargen-step.is-done { opacity: 0.8; }
+.chargen-step.is-on { opacity: 1; border-color: var(--pip-green); background: rgba(20,254,20,0.12); }
+.chargen-body { flex: 1; min-height: 180px; max-height: 56vh; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+.chargen-lead { margin: 0; text-transform: none; opacity: 0.9; line-height: 1.4; font-size: 1.02rem; }
+.chargen-field { display: flex; flex-direction: column; gap: 6px; font-size: 0.9rem; }
+.chargen-hint { min-height: 1.2em; margin: 0; text-transform: none; font-size: 0.95rem; opacity: 0.85; }
+.chargen-hint.is-bad { color: var(--pip-red); opacity: 1; }
+.chargen-origin-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.chargen-origin-card {
+    display: flex; gap: 10px; text-align: left; cursor: pointer;
+    background: rgba(0,0,0,0.45); color: var(--pip-green); border: 1px solid var(--theme-dim);
+    padding: 10px; font-family: inherit;
+}
+.chargen-origin-card:hover { border-color: var(--pip-green); background: rgba(20,254,20,0.08); }
+.chargen-origin-card.is-on { border-color: var(--pip-green); background: rgba(20,254,20,0.14); box-shadow: 0 0 10px rgba(20,254,20,0.2); }
+.chargen-origin-icon { width: 48px; height: 48px; flex-shrink: 0; }
+.chargen-origin-icon .pip-glyph, .chargen-origin-glyph { width: 48px; height: 48px; }
+.chargen-origin-name { font-weight: bold; font-size: 1.05rem; margin-bottom: 4px; }
+.chargen-origin-story, .chargen-origin-mech { margin: 0 0 6px; font-size: 0.88rem; line-height: 1.35; text-transform: none; opacity: 0.88; }
+.chargen-origin-mech { opacity: 1; }
+.chargen-origin-max { font-size: 0.78rem; opacity: 0.75; letter-spacing: 0.3px; }
+.chargen-extra { border: 1px dashed var(--theme-dim); padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+.chargen-extra-title { font-size: 0.95rem; font-weight: bold; }
+.chargen-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chargen-chip {
+    background: rgba(0,0,0,0.4); color: var(--pip-green); border: 1px solid var(--theme-dim);
+    font-family: inherit; padding: 8px 12px; min-height: 40px; cursor: pointer;
+}
+.chargen-chip.is-on { border-color: var(--pip-green); background: rgba(20,254,20,0.16); }
+.chargen-check { display: flex; align-items: center; gap: 8px; text-transform: none; font-size: 0.95rem; }
+.chargen-trait-list { display: flex; flex-direction: column; gap: 8px; }
+.chargen-trait {
+    display: flex; flex-direction: column; align-items: flex-start; gap: 4px; text-align: left;
+    background: rgba(0,0,0,0.4); color: var(--pip-green); border: 1px solid var(--theme-dim);
+    font-family: inherit; padding: 10px; cursor: pointer;
+}
+.chargen-trait.is-on { border-color: var(--pip-green); background: rgba(20,254,20,0.14); }
+.chargen-trait span, .chargen-trait em { text-transform: none; font-size: 0.88rem; line-height: 1.35; font-style: normal; opacity: 0.88; }
+.chargen-trait em { opacity: 0.7; }
+.chargen-remain { font-size: 1.05rem; }
+.chargen-remain.is-ok { text-shadow: 0 0 6px var(--pip-green); }
+.chargen-derived { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; text-align: center; border: 1px dashed var(--theme-dim); padding: 10px; }
+.chargen-derived > div { font-size: 0.78rem; opacity: 0.8; }
+.chargen-derived span { display: block; font-size: 1.2rem; font-weight: bold; opacity: 1; margin-top: 4px; text-shadow: 0 0 5px var(--pip-green); }
+.chargen-spec-list, .chargen-skill-list { display: flex; flex-direction: column; gap: 6px; }
+.chargen-spec-row, .chargen-skill-row { display: flex; align-items: center; gap: 10px; border-bottom: 1px dashed var(--theme-dim); padding: 4px 0; }
+.chargen-spec-lab { flex: 1; min-width: 0; }
+.chargen-spec-lab small { display: block; opacity: 0.65; font-size: 0.75rem; }
+.chargen-skill-name { flex: 1; min-width: 0; text-align: left; }
+.chargen-stepper { display: flex; align-items: center; gap: 6px; }
+.chargen-stepper .term-btn { min-width: 40px; min-height: 40px; padding: 0; }
+.chargen-spec-val { min-width: 28px; text-align: center; font-size: 1.2rem; font-weight: bold; }
+.chargen-tn { width: 42px; text-align: right; opacity: 0.8; }
+.chargen-perk-list { display: flex; flex-direction: column; gap: 8px; }
+.chargen-perk-card {
+    text-align: left; cursor: pointer; font-family: inherit; color: var(--pip-green);
+    background: rgba(0,0,0,0.45); border: 1px solid var(--theme-dim); padding: 10px 12px;
+}
+.chargen-perk-card:hover { border-color: var(--pip-green); background: rgba(20,254,20,0.08); }
+.chargen-perk-card.is-on { border-color: var(--pip-green); background: rgba(20,254,20,0.14); }
+.chargen-perk-name { font-weight: bold; font-size: 1.05rem; }
+.chargen-perk-req { font-size: 0.78rem; opacity: 0.7; margin: 4px 0; }
+.chargen-perk-desc { font-size: 0.9rem; text-transform: none; line-height: 1.35; opacity: 0.88; }
+.chargen-empty { text-transform: none; opacity: 0.8; }
 .perk-card { border: 1px solid var(--pip-green); padding: 12px 14px; background: rgba(3, 15, 3, 0.9); box-shadow: inset 0 0 10px rgba(0,0,0,0.5); }
 .perk-card-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px dashed var(--theme-dim); }
 .perk-card-del { flex-shrink: 0; background: transparent; border: 1px solid var(--pip-red); color: var(--pip-red); width: 24px; height: 24px; display: flex; justify-content: center; align-items: center; cursor: pointer; font-family: monospace; }
@@ -974,6 +1077,12 @@ body.player-playing #char-drawer {
     }
     .modal-overlay.active .terminal-modal { transform: translateY(0); }
     .db-picker-modal-box { width: 100%; max-width: none; }
+    .chargen-wizard-box { width: 100%; max-width: none; max-height: min(92dvh, 92%); }
+    .chargen-body { max-height: min(58dvh, 58%); }
+    .chargen-origin-grid { grid-template-columns: 1fr; }
+    .chargen-derived { grid-template-columns: repeat(3, 1fr); }
+    .chargen-origin-card { min-height: 44px; }
+    .skill-tag-dot { width: 36px; height: 36px; min-width: 36px; }
     .term-btn { min-height: 44px; }
     .term-actions { gap: 10px; }
     .term-actions .term-btn { flex: 1; }
