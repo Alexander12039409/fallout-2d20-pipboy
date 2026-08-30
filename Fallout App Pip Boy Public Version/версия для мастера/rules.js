@@ -122,6 +122,42 @@ const WEAPON_AMMO = {
     'Импульсная мина': { type: 'Мина', mag: 1 },
     'Камень': { type: 'Камень', mag: 1 }
 };
+const WEAPON_AMMO_ALIASES = {
+    'Штурмовая винтовка': 'Штурмовой карабин',
+    'Охотничья винтовка': 'Охотничий карабин',
+    'Пистолет-пулемёт Томпсона': 'ПП Томпсона',
+    'Пистолет-пулемет Томпсона': 'ПП Томпсона',
+    'Гладкоствол с болтовым затвором': 'Кустарный карабин',
+    'Гладкоствольный пистолет': 'Кустарный пистолет',
+    'Гладкоствольный револьвер': 'Кустарный револьвер',
+    'Железнодорожная винтовка': 'Гвоздемет',
+    'Револьвер калибра .44': '.44 Револьвер',
+    'Бильярдный кий': 'Кий',
+    'Дубинка': 'Телескопическая дубинка',
+    'Супермолот': 'Суперкувалда',
+    'Балонный ключ': 'Монтировка',
+    'Баллонный ключ': 'Монтировка',
+    'Ракетная установка': 'Пусковая установка',
+    'Огнемёт': 'Огнемет'
+};
+Object.keys(WEAPON_AMMO_ALIASES).forEach(alias => {
+    const canon = WEAPON_AMMO_ALIASES[alias];
+    if (WEAPON_AMMO[canon] && !WEAPON_AMMO[alias]) WEAPON_AMMO[alias] = WEAPON_AMMO[canon];
+});
+function canonicalWeaponName(name) {
+    if (WEAPON_AMMO[name]) return name;
+    if (WEAPON_AMMO_ALIASES[name]) return WEAPON_AMMO_ALIASES[name];
+    if (typeof findWeaponByName === 'function') {
+        const w = findWeaponByName(name);
+        if (w && typeof masterDB !== 'undefined' && masterDB.weapons) {
+            const keys = Object.keys(masterDB.weapons);
+            for (let i = 0; i < keys.length; i++) {
+                if (masterDB.weapons[keys[i]] === w) return keys[i];
+            }
+        }
+    }
+    return name;
+}
 
 const LINING_MODS = [
     { name: 'Нет', hint: 'Без подкладки', phys: 0, eng: 0, rad: 0 },
@@ -301,7 +337,26 @@ const ARMOR_CATALOG = {
     ['Собачий шлем', 'leather', 'head', 2, 1, 0, []],
     ['Лёгкая собачья броня', 'leather', 'torso', 1, 1, 0, []],
     ['Средняя собачья броня', 'leather', 'torso', 2, 2, 0, []],
-    ['Тяжёлая собачья броня', 'leather', 'torso', 3, 3, 0, []]
+    ['Тяжёлая собачья броня', 'leather', 'torso', 3, 3, 0, []],
+    ['Шлем охранника Волт-Тек', 'combat', 'head', 2, 1, 0, ['material']],
+    ['Нагрудник охранника Волт-Тек', 'combat', 'torso', 2, 2, 0, ['material', 'upgrade']],
+    ['Понож охранника Волт-Тек', 'combat', 'leg', 2, 2, 0, ['material', 'upgrade']],
+    ['Наруч охранника Волт-Тек', 'combat', 'arm', 2, 2, 0, ['material', 'upgrade']],
+    ['Шлем силовой брони рейдеров', 'power', 'head', 3, 3, 3, []],
+    ['Нагрудник силовой брони рейдеров', 'power', 'torso', 5, 4, 4, []],
+    ['Наруч силовой брони рейдеров', 'power', 'arm', 3, 2, 2, []],
+    ['Понож силовой брони рейдеров', 'power', 'leg', 3, 2, 2, []],
+    ['Стандартная обшивка', 'power', 'clothes', 2, 2, 0, []],
+    ['Обшивка Мистера Храбреца', 'power', 'clothes', 2, 4, 0, []],
+    ['Заводская броня', 'power', 'clothes', 4, 4, 0, []],
+    ['Заводская складская броня', 'power', 'clothes', 3, 3, 0, []],
+    ['Примитивная обшивка', 'power', 'clothes', 3, 1, 0, []],
+    ['Зазубренная обшивка', 'power', 'clothes', 3, 1, 0, []],
+    ['Пагубная обшивка', 'power', 'clothes', 2, 2, 0, []],
+    ['Токсичная обшивка', 'power', 'clothes', 2, 2, 0, []],
+    ['Рама с приводом', 'power', 'clothes', 3, 3, 0, []],
+    ['Электризованная рама', 'power', 'clothes', 2, 4, 0, []],
+    ['Гидравлическая рама', 'power', 'clothes', 4, 4, 0, []]
 ].forEach(row => {
     ARMOR_CATALOG[row[0]] = { family: row[1], coverage: row[2], phys: row[3], eng: row[4], rad: row[5], mods: row[6] };
 });
@@ -602,7 +657,8 @@ function wornNamesForLoc(inventory, loc) {
 }
 
 function weaponAmmoInfo(name) {
-    return WEAPON_AMMO[name] || null;
+    const key = (typeof canonicalWeaponName === 'function') ? canonicalWeaponName(name) : name;
+    return WEAPON_AMMO[key] || WEAPON_AMMO[name] || null;
 }
 
 function caliberFromModText(text) {
@@ -618,9 +674,12 @@ function caliberFromModText(text) {
 }
 
 function getWeaponAmmoType(name, item) {
-    let type = (WEAPON_AMMO[name] && WEAPON_AMMO[name].type) || '';
-    if (!item || !item.mods || typeof masterDB === 'undefined' || !masterDB.weapons || !masterDB.weapons[name]) return type;
-    const slots = masterDB.weapons[name].slots || {};
+    const key = (typeof canonicalWeaponName === 'function') ? canonicalWeaponName(name) : name;
+    let type = (WEAPON_AMMO[key] && WEAPON_AMMO[key].type) || (WEAPON_AMMO[name] && WEAPON_AMMO[name].type) || '';
+    const def = (typeof findWeaponByName === 'function' && findWeaponByName(name))
+        || (typeof masterDB !== 'undefined' && masterDB.weapons && (masterDB.weapons[name] || masterDB.weapons[key]));
+    if (!item || !item.mods || !def) return type;
+    const slots = def.slots || {};
     Object.keys(item.mods).forEach(slot => {
         const mod = slots[slot] && slots[slot][item.mods[slot]];
         if (!mod) return;

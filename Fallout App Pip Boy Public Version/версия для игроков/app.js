@@ -5,11 +5,13 @@ function sessionCharById(id) {
     return (PipSession.state && PipSession.state.characters && PipSession.state.characters[id]) || null;
 }
 function findChar(id) {
+    const session = sessionCharById(id);
+    if (session) return session;
     if (PIP_MODE === 'player' && typeof vaultFind === 'function') {
         const vault = vaultFind(id);
         if (vault) return vault;
     }
-    return (masterChars || []).find(c => c.id === id) || sessionCharById(id);
+    return (masterChars || []).find(c => c.id === id) || null;
 }
 function applyRemoteChar(char) {
     if (!char || !char.id) return;
@@ -1167,9 +1169,6 @@ function saveInvItem() {
 
 function resolveWeaponData(item) {
     if (!item || item.type !== 'weapon') return null;
-    if (!item.custom && typeof masterDB !== 'undefined' && masterDB.weapons && masterDB.weapons[item.baseId]) {
-        return masterDB.weapons[item.baseId];
-    }
     if (item.custom) {
         const quals = Array.isArray(item.qualities)
             ? item.qualities.slice()
@@ -1182,13 +1181,14 @@ function resolveWeaponData(item) {
             range: item.range || 'Ближняя',
             qualities: quals,
             slots: item.slots || {},
-            ammoType: item.ammoType || ''
+            ammoType: item.ammoType || '',
+            aliases: item.aliases || []
         };
     }
-    if (typeof masterDB !== 'undefined' && masterDB.weapons && masterDB.weapons[item.baseId]) {
-        return masterDB.weapons[item.baseId];
-    }
-    return null;
+    const found = (typeof findWeaponByName === 'function')
+        ? findWeaponByName(item.baseId || item.title)
+        : (typeof masterDB !== 'undefined' && masterDB.weapons && masterDB.weapons[item.baseId]);
+    return found || null;
 }
 
 function deleteCharItem(idx) {
@@ -1267,82 +1267,158 @@ function checkRequirements(reqStr, char) {
     return pass;
 }
 
+function pickerNorm(s) {
+    return String(s || '').toLowerCase().replace(/ё/g, 'е').replace(/[^a-zа-я0-9]+/gi, '');
+}
+
+function findWeaponByName(name) {
+    if (typeof masterDB === 'undefined' || !masterDB.weapons) return null;
+    if (name && masterDB.weapons[name]) return masterDB.weapons[name];
+    const compact = pickerNorm(name);
+    if (!compact) return null;
+    const keys = Object.keys(masterDB.weapons);
+    for (let i = 0; i < keys.length; i++) {
+        const k = keys[i];
+        const w = masterDB.weapons[k];
+        if (!w) continue;
+        if (pickerNorm(k) === compact) return w;
+        const aliases = w.aliases || [];
+        for (let a = 0; a < aliases.length; a++) {
+            if (pickerNorm(aliases[a]) === compact) return w;
+        }
+    }
+    return null;
+}
+
 function pickerQueryMatch(q, parts) {
     if (!q) return true;
-    return String(parts || '').toLowerCase().indexOf(q) !== -1;
+    const hay = String(parts || '');
+    const nq = pickerNorm(q);
+    if (nq && pickerNorm(hay).indexOf(nq) !== -1) return true;
+    const tokens = String(q).toLowerCase().replace(/ё/g, 'е').split(/\s+/).filter(Boolean);
+    const hayLow = hay.toLowerCase().replace(/ё/g, 'е');
+    return tokens.length > 0 && tokens.every(t => hayLow.indexOf(t) !== -1 || pickerNorm(hayLow).indexOf(pickerNorm(t)) !== -1);
+}
+
+function weaponPickerHaystack(wKey, w) {
+    const ammo = (typeof getWeaponAmmoType === 'function') ? getWeaponAmmoType(wKey, null) : (w && w.ammoType) || '';
+    return [wKey, (w && w.aliases || []).join(' '), w && w.category, w && w.type, ((w && w.qualities) || []).join(' '), ammo].join(' ');
+}
+
+function itemPickerHaystack(i) {
+    return [i && i.name, i && i.category, i && i.desc, i && i.type].join(' ');
 }
 
 function filterDbPicker() {
     const searchEl = document.getElementById('db-picker-search');
     const q = searchEl ? searchEl.value.trim().toLowerCase() : '';
-    const list = document.getElementById('db-picker-list'); list.innerHTML = '';
+    const list = document.getElementById('db-picker-list');
+    if (!list) return;
+    list.innerHTML = '';
     const char = liveChar();
-    if (!char) return;
-    if(typeof masterDB === 'undefined') { list.innerHTML = 'База данных не подключена'; return; }
+    if (typeof masterDB === 'undefined') { list.innerHTML = 'База данных не подключена'; return; }
     const useTab = !q;
+    let shown = 0;
 
-    if (dbPickerMode === 'inv') {
-        Object.keys(masterDB.weapons || {}).forEach(wKey => {
-            const w = masterDB.weapons[wKey];
-            let matchTab = !useTab || activeDbTab === 'Все' ||
-                           (activeDbTab === 'Стрелковое' && w.category === 'Стрелковое') ||
-                           (activeDbTab === 'Энерго' && w.category === 'Энергетическое') ||
-                           (activeDbTab === 'Холодное' && (w.category === 'Холодное' || w.category === 'Рукопашное' || w.category === 'Оружие ближнего боя')) ||
-                           (activeDbTab === 'Тяжелое' && w.category === 'Тяжелое') ||
-                           (activeDbTab === 'Взрывчатка' && w.category === 'Взрывчатка');
+    function addStatus(text) {
+        const meta = document.createElement('div');
+        meta.className = 'db-picker-status';
+        meta.textContent = text;
+        list.appendChild(meta);
+    }
 
-            if(matchTab && pickerQueryMatch(q, [wKey, w.category, w.type, (w.qualities || []).join(' ')].join(' '))) {
-                let div = document.createElement('div'); div.className = 'db-item-row'; div.innerHTML = `${pipGlyph(weaponIconRel(wKey, w.category), 'db-item-glyph')}<span>[${w.category.toUpperCase()}] ${wKey}</span>`;
-                div.onclick = () => {
-                    let newWep = { type: 'weapon', baseId: wKey, mods: {}, ammo: 0, totalAmmo: 0 };
-                    for(let s in w.slots) newWep.mods[s] = 0;
-                    if(!char.inventory) char.inventory = [];
-                    char.inventory.push(newWep); persistLiveChar();
-                    closeDbPicker(); renderInventoryAndPerks(char);
-                };
-                list.appendChild(div);
-            }
-        });
-        (masterDB.items || []).forEach(i => {
-            let matchTab = !useTab || activeDbTab === 'Все' ||
-                           (activeDbTab === 'Броня' && (i.type === 'armor' || /одежд|брон|шлем|комбинезон|обмундир|силов|голов|собак/i.test(i.category || ''))) ||
-                           (activeDbTab === 'Аптечка' && i.category === 'Аптечка') ||
-                           (activeDbTab === 'Препараты' && i.category === 'Препараты') ||
-                           (activeDbTab === 'Еда' && (i.category === 'Еда' || i.category === 'Напитки')) ||
-                           (activeDbTab === 'Патроны' && i.category === 'Боеприпасы') ||
-                           (activeDbTab === 'Прочее' && i.category === 'Разное');
-
-            if(matchTab && pickerQueryMatch(q, [i.name, i.category, i.desc, i.type].join(' '))) {
-                let div = document.createElement('div'); div.className = 'db-item-row'; div.innerHTML = `${pipGlyph(itemIconRel(i), 'db-item-glyph')}<span>[${(i.category||'Предмет').toUpperCase()}] ${i.name}</span>`;
-                div.onclick = () => { 
-                    if(!char.inventory) char.inventory = [];
-                    const isArm = i.type === 'armor' || (typeof getArmorDef === 'function' && getArmorDef({ title: i.name }));
-                    const packed = isArm
-                        ? { type: 'armor', baseId: i.name, title: i.name, desc: i.desc, itemType: 'armor', category: i.category, mods: { lining: 0, material: 0, upgrade: 0 }, equipped: [] }
-                        : { type:'db_item', title: i.name, desc: i.desc, itemType: i.type, category: i.category };
-                    char.inventory.push(packed); persistLiveChar();
-                    closeDbPicker(); renderInventoryAndPerks(char);
-                };
-                list.appendChild(div);
-            }
-        });
-    } else {
-        (masterDB.perks || []).forEach(p => {
-            let matchTab = !useTab || activeDbTab === 'Все' || (p.reqStr || '').includes(activeDbTab.replace('ВСПР', 'ВСП'));
-            if(matchTab && pickerQueryMatch(q, [p.name, p.desc, p.reqStr].join(' '))) {
-                const isPass = checkRequirements(p.reqStr, char);
-                let div = document.createElement('div');
-                div.className = 'db-perk-card' + (isPass ? ' is-ready' : ' is-locked');
-                const badge = isPass ? 'ДОСТУПНО' : (p.reqStr || 'НЕДОСТУПНО');
-                div.innerHTML = `<div class="db-perk-head"><b class="db-perk-name ${isPass ? 'req-pass' : 'req-fail'}">${escapePipHtml(p.name)}</b><span class="db-perk-badge ${isPass ? 'req-pass' : 'req-fail'}">${escapePipHtml(badge)}</span></div><div class="db-perk-desc">${escapePipHtml(p.desc || '')}</div>`;
-                div.onclick = () => {
-                    if(!char.perks) char.perks = [];
-                    if(!char.perks.includes(p.name)) { char.perks.push(p.name); persistLiveChar(); renderInventoryAndPerks(char);}
-                    closeDbPicker();
-                };
-                list.appendChild(div);
-            }
-        });
+    try {
+        if (dbPickerMode === 'inv') {
+            Object.keys(masterDB.weapons || {}).forEach(wKey => {
+                try {
+                    const w = masterDB.weapons[wKey];
+                    if (!w) return;
+                    const cat = w.category || '';
+                    let matchTab = !useTab || activeDbTab === 'Все' ||
+                                   (activeDbTab === 'Стрелковое' && cat === 'Стрелковое') ||
+                                   (activeDbTab === 'Энерго' && cat === 'Энергетическое') ||
+                                   (activeDbTab === 'Холодное' && (cat === 'Холодное' || cat === 'Рукопашное' || cat === 'Оружие ближнего боя')) ||
+                                   (activeDbTab === 'Тяжелое' && cat === 'Тяжелое') ||
+                                   (activeDbTab === 'Взрывчатка' && cat === 'Взрывчатка');
+                    if (!(matchTab && pickerQueryMatch(q, weaponPickerHaystack(wKey, w)))) return;
+                    let div = document.createElement('div');
+                    div.className = 'db-item-row';
+                    const catLabel = (cat || 'Оружие').toUpperCase();
+                    div.innerHTML = `${pipGlyph(weaponIconRel(wKey, cat), 'db-item-glyph')}<span>[${catLabel}] ${wKey}</span>`;
+                    div.onclick = () => {
+                        if (!char) { alert('Откройте лист персонажа, чтобы добавить предмет.'); return; }
+                        let newWep = { type: 'weapon', baseId: wKey, mods: {}, ammo: 0, totalAmmo: 0 };
+                        for (let s in (w.slots || {})) newWep.mods[s] = 0;
+                        if (!char.inventory) char.inventory = [];
+                        char.inventory.push(newWep); persistLiveChar();
+                        closeDbPicker(); renderInventoryAndPerks(char);
+                    };
+                    list.appendChild(div);
+                    shown++;
+                } catch (e) { console.warn('picker weapon', wKey, e); }
+            });
+            (Array.isArray(masterDB.items) ? masterDB.items : []).forEach(i => {
+                try {
+                    if (!i || !i.name) return;
+                    const cat = i.category || '';
+                    let matchTab = !useTab || activeDbTab === 'Все' ||
+                                   (activeDbTab === 'Броня' && (i.type === 'armor' || /одежд|брон|шлем|комбинезон|обмундир|силов|голов|собак|робот|охранник|волт/i.test(cat))) ||
+                                   (activeDbTab === 'Аптечка' && cat === 'Аптечка') ||
+                                   (activeDbTab === 'Препараты' && cat === 'Препараты') ||
+                                   (activeDbTab === 'Еда' && (cat === 'Еда' || cat === 'Напитки')) ||
+                                   (activeDbTab === 'Патроны' && cat === 'Боеприпасы') ||
+                                   (activeDbTab === 'Прочее' && (cat === 'Разное' || cat === 'Расходники' || !cat));
+                    if (!(matchTab && pickerQueryMatch(q, itemPickerHaystack(i)))) return;
+                    let div = document.createElement('div');
+                    div.className = 'db-item-row';
+                    div.innerHTML = `${pipGlyph(itemIconRel(i), 'db-item-glyph')}<span>[${(cat || 'Предмет').toUpperCase()}] ${i.name}</span>`;
+                    div.onclick = () => {
+                        if (!char) { alert('Откройте лист персонажа, чтобы добавить предмет.'); return; }
+                        if (!char.inventory) char.inventory = [];
+                        const isArm = i.type === 'armor' || (typeof getArmorDef === 'function' && getArmorDef({ title: i.name }));
+                        const packed = isArm
+                            ? { type: 'armor', baseId: i.name, title: i.name, desc: i.desc, itemType: 'armor', category: i.category, mods: { lining: 0, material: 0, upgrade: 0 }, equipped: [] }
+                            : { type:'db_item', title: i.name, desc: i.desc, itemType: i.type, category: i.category };
+                        char.inventory.push(packed); persistLiveChar();
+                        closeDbPicker(); renderInventoryAndPerks(char);
+                    };
+                    list.appendChild(div);
+                    shown++;
+                } catch (e) { console.warn('picker item', i && i.name, e); }
+            });
+        } else {
+            (Array.isArray(masterDB.perks) ? masterDB.perks : []).forEach(p => {
+                try {
+                    if (!p || !p.name) return;
+                    let matchTab = !useTab || activeDbTab === 'Все' || (p.reqStr || '').includes(activeDbTab.replace('ВСПР', 'ВСП'));
+                    if (!(matchTab && pickerQueryMatch(q, [p.name, p.desc, p.reqStr].join(' ')))) return;
+                    const isPass = char ? checkRequirements(p.reqStr, char) : false;
+                    let div = document.createElement('div');
+                    div.className = 'db-perk-card' + (isPass ? ' is-ready' : ' is-locked');
+                    const badge = isPass ? 'ДОСТУПНО' : (p.reqStr || 'НЕДОСТУПНО');
+                    div.innerHTML = `<div class="db-perk-head"><b class="db-perk-name ${isPass ? 'req-pass' : 'req-fail'}">${escapePipHtml(p.name)}</b><span class="db-perk-badge ${isPass ? 'req-pass' : 'req-fail'}">${escapePipHtml(badge)}</span></div><div class="db-perk-desc">${escapePipHtml(p.desc || '')}</div>`;
+                    div.onclick = () => {
+                        if (!char) { alert('Откройте лист персонажа, чтобы добавить перк.'); return; }
+                        if (!char.perks) char.perks = [];
+                        if (!char.perks.includes(p.name)) { char.perks.push(p.name); persistLiveChar(); renderInventoryAndPerks(char);}
+                        closeDbPicker();
+                    };
+                    list.appendChild(div);
+                    shown++;
+                } catch (e) { console.warn('picker perk', p && p.name, e); }
+            });
+        }
+    } catch (e) {
+        console.warn('filterDbPicker', e);
+        addStatus('Ошибка фильтра. Откройте вкладку «Все» или очистите поиск.');
+        return;
+    }
+    if (!shown) addStatus(q ? 'Ничего не найдено. Попробуйте другое слово или вкладку «Все».' : 'Каталог пуст.');
+    else {
+        const meta = document.createElement('div');
+        meta.className = 'db-picker-status';
+        meta.textContent = shown + ' позиций' + (q ? ' по поиску' : '');
+        list.insertBefore(meta, list.firstChild);
     }
 }
 
@@ -1435,6 +1511,7 @@ function renderInventoryAndPerks(char) {
     let magDirty = false;
     if (char.inventory) {
         char.inventory.forEach((item, index) => {
+            try {
             const wData = resolveWeaponData(item);
             if (wData) {
                 let cDmg = wData.baseDamage, cFr = wData.fireRate, cQual = [...(wData.qualities || [])], cRng = wData.range;
@@ -1554,7 +1631,11 @@ function renderInventoryAndPerks(char) {
                         ${slotsHtml ? `<div class="wep-slots-v2">${slotsHtml}</div>` : ''}
                     </div>`);
             } else {
-                invList.insertAdjacentHTML('beforeend', `<div class="cs-inv-card"><button class="cs-inv-del" onclick="deleteCharItem(${index})">X</button><div class="cs-inv-icon">${pipGlyph(itemIconRel(item))}</div><div class="cs-inv-body"><div class="cs-inv-title">${escapePipHtml(item.title || item.name)}</div><div class="cs-inv-desc">${escapePipHtml(item.desc || '')}</div>${item.qty != null ? `<div class="caps-controls"><button type="button" class="caps-btn" onclick="event.stopPropagation(); changeCustomQty(${index}, -1)">−</button><span class="caps-val" id="custom-qty-${index}">${parseInt(item.qty, 10) || 0}</span><button type="button" class="caps-btn" onclick="event.stopPropagation(); changeCustomQty(${index}, 1)">+</button></div>` : ''}</div></div>`);
+                invList.insertAdjacentHTML('beforeend', `<div class="cs-inv-card"><button class="cs-inv-del" onclick="deleteCharItem(${index})">X</button><div class="cs-inv-icon">${pipGlyph(itemIconRel(item))}</div><div class="cs-inv-body"><div class="cs-inv-title">${escapePipHtml(item.title || item.name || item.baseId)}</div><div class="cs-inv-desc">${escapePipHtml(item.desc || '')}</div>${item.qty != null ? `<div class="caps-controls"><button type="button" class="caps-btn" onclick="event.stopPropagation(); changeCustomQty(${index}, -1)">−</button><span class="caps-val" id="custom-qty-${index}">${parseInt(item.qty, 10) || 0}</span><button type="button" class="caps-btn" onclick="event.stopPropagation(); changeCustomQty(${index}, 1)">+</button></div>` : ''}</div></div>`);
+            }
+            } catch (invErr) {
+                console.warn('inv card', index, invErr);
+                invList.insertAdjacentHTML('beforeend', `<div class="cs-inv-card"><button class="cs-inv-del" onclick="deleteCharItem(${index})">X</button><div class="cs-inv-body"><div class="cs-inv-title">${escapePipHtml((item && (item.title || item.name || item.baseId)) || 'Предмет')}</div><div class="cs-inv-desc">Карточка не собралась — предмет на листе сохранён.</div></div></div>`);
             }
         });
     }

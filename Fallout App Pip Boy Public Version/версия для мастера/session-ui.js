@@ -69,9 +69,59 @@ function confirmCreateSessionChar() {
 
 function applySessionDb(db) {
     if (!db || PIP_MODE === 'master') return;
-    if (db.weapons) masterDB.weapons = db.weapons;
-    if (db.perks) masterDB.perks = db.perks;
-    if (db.items) masterDB.items = db.items;
+    mergeIncomingCatalog(db);
+}
+
+function mergeIncomingCatalog(db) {
+    if (!masterDB.weapons) masterDB.weapons = {};
+    if (!Array.isArray(masterDB.items)) masterDB.items = [];
+    if (!Array.isArray(masterDB.perks)) masterDB.perks = [];
+    if (typeof weaponDB !== 'undefined' && weaponDB.weapons) {
+        Object.keys(weaponDB.weapons).forEach(name => {
+            if (!masterDB.weapons[name]) masterDB.weapons[name] = weaponDB.weapons[name];
+        });
+    }
+    if (typeof dbItems !== 'undefined' && Array.isArray(dbItems)) {
+        const have = new Set(masterDB.items.map(i => i && i.name));
+        dbItems.forEach(it => {
+            if (it && it.name && !have.has(it.name)) {
+                masterDB.items.push(it);
+                have.add(it.name);
+            }
+        });
+    }
+    if (typeof dbPerks !== 'undefined' && Array.isArray(dbPerks)) {
+        const haveP = new Set(masterDB.perks.map(p => p && p.name));
+        dbPerks.forEach(p => {
+            if (p && p.name && !haveP.has(p.name)) {
+                masterDB.perks.push(p);
+                haveP.add(p.name);
+            }
+        });
+    }
+    if (db && db.weapons) {
+        Object.keys(db.weapons).forEach(name => {
+            if (!masterDB.weapons[name]) masterDB.weapons[name] = db.weapons[name];
+        });
+    }
+    if (db && Array.isArray(db.items)) {
+        const have = new Set(masterDB.items.map(i => i && i.name));
+        db.items.forEach(it => {
+            if (it && it.name && !have.has(it.name)) {
+                masterDB.items.push(it);
+                have.add(it.name);
+            }
+        });
+    }
+    if (db && Array.isArray(db.perks)) {
+        const haveP = new Set(masterDB.perks.map(p => p && p.name));
+        db.perks.forEach(p => {
+            if (p && p.name && !haveP.has(p.name)) {
+                masterDB.perks.push(p);
+                haveP.add(p.name);
+            }
+        });
+    }
 }
 
 function applySessionMap(map) {

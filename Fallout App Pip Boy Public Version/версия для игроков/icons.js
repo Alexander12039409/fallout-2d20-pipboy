@@ -91,7 +91,7 @@ function itemIconRel(item) {
     const type = `${item.itemType || item.type || ''}`.toLowerCase();
     const cat = `${item.category || ''}`.toLowerCase();
     const n = `${item.title || item.name || ''}`.toLowerCase();
-    if (type === 'armor' || /брон|одежд|шлем|нагрудн|понож|наруч|комбинезон|халат|пальто|форма|рейдер|кожан|металл|синтов|силов|каркас|капюшон|противогаз|каска|обмундир/.test(n + ' ' + cat)) return PIP_ICONS.armor;
+    if (type === 'armor' || /брон|одежд|шлем|нагрудн|понож|наруч|комбинезон|халат|пальто|форма|рейдер|кожан|металл|синтов|силов|каркас|капюшон|противогаз|каска|обмундир|обшивк|рам[аы]|охранник|волт/.test(n + ' ' + cat)) return PIP_ICONS.armor;
     if (cat.includes('боеприпас') || type === 'ammo' || /^(патрон|заряд плазм|ядерн|ракет|шприц|гвозд|гамма-патрон|2-мм|топливо для|сигнальн)/.test(n)) {
         return PIP_ICONS.inventory.ammo;
     }
