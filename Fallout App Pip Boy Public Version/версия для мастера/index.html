@@ -251,6 +251,7 @@
 
             <!-- ================= ВКЛАДКА: ЗАМЕТКИ СТОЛА ================= -->
             <div id="view-notes" class="view-section">
+                <div class="sheet-scrim" onclick="closeNpcDrawer()"></div>
                 <div class="notes-board">
                     <div class="notes-board-head">
                         <div class="notes-board-title">ЗАМЕТКИ СТОЛА</div>
@@ -259,8 +260,16 @@
                             <button class="term-btn" type="button" onclick="createEncounterGroup()">СОЗДАТЬ ГРУППУ ПРОТИВНИКОВ</button>
                         </div>
                     </div>
-                    <p class="notes-board-hint">Только для мастера. Игроки эти заметки не видят. Группа противников — карточки с ОЗ и статами по книге.</p>
+                    <p class="notes-board-hint">Только для мастера. Игроки эти заметки не видят. Карточка противника — статы и атаки; полный лист открывается справа.</p>
                     <div id="master-notes-list" class="notes-card-list custom-scrollbar"></div>
+                </div>
+                <div class="char-right-drawer" id="npc-drawer">
+                    <div class="sheet-handle" aria-hidden="true"></div>
+                    <div class="cs-header">
+                        <span id="npc-drawer-title" style="font-size: 1.3rem; font-weight: bold;">ПРОТИВНИК</span>
+                        <button class="term-btn cs-close-btn" type="button" onclick="closeNpcDrawer()" style="padding: 5px 10px; font-size: 1rem;"><span class="cs-close-desktop">СВЕРНУТЬ 🡒</span><span class="cs-close-mobile">▼ СВЕРНУТЬ</span></button>
+                    </div>
+                    <div class="cs-scroll-body custom-scrollbar" id="npc-drawer-body"></div>
                 </div>
             </div>
 

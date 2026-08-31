@@ -274,6 +274,7 @@ function setSessionNotesTab(live) {
         else tab.setAttribute('hidden', '');
     }
     if (!live) {
+        if (typeof closeNpcDrawer === 'function') closeNpcDrawer();
         const view = document.getElementById('view-notes');
         if (view && view.classList.contains('active')) {
             const stat = document.querySelector('.nav-item[data-target="view-stat"]');

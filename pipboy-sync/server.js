@@ -89,7 +89,8 @@ function sanitizeFoeGear(g) {
         title: clipStr(g.title || g.baseId, 120),
         desc: clipStr(g.desc, 200),
         qty: g.qty == null ? undefined : clipInt(g.qty, 0, 99),
-        mods
+        mods,
+        worn: Array.isArray(g.worn) ? g.worn.slice(0, 6).map((s) => clipStr(s, 32)).filter(Boolean) : undefined
     };
 }
 function sanitizeFoe(f) {

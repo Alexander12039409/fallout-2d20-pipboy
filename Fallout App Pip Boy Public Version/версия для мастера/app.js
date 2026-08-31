@@ -243,6 +243,7 @@ navItems.forEach(item => {
         views.forEach(view => view.classList.remove('active')); document.getElementById(targetId).classList.add('active');
         closeSysMenu();
         if (targetId !== 'view-characters') closeCharEditor();
+        if (targetId !== 'view-notes' && typeof closeNpcDrawer === 'function') closeNpcDrawer();
         if (targetId !== 'view-map') {
             closeDrawerMap();
             closeSearchPanel();
@@ -1257,8 +1258,10 @@ function deleteCharPerk(idx) { const char = liveChar(); if(char && char.perks) {
 
 let dbPickerMode = 'inv';
 let activeDbTab = 'Все';
+const INV_DB_TABS = ["Все", "Стрелковое", "Энерго", "Холодное", "Тяжелое", "Взрывчатка", "Броня", "Аптечка", "Препараты", "Еда", "Патроны", "Прочее"];
 const dbTabsConfig = {
-    'inv': ["Все", "Стрелковое", "Энерго", "Холодное", "Тяжелое", "Взрывчатка", "Броня", "Аптечка", "Препараты", "Еда", "Патроны", "Прочее"],
+    'inv': INV_DB_TABS,
+    'npc': INV_DB_TABS,
     'perks': ["Все", "СИЛ", "ВСП", "ВЫН", "ХАР", "ИНТ", "ЛВК", "УДЧ"]
 };
 
@@ -1278,6 +1281,14 @@ function openMasterInvModal() {
     dbPickerMode = 'inv';
     resetDbPickerFilters();
     document.getElementById('db-picker-title').innerText = 'БАЗА: ПРЕДМЕТЫ И ОРУЖИЕ';
+    document.getElementById('db-picker-modal').classList.add('active');
+    renderDbTabs(); filterDbPicker();
+}
+
+function openNpcInvModal() {
+    dbPickerMode = 'npc';
+    resetDbPickerFilters();
+    document.getElementById('db-picker-title').innerText = 'БАЗА: ПРЕДМЕТЫ';
     document.getElementById('db-picker-modal').classList.add('active');
     renderDbTabs(); filterDbPicker();
 }
@@ -1380,7 +1391,7 @@ function filterDbPicker() {
     }
 
     try {
-        if (dbPickerMode === 'inv') {
+        if (dbPickerMode === 'inv' || dbPickerMode === 'npc') {
             Object.keys(masterDB.weapons || {}).forEach(wKey => {
                 try {
                     const w = masterDB.weapons[wKey];
@@ -1398,6 +1409,15 @@ function filterDbPicker() {
                     const catLabel = (cat || 'Оружие').toUpperCase();
                     div.innerHTML = `${pipGlyph(weaponIconRel(wKey, cat), 'db-item-glyph')}<span>[${catLabel}] ${wKey}</span>`;
                     div.onclick = () => {
+                        if (dbPickerMode === 'npc') {
+                            const mods = {};
+                            for (let s in (w.slots || {})) mods[s] = 0;
+                            if (typeof npcAddGearFromPicker === 'function') {
+                                npcAddGearFromPicker({ type: 'weapon', baseId: wKey, mods: mods });
+                            }
+                            closeDbPicker();
+                            return;
+                        }
                         if (!char) { pipNotify('Нет листа', 'Откройте лист персонажа, чтобы добавить предмет.', { kind: 'warn' }); return; }
                         let newWep = { type: 'weapon', baseId: wKey, mods: {}, ammo: 0, totalAmmo: 0 };
                         for (let s in (w.slots || {})) newWep.mods[s] = 0;
@@ -1425,6 +1445,16 @@ function filterDbPicker() {
                     div.className = 'db-item-row';
                     div.innerHTML = `${pipGlyph(itemIconRel(i), 'db-item-glyph')}<span>[${(cat || 'Предмет').toUpperCase()}] ${i.name}</span>`;
                     div.onclick = () => {
+                        if (dbPickerMode === 'npc') {
+                            const isArm = i.type === 'armor' || (typeof getArmorDef === 'function' && getArmorDef({ title: i.name }));
+                            if (typeof npcAddGearFromPicker === 'function') {
+                                npcAddGearFromPicker(isArm
+                                    ? { type: 'armor', baseId: i.name, title: i.name, desc: i.desc }
+                                    : { type: 'item', baseId: i.name, title: i.name, desc: i.desc, qty: 1 });
+                            }
+                            closeDbPicker();
+                            return;
+                        }
                         if (!char) { pipNotify('Нет листа', 'Откройте лист персонажа, чтобы добавить предмет.', { kind: 'warn' }); return; }
                         if (!char.inventory) char.inventory = [];
                         const isArm = i.type === 'armor' || (typeof getArmorDef === 'function' && getArmorDef({ title: i.name }));
@@ -2018,6 +2048,9 @@ function bindSheetSwipe(sheet, onClose) {
 }
 
 bindSheetSwipe(document.getElementById('char-drawer'), closeCharEditor);
+bindSheetSwipe(document.getElementById('npc-drawer'), function () {
+    if (typeof closeNpcDrawer === 'function') closeNpcDrawer();
+});
 bindSheetSwipe(document.getElementById('info-drawer'), closeDrawerMap);
 bindSheetSwipe(document.getElementById('search-panel'), closeSearchPanel);
 document.querySelectorAll('.modal-overlay .terminal-modal').forEach(modal => {

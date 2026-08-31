@@ -331,12 +331,80 @@
         }
         return mods;
     }
+    function wornSlotsFor(name) {
+        const n = String(name || '');
+        if (/каркас/i.test(n)) return [];
+        let loc = '';
+        if (typeof masterDB !== 'undefined' && Array.isArray(masterDB.items)) {
+            const it = masterDB.items.find(i => i && i.name === n);
+            if (it && it.loc) loc = String(it.loc);
+        }
+        if (/все зоны/i.test(loc)) {
+            return ['Голова', 'Торс', 'Левая рука', 'Правая рука', 'Левая нога', 'Правая нога'];
+        }
+        if (/торс.*рук/i.test(loc) || /торс, руки, ноги/i.test(loc)) {
+            return ['Торс', 'Левая рука', 'Правая рука', 'Левая нога', 'Правая нога'];
+        }
+        if (typeof getArmorDef === 'function') {
+            const def = getArmorDef({ type: 'armor', baseId: n, title: n });
+            if (def && def.coverage) {
+                const map = {
+                    head: ['Голова'],
+                    torso: ['Торс'],
+                    arm: ['Левая рука', 'Правая рука'],
+                    leg: ['Левая нога', 'Правая нога'],
+                    clothes: ['Торс', 'Левая рука', 'Правая рука', 'Левая нога', 'Правая нога']
+                };
+                if (map[def.coverage]) return map[def.coverage];
+                if (def.coverage === 'limb') {
+                    if (/наруч|рука/i.test(n)) return ['Левая рука', 'Правая рука'];
+                    if (/понож|нога/i.test(n)) return ['Левая нога', 'Правая нога'];
+                }
+            }
+        }
+        if (/голова/i.test(loc)) return ['Голова'];
+        if (/^торс$/i.test(loc.trim())) return ['Торс'];
+        if (/рука/i.test(loc)) return ['Левая рука', 'Правая рука'];
+        if (/нога/i.test(loc)) return ['Левая нога', 'Правая нога'];
+        if (/наруч/i.test(n)) return ['Левая рука', 'Правая рука'];
+        if (/понож/i.test(n)) return ['Левая нога', 'Правая нога'];
+        if (/нагрудн/i.test(n)) return ['Торс'];
+        if (/шлем|капюшон|шляпа|каска|щиток|противогаз/i.test(n)) return ['Голова'];
+        return loc && loc !== '–' ? [loc] : [];
+    }
+    function armorWorn(g) {
+        if (g && Array.isArray(g.worn) && g.worn.length) return g.worn;
+        return wornSlotsFor((g && (g.baseId || g.title)) || '');
+    }
     function gearItem(type, baseId, extra) {
         const it = Object.assign({ type: type, baseId: baseId, title: baseId }, extra || {});
         if (type === 'weapon' && typeof weaponDisplayName === 'function') {
             it.title = weaponDisplayName(it) || baseId;
         }
+        if (type === 'armor' && !it.worn) it.worn = wornSlotsFor(baseId);
         return it;
+    }
+    function weaponParen(item, foe) {
+        const w = weaponsDb()[item.baseId];
+        if (!w) return '';
+        const str = foe && foe.special ? foe.special.str : 0;
+        const dmg = weaponDmg(item.baseId, item.mods, str);
+        const parts = [dmg + ' БК'];
+        if (w.type) parts.push(w.type);
+        if (w.fireRate) parts.push('скоростр. ' + w.fireRate);
+        if (w.range && w.range !== '–') parts.push('дист. ' + w.range);
+        (w.qualities || []).forEach(q => { if (q) parts.push(q); });
+        return '(' + parts.join(', ') + ')';
+    }
+    function skillLine(foe) {
+        if (!foe || !foe.skills) return '';
+        const map = {};
+        if (typeof skillsDefs !== 'undefined') {
+            skillsDefs.forEach(d => { map[d[1]] = d[0]; });
+        }
+        return Object.keys(foe.skills).filter(k => foe.skills[k] > 0).map(k =>
+            (map[k] || k) + ' ' + foe.skills[k]
+        ).join(' · ');
     }
     function armorSet(style, level) {
         const band = level <= 3 ? 0 : level <= 6 ? 1 : level <= 10 ? 2 : level <= 14 ? 3 : 4;
@@ -618,11 +686,16 @@
         if (typeof PipSession === 'undefined') return [];
         return Array.isArray(PipSession.state.masterNotes) ? PipSession.state.masterNotes : [];
     }
+    let openNpc = null;
     function persist(list, doRender) {
         if (typeof PipSession === 'undefined' || !PipSession.sessionId) return;
         PipSession.state.masterNotes = list;
         PipSession.pushNotes(list);
+        const body = document.getElementById('npc-drawer-body');
+        const y = body ? body.scrollTop : 0;
         if (doRender !== false && typeof renderMasterNotes === 'function') renderMasterNotes(list);
+        if (openNpc) fillNpcDrawer();
+        if (body) body.scrollTop = y;
     }
     function findGroup(id) { return notesList().find(n => n && n.id === id); }
     function findFoe(groupId, foeId) {
@@ -658,11 +731,13 @@
     window.npcDeleteGroup = function (groupId) {
         pipConfirm('Удалить группу противников?', 'Карточки внутри тоже исчезнут.').then(function (ok) {
             if (!ok) return;
+            if (openNpc && openNpc.groupId === groupId) closeNpcDrawer();
             persist(notesList().filter(n => n.id !== groupId));
         });
     };
 
     window.npcDeleteFoe = function (groupId, foeId) {
+        if (openNpc && openNpc.foeId === foeId) closeNpcDrawer();
         const notes = notesList().map(n => n);
         const g = notes.find(n => n.id === groupId);
         if (!g) return;
@@ -690,10 +765,159 @@
         persist(notes);
     };
 
+    window.closeNpcDrawer = function () {
+        openNpc = null;
+        const drawer = document.getElementById('npc-drawer');
+        const view = document.getElementById('view-notes');
+        if (drawer) drawer.classList.remove('open');
+        if (view) view.classList.remove('sheet-open');
+        document.querySelectorAll('#master-notes-list .enc-foe.is-active').forEach(el => el.classList.remove('is-active'));
+    };
+
+    window.npcOpenFoe = function (groupId, foeId) {
+        const found = findFoe(groupId, foeId);
+        if (!found.foe) return;
+        openNpc = { groupId: groupId, foeId: foeId };
+        const drawer = document.getElementById('npc-drawer');
+        const view = document.getElementById('view-notes');
+        const title = document.getElementById('npc-drawer-title');
+        if (title) title.textContent = found.foe.name || 'ПРОТИВНИК';
+        if (drawer) drawer.classList.add('open');
+        if (view) view.classList.add('sheet-open');
+        fillNpcDrawer();
+        const body = document.getElementById('npc-drawer-body');
+        if (body) body.scrollTop = 0;
+        document.querySelectorAll('#master-notes-list .enc-foe.is-active').forEach(el => el.classList.remove('is-active'));
+        const card = document.querySelector('#master-notes-list .enc-foe[data-foe="' + foeId + '"]');
+        if (card) card.classList.add('is-active');
+    };
+
     window.npcToggleFoe = function (groupId, foeId, ev) {
         if (ev) ev.stopPropagation();
-        const el = document.querySelector('[data-foe="' + foeId + '"]');
-        if (el) el.classList.toggle('is-open');
+        npcOpenFoe(groupId, foeId);
+    };
+
+    function hpBlock(groupId, foeId, foe) {
+        return '<div class="enc-hp-row">' +
+            '<span class="enc-hp-oz">ОЗ</span>' +
+            '<span class="enc-hp-pair"><span class="enc-label">ТЕК</span>' + stepper(groupId, foeId, 'hp', foe.hp) + '</span>' +
+            '<span class="enc-hp-pair"><span class="enc-label">МАКС</span>' + stepper(groupId, foeId, 'hpMax', foe.hpMax) + '</span>' +
+            '</div>';
+    }
+    function specialPreview(f) {
+        if (f.kind === 'character' && f.special) {
+            return '<div class="char-card-special">' + ATTRS.map(a =>
+                '<span><span class="sp-lab">' + a.short.toLowerCase() + '</span>' + (f.special[a.key] || 0) + '</span>'
+            ).join('') + '</div>';
+        }
+        return '<div class="char-card-special">' +
+            '<span><span class="sp-lab">тело</span>' + (f.body || 0) + '</span>' +
+            '<span><span class="sp-lab">разум</span>' + (f.mind || 0) + '</span>' +
+            '<span><span class="sp-lab">бб</span>' + (f.melee || 0) + '</span>' +
+            '<span><span class="sp-lab">дб</span>' + (f.ranged || 0) + '</span>' +
+            '</div>';
+    }
+    function attacksPreview(f) {
+        const rows = (f.attacks || []).map(a =>
+            '<div>' + esc(a.name) + ' ТЧ ' + a.tn + ' · ' + a.dmg + ' БК' + (a.extra ? ' (' + esc(a.extra) + ')' : '') + '</div>'
+        );
+        return rows.length ? '<div class="enc-atk-list">' + rows.join('') + '</div>' : '';
+    }
+    function gearLineHtml(g, groupId, foeId, idx, foe) {
+        const q = g.qty && g.qty > 1 ? ' ×' + g.qty : '';
+        let extra = '';
+        if (g.type === 'weapon') {
+            const p = weaponParen(g, foe);
+            if (p) extra = ' ' + esc(p);
+        } else if (g.type === 'armor') {
+            const worn = armorWorn(g);
+            if (worn.length) extra = ' (' + worn.map(esc).join(', ') + ')';
+        }
+        return '<div class="npc-gear-line">' +
+            '<span>' + esc((g.title || g.baseId || '') + q) + extra + '</span>' +
+            '<button type="button" class="npc-gear-del" onclick="npcRemoveGear(\'' + groupId + '\',\'' + foeId + '\',' + idx + ')">X</button>' +
+            '</div>';
+    }
+    function fillNpcDrawer() {
+        const body = document.getElementById('npc-drawer-body');
+        const title = document.getElementById('npc-drawer-title');
+        if (!body || !openNpc) return;
+        const found = findFoe(openNpc.groupId, openNpc.foeId);
+        const f = found.foe;
+        if (!f) { closeNpcDrawer(); return; }
+        if (title) title.textContent = f.name || 'ПРОТИВНИК';
+        const gid = openNpc.groupId;
+        const fid = openNpc.foeId;
+        let stats = '';
+        if (f.kind === 'character' && f.special) {
+            stats = '<div class="enc-attr-grid">' + ATTRS.map(a =>
+                '<div class="enc-attr"><span>' + a.short + '</span>' + stepper(gid, fid, a.key, f.special[a.key] || 0) + '</div>'
+            ).join('') + '</div>';
+        } else {
+            stats = '<div class="enc-attr-grid">' +
+                '<div class="enc-attr"><span>ТЕЛО</span>' + stepper(gid, fid, 'body', f.body || 0) + '</div>' +
+                '<div class="enc-attr"><span>РАЗУМ</span>' + stepper(gid, fid, 'mind', f.mind || 0) + '</div>' +
+                '<div class="enc-attr"><span>ББ</span>' + stepper(gid, fid, 'melee', f.melee || 0) + '</div>' +
+                '<div class="enc-attr"><span>ДБ</span>' + stepper(gid, fid, 'ranged', f.ranged || 0) + '</div>' +
+                '</div>';
+        }
+        const atk = (f.attacks || []).map(a =>
+            esc(a.name) + ' ТЧ ' + a.tn + ' · ' + a.dmg + ' БК' + (a.extra ? ' (' + esc(a.extra) + ')' : '')
+        ).join('<br>');
+        const gear = (f.gear || []).map((g, i) => gearLineHtml(g, gid, fid, i, f)).join('') ||
+            '<div class="enc-block-text" style="opacity:.7">Пусто</div>';
+        const skills = skillLine(f);
+        body.innerHTML = '<div class="npc-sheet">' +
+            '<div class="npc-sheet-meta">Ур. ' + f.level + ' · ' + esc(rankLabel(f.rank, f.kind)) + ' · ' + f.xp + ' XP</div>' +
+            hpBlock(gid, fid, f) +
+            stats +
+            '<div class="enc-derived" style="margin:6px 0;">ЗАЩ ' + (f.def || 1) + ' · ИНИЦ ' + (f.init || 0) +
+            (f.meleeBonus ? ' · БЛИЖ +' + f.meleeBonus + ' БК' : '') +
+            (f.luckPts ? ' · УДАЧА ' + f.luckPts : '') + '</div>' +
+            '<div class="enc-dr">' + esc(drText(f)) + '</div>' +
+            (f.traits && f.traits.length ? '<div class="enc-traits">' + esc(f.traits.join(' · ')) + '</div>' : '') +
+            (skills ? '<div class="enc-block"><div class="enc-block-title">Навыки</div><div class="enc-block-text">' + esc(skills) + '</div></div>' : '') +
+            '<div class="enc-block"><div class="enc-block-title">Атаки</div><div class="enc-block-text">' + (atk || '—') + '</div></div>' +
+            '<div class="enc-block"><div class="enc-block-title">Снаряжение</div><div class="npc-gear-list">' + gear + '</div>' +
+            '<button type="button" class="term-btn npc-gear-add" onclick="openNpcInvModal()">+ ПРЕДМЕТ ИЗ БАЗЫ</button></div>' +
+            '</div>';
+    }
+
+    window.npcAddGearFromPicker = function (packed) {
+        if (!openNpc || !packed) {
+            pipNotify('Нет листа', 'Сначала откройте карточку противника.', { kind: 'warn' });
+            return;
+        }
+        const notes = notesList().map(n => n);
+        const g = notes.find(n => n.id === openNpc.groupId);
+        const foe = g && (g.foes || []).find(f => f.id === openNpc.foeId);
+        if (!foe) return;
+        if (!Array.isArray(foe.gear)) foe.gear = [];
+        if (packed.type === 'item') {
+            const exist = foe.gear.find(x => x.type === 'item' && x.baseId === packed.baseId);
+            if (exist) {
+                exist.qty = (exist.qty || 1) + 1;
+                persist(notes);
+                return;
+            }
+        }
+        if (packed.type === 'armor' && !packed.worn) packed.worn = wornSlotsFor(packed.baseId || packed.title);
+        if (packed.type === 'weapon' && typeof weaponDisplayName === 'function') {
+            packed.title = weaponDisplayName(packed) || packed.baseId;
+        }
+        foe.gear.push(packed);
+        recalc(foe);
+        persist(notes);
+    };
+
+    window.npcRemoveGear = function (groupId, foeId, idx) {
+        const notes = notesList().map(n => n);
+        const g = notes.find(n => n.id === groupId);
+        const foe = g && (g.foes || []).find(f => f.id === foeId);
+        if (!foe || !Array.isArray(foe.gear)) return;
+        foe.gear.splice(idx, 1);
+        recalc(foe);
+        persist(notes);
     };
 
     function stepper(groupId, foeId, field, val) {
@@ -710,50 +934,22 @@
         const tox = imm.indexOf('tox') >= 0 ? 'иммун' : (d.tox == null ? '0' : d.tox);
         return 'Физ ' + (d.phys || 0) + ' · Энерг ' + (d.energy || 0) + ' · Рад ' + rad + ' · Токс ' + tox;
     }
-    function gearLine(g) {
-        const q = g.qty ? ' ×' + g.qty : '';
-        return esc((g.title || g.baseId || '') + q);
-    }
-
     window.renderEncounterCard = function (n) {
         const foes = Array.isArray(n.foes) ? n.foes : [];
         const xpSum = foes.reduce((s, f) => s + (parseInt(f.xp, 10) || 0), 0);
         const foesHtml = foes.map(f => {
-            const open = ' is-open';
-            const atk = (f.attacks || []).map(a =>
-                esc(a.name) + ' ТЧ ' + a.tn + ' · ' + a.dmg + ' БК' + (a.extra ? ' (' + esc(a.extra) + ')' : '')
-            ).join('<br>');
-            const gear = (f.gear || []).map(gearLine).join('<br>') || '—';
-            let stats = '';
-            if (f.kind === 'character' && f.special) {
-                stats = '<div class="enc-attr-grid">' + ATTRS.map(a =>
-                    '<div class="enc-attr"><span>' + a.short + '</span>' + stepper(n.id, f.id, a.key, f.special[a.key] || 0) + '</div>'
-                ).join('') + '</div>';
-            } else {
-                stats = '<div class="enc-attr-grid">' +
-                    '<div class="enc-attr"><span>ТЕЛО</span>' + stepper(n.id, f.id, 'body', f.body || 0) + '</div>' +
-                    '<div class="enc-attr"><span>РАЗУМ</span>' + stepper(n.id, f.id, 'mind', f.mind || 0) + '</div>' +
-                    '<div class="enc-attr"><span>ББ</span>' + stepper(n.id, f.id, 'melee', f.melee || 0) + '</div>' +
-                    '<div class="enc-attr"><span>ДБ</span>' + stepper(n.id, f.id, 'ranged', f.ranged || 0) + '</div>' +
-                    '</div>';
-            }
-            return '<div class="enc-foe' + open + '" data-foe="' + f.id + '">' +
+            const active = (openNpc && openNpc.foeId === f.id) ? ' is-active' : '';
+            return '<div class="enc-foe' + active + '" data-foe="' + f.id + '" onclick="npcOpenFoe(\'' + n.id + '\',\'' + f.id + '\')">' +
                 '<button type="button" class="note-card-del" onclick="event.stopPropagation(); npcDeleteFoe(\'' + n.id + '\',\'' + f.id + '\')">X</button>' +
-                '<div class="enc-foe-head" onclick="npcToggleFoe(\'' + n.id + '\',\'' + f.id + '\',event)">' +
+                '<div class="enc-foe-head">' +
                 '<div class="enc-foe-name">' + esc(f.name) + '</div>' +
                 '<div class="enc-foe-meta">Ур. ' + f.level + ' · ' + esc(rankLabel(f.rank, f.kind)) + ' · ' + f.xp + ' XP</div>' +
                 '</div>' +
-                '<div class="enc-hp-row"><span class="enc-label">ОЗ</span>' +
-                stepper(n.id, f.id, 'hp', f.hp) + '<span class="enc-hp-max">/ ' + stepper(n.id, f.id, 'hpMax', f.hpMax) + '</span>' +
-                '<span class="enc-derived">ЗАЩ ' + (f.def || 1) + ' · ИНИЦ ' + (f.init || 0) +
-                (f.meleeBonus ? ' · БЛИЖ +' + f.meleeBonus + ' БК' : '') +
-                (f.luckPts ? ' · УДАЧА ' + f.luckPts : '') + '</span></div>' +
-                '<div class="enc-foe-body">' + stats +
-                '<div class="enc-dr">' + esc(drText(f)) + '</div>' +
-                (f.traits && f.traits.length ? '<div class="enc-traits">' + esc(f.traits.join(' · ')) + '</div>' : '') +
-                '<div class="enc-block"><div class="enc-block-title">Атаки</div><div class="enc-block-text">' + (atk || '—') + '</div></div>' +
-                '<div class="enc-block"><div class="enc-block-title">Снаряжение</div><div class="enc-block-text">' + gear + '</div></div>' +
-                '</div></div>';
+                hpBlock(n.id, f.id, f) +
+                specialPreview(f) +
+                '<div class="enc-def-line">ЗАЩ ' + (f.def || 1) + '</div>' +
+                attacksPreview(f) +
+                '</div>';
         }).join('');
         return '<div class="enc-card" data-enc="' + n.id + '">' +
             '<button type="button" class="note-card-del" onclick="event.stopPropagation(); npcDeleteGroup(\'' + n.id + '\')">X</button>' +
@@ -763,7 +959,7 @@
             '<div class="enc-card-xp">' + foes.length + ' бойц. · ' + xpSum + ' XP</div></div>' +
             '<div class="enc-foe-list">' + foesHtml +
             '<button type="button" class="enc-add-foe" onclick="npcOpenWizard(\'' + n.id + '\')">' +
-            '<span class="enc-add-plus">+</span><span>ДОБАВИТЬ ПРОТИВНИКА В ГРУППУ</span></button>' +
+            '<span class="enc-add-plus">+</span><span>ДОБАВИТЬ</span></button>' +
             '</div></div>';
     };
 
