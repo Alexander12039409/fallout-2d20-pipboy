@@ -337,7 +337,7 @@ function charCardHtml(char, session) {
     const extra = skillsHtml ? '<div style="margin-top: 5px; border-top: 1px dashed var(--theme-dim); padding-top: 5px; display: flex; flex-wrap: wrap;">' + skillsHtml + '</div>' : '';
     const mine = !(session && PIP_MODE === 'player') || (typeof hubFindChar === 'function' && PipSession.sessionId && hubFindChar(PipSession.sessionId, char.id));
     const del = mine ? '<button class="char-card-del" onclick="deleteChar(event, \'' + char.id + '\')">X</button>' : '';
-    return del + '<div class="char-card-name">' + (char['cs-name'] || 'БЕЗ ИМЕНИ') + '</div><div class="char-card-info">' + (session ? 'СЕССИЯ · ' : '') + 'УР: ' + (char['cs-lvl'] || 1) + ' | ' + (char['cs-origin'] || 'ВЫЖИВШИЙ') + '</div><div class="char-card-special"><span><span class="sp-lab">сил</span>' + (char['cs-str']||5) + '</span><span><span class="sp-lab">восп</span>' + (char['cs-per']||5) + '</span><span><span class="sp-lab">вын</span>' + (char['cs-end']||5) + '</span><span><span class="sp-lab">хар</span>' + (char['cs-cha']||5) + '</span><span><span class="sp-lab">инт</span>' + (char['cs-int']||5) + '</span><span><span class="sp-lab">лов</span>' + (char['cs-agi']||5) + '</span><span><span class="sp-lab">уд</span>' + (char['cs-luc']||5) + '</span></div>' + extra;
+    return del + '<div class="char-card-name">' + (char['cs-name'] || 'БЕЗ ИМЕНИ') + '</div><div class="char-card-info">' + (session ? 'СЕССИЯ · ' : '') + 'УР: ' + (char['cs-lvl'] || 1) + ' | ' + (char['cs-origin'] || 'ВЫЖИВШИЙ') + '</div><div class="char-card-special"><span><span class="sp-lab">сил</span>' + ((typeof effectiveCharStr === 'function') ? effectiveCharStr(char) : (char['cs-str']||5)) + '</span><span><span class="sp-lab">восп</span>' + (char['cs-per']||5) + '</span><span><span class="sp-lab">вын</span>' + (char['cs-end']||5) + '</span><span><span class="sp-lab">хар</span>' + (char['cs-cha']||5) + '</span><span><span class="sp-lab">инт</span>' + (char['cs-int']||5) + '</span><span><span class="sp-lab">лов</span>' + (char['cs-agi']||5) + '</span><span><span class="sp-lab">уд</span>' + (char['cs-luc']||5) + '</span></div>' + extra;
 }
 
 function renderSessionCharGrid() {
@@ -478,6 +478,12 @@ function saveActiveCharLive() {
     document.querySelectorAll('#char-drawer .term-input, #char-drawer .term-textarea, #char-drawer .cs-skill-val').forEach(el => {
         if (el.id) charData[el.id] = el.value;
     });
+    if (typeof charHasPowerFrame === 'function' && charHasPowerFrame(charData)) {
+        charData['cs-str'] = prev['cs-str'];
+    } else {
+        const strEl = document.getElementById('cs-str');
+        if (strEl && strEl.readOnly) charData['cs-str'] = prev['cs-str'];
+    }
     charData.caps = parseInt(prev.caps, 10) || 0;
     if (prev['cs-luck-cur'] != null) charData['cs-luck-cur'] = prev['cs-luck-cur'];
     if (sessionCharById(activeCharId) || prev._session) {
@@ -502,6 +508,10 @@ if (charDrawerEl) {
 
 function handleCharEdit(e) {
     if(e.target.classList.contains('term-input') || e.target.classList.contains('term-textarea') || e.target.classList.contains('cs-skill-val')) {
+        if (e.target.id === 'cs-str' && e.target.readOnly) {
+            e.target.value = (typeof POWER_FRAME_STR === 'number') ? POWER_FRAME_STR : 11;
+            return;
+        }
         if(e.target.id.startsWith('cs-') && !e.target.id.startsWith('cs-skill') && !e.target.id.startsWith('cs-dr') && !e.target.id.startsWith('cs-text')) enforceCharLimits();
         if(e.target.id === 'cs-hp-cur' || e.target.id === 'cs-hp-max') updateCharVisualHP();
         if(e.target.classList.contains('cs-skill-val')) calcCharTNs();
@@ -513,6 +523,8 @@ function handleCharEdit(e) {
 function enforceCharLimits() {
     const origin = document.getElementById('cs-origin').value;
     const attrs = ['str', 'per', 'end', 'cha', 'int', 'agi', 'luc'];
+    const live = typeof liveChar === 'function' ? liveChar() : findChar(activeCharId);
+    const framed = typeof charHasPowerFrame === 'function' && charHasPowerFrame(live);
     attrs.forEach(a => document.getElementById('cs-' + a).max = 10);
     if (origin === 'Супермутант') {
         document.getElementById('cs-str').max = 12; document.getElementById('cs-end').max = 12;
@@ -520,15 +532,31 @@ function enforceCharLimits() {
         if (parseInt(document.getElementById('cs-int').value) > 6) document.getElementById('cs-int').value = 6;
         if (parseInt(document.getElementById('cs-cha').value) > 6) document.getElementById('cs-cha').value = 6;
     }
-    attrs.forEach(a => { let el = document.getElementById('cs-' + a); let max = parseInt(el.max) || 10; let val = parseInt(el.value) || 5; if (val > max) el.value = max; });
+    if (framed) {
+        const strEl = document.getElementById('cs-str');
+        if (strEl) strEl.max = (typeof POWER_FRAME_STR === 'number') ? POWER_FRAME_STR : 11;
+    }
+    attrs.forEach(a => {
+        if (a === 'str' && framed) return;
+        let el = document.getElementById('cs-' + a); let max = parseInt(el.max) || 10; let val = parseInt(el.value) || 5; if (val > max) el.value = max;
+    });
     calcCharSecondary();
 }
 
 function calcCharSecondary() {
-    let lvl = parseInt(document.getElementById('cs-lvl').value) || 1; let str = parseInt(document.getElementById('cs-str').value) || 5; let per = parseInt(document.getElementById('cs-per').value) || 5; let end = parseInt(document.getElementById('cs-end').value) || 5; let agi = parseInt(document.getElementById('cs-agi').value) || 5; let lck = parseInt(document.getElementById('cs-luc').value) || 5; let origin = document.getElementById('cs-origin').value;
+    let lvl = parseInt(document.getElementById('cs-lvl').value) || 1;
+    let str = parseInt(document.getElementById('cs-str').value) || 5;
+    let per = parseInt(document.getElementById('cs-per').value) || 5;
+    let end = parseInt(document.getElementById('cs-end').value) || 5;
+    let agi = parseInt(document.getElementById('cs-agi').value) || 5;
+    let lck = parseInt(document.getElementById('cs-luc').value) || 5;
+    let origin = document.getElementById('cs-origin').value;
+    const live = findChar(activeCharId);
+    if (typeof charHasPowerFrame === 'function' && charHasPowerFrame(live)) {
+        str = (typeof POWER_FRAME_STR === 'number') ? POWER_FRAME_STR : 11;
+    }
     document.getElementById('cs-stat-init').textContent = per + agi; document.getElementById('cs-stat-def').textContent = agi >= 9 ? 2 : 1; document.getElementById('cs-hp-max').value = end + lck + (lvl > 1 ? lvl - 1 : 0);
     let meleeBonus = 0; if (str >= 11) meleeBonus = 3; else if (str >= 9) meleeBonus = 2; else if (str >= 7) meleeBonus = 1;
-    const live = findChar(activeCharId);
     if (live && Array.isArray(live.survivorTraits) && live.survivorTraits.indexOf('heavy') !== -1) meleeBonus += 1;
     document.getElementById('cs-stat-melee').textContent = "+" + meleeBonus + " БК";
     let carryWeight = 150 + (str * 10);
@@ -541,8 +569,13 @@ function calcCharSecondary() {
 }
 
 function calcCharTNs() {
+    const live = findChar(activeCharId);
+    const framed = typeof charHasPowerFrame === 'function' && charHasPowerFrame(live);
+    const frameStr = (typeof POWER_FRAME_STR === 'number') ? POWER_FRAME_STR : 11;
     document.querySelectorAll('.cs-skill-val').forEach(input => {
-        const attrKey = input.getAttribute('data-attr'); const attrValue = parseInt(document.getElementById(`cs-${attrKey}`).value) || 0;
+        const attrKey = input.getAttribute('data-attr');
+        let attrValue = parseInt(document.getElementById(`cs-${attrKey}`).value) || 0;
+        if (framed && attrKey === 'str') attrValue = frameStr;
         input.nextElementSibling.textContent = `[${attrValue + (parseInt(input.value) || 0)}]`;
     });
 }
@@ -856,6 +889,7 @@ function applyEquippedArmor(char, persist) {
             el.value = base + bonus;
         });
     });
+    if (typeof syncPowerFrameUi === 'function') syncPowerFrameUi(char);
     calcCharSecondary();
     if (persist !== false) persistLiveChar();
 }
@@ -865,6 +899,42 @@ function invalidateArmorUpgrade(item) {
     if (!def || !def.mods || def.mods.indexOf('upgrade') === -1) return;
     const u = ARMOR_UPGRADES[armorModIndex(item, 'upgrade')];
     if (u && u.name !== 'Нет' && !upgradeApplies(u, def, item.equipped)) item.mods.upgrade = 0;
+}
+
+function syncPowerFrameUi(char) {
+    const framed = typeof charHasPowerFrame === 'function' && charHasPowerFrame(char);
+    const hint = document.getElementById('cs-power-frame-hint');
+    if (hint) hint.hidden = !framed;
+    const strEl = document.getElementById('cs-str');
+    if (strEl) {
+        const box = strEl.closest('.cs-special-box');
+        const frameStr = (typeof POWER_FRAME_STR === 'number') ? POWER_FRAME_STR : 11;
+        if (framed) {
+            strEl.value = frameStr;
+            strEl.readOnly = true;
+            strEl.max = String(frameStr);
+            strEl.title = 'СИЛ каркаса силовой брони';
+            if (box) box.classList.add('is-frame-locked');
+        } else {
+            strEl.readOnly = false;
+            strEl.title = '';
+            if (box) box.classList.remove('is-frame-locked');
+            if (char && char['cs-str'] != null) strEl.value = char['cs-str'];
+        }
+    }
+    const melee = document.getElementById('cs-stat-melee');
+    const carry = document.getElementById('cs-stat-carry');
+    if (melee) melee.classList.toggle('is-frame-locked', framed);
+    if (carry) carry.classList.toggle('is-frame-locked', framed);
+}
+
+function unequipPowerArmorPieces(char) {
+    if (!char) return;
+    (char.inventory || []).forEach(it => {
+        if (typeof isPowerArmorPiece === 'function' && isPowerArmorPiece(it) && it.equipped && it.equipped.length) {
+            it.equipped = [];
+        }
+    });
 }
 
 function unequipConflicts(char, incoming, slots) {
@@ -889,6 +959,10 @@ function confirmEquipArmor(idx, chosenLimb) {
         alert('Супермутанты могут носить только рейдерскую броню.');
         return;
     }
+    if (typeof isPowerArmorPiece === 'function' && isPowerArmorPiece(item) && !charHasPowerFrame(char)) {
+        alert('Нельзя надеть элемент силовой брони без надетого каркаса');
+        return;
+    }
     const slots = resolveCoverageSlots(def, chosenLimb);
     if (!slots.length) return;
     unequipConflicts(char, item, slots);
@@ -904,7 +978,9 @@ function unequipArmor(idx) {
     if (!char) return;
     const item = char.inventory[idx];
     if (!item) return;
+    const wasFrame = typeof isPowerArmorFrame === 'function' && isPowerArmorFrame(item);
     item.equipped = [];
+    if (wasFrame) unequipPowerArmorPieces(char);
     applyEquippedArmor(char);
     renderInventoryAndPerks(char);
 }
@@ -919,6 +995,10 @@ function startEquipArmor(idx) {
     if (!def) return;
     if (item.equipped && item.equipped.length) {
         unequipArmor(idx);
+        return;
+    }
+    if (typeof isPowerArmorPiece === 'function' && isPowerArmorPiece(item) && !charHasPowerFrame(char)) {
+        alert('Нельзя надеть элемент силовой брони без надетого каркаса');
         return;
     }
     const limbChoices = {
@@ -1161,7 +1241,9 @@ function deleteCharItem(idx) {
     if (!char || !char.inventory) return;
     const item = char.inventory[idx];
     const wasWorn = item && item.equipped && item.equipped.length;
+    const wasFrame = wasWorn && typeof isPowerArmorFrame === 'function' && isPowerArmorFrame(item);
     char.inventory.splice(idx, 1);
+    if (wasFrame) unequipPowerArmorPieces(char);
     if (wasWorn) applyEquippedArmor(char, false);
     persistLiveChar();
     renderInventoryAndPerks(char);

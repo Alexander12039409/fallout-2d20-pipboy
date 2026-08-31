@@ -538,9 +538,36 @@ function armorDisplayName(item) {
     return (item && (item.baseId || item.title || item.name)) || 'Броня';
 }
 
+const POWER_FRAME_STR = 11;
+
+function isPowerArmorFrame(item) {
+    const def = getArmorDef(item);
+    if (!def || def.family !== 'power') return false;
+    const raw = String((item && (item.baseId || item.title || item.name)) || '');
+    return /каркас/i.test(raw);
+}
+
+function isPowerArmorPiece(item) {
+    const def = getArmorDef(item);
+    if (!def || def.family !== 'power' || isPowerArmorFrame(item)) return false;
+    const cov = def.coverage;
+    return cov === 'head' || cov === 'torso' || cov === 'arm' || cov === 'leg' || cov === 'limb';
+}
+
+function charHasPowerFrame(char) {
+    return !!(char && (char.inventory || []).some(it => isPowerArmorFrame(it) && it.equipped && it.equipped.length));
+}
+
+function effectiveCharStr(char) {
+    const base = parseInt(char && char['cs-str'], 10);
+    const n = Number.isFinite(base) ? base : 5;
+    return charHasPowerFrame(char) ? POWER_FRAME_STR : n;
+}
+
 function occupyingKind(item) {
     const def = getArmorDef(item);
     if (!def) return 'armor';
+    if (isPowerArmorFrame(item)) return 'power-frame';
     if (def.coverage === 'head') return 'head';
     if (def.family === 'clothes') return 'clothes';
     return 'armor';
@@ -618,6 +645,7 @@ function computeLocationDrFromGear(inventory) {
     });
     (inventory || []).forEach(it => {
         if (!isArmorItem(it) || !it.equipped || !it.equipped.length) return;
+        if (isPowerArmorFrame(it)) return;
         const totals = getArmorTotals(it);
         const src = { phys: totals.phys, eng: totals.eng, rad: totals.rad, name: armorDisplayName(it) };
         const clothes = occupyingKind(it) === 'clothes';

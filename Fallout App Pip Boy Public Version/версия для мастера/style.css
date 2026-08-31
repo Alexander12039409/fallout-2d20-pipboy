@@ -241,7 +241,18 @@ body.sys-open .sys-menu { display: flex; }
 .cs-input-num { width: 50px; background: transparent; border: none; border-bottom: 1px dashed var(--theme-dim); color: var(--pip-green); font-family: 'Anonymous Pro', monospace; font-size: 1.2rem; text-align: center; outline: none; }
 .cs-input-text:focus, .cs-input-num:focus { background: rgba(20, 254, 20, 0.05); border-bottom-color: var(--pip-green); }
 .cs-input-num::-webkit-outer-spin-button, .cs-input-num::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-.cs-special-container { display: flex; justify-content: space-between; width: 100%; margin: 15px 0; border: 1px dashed var(--theme-dim); padding: 10px 5px; background: rgba(20, 254, 20, 0.02); gap: 4px; min-width: 0; overflow: hidden;}
+.cs-special-block { width: 100%; margin: 15px 0; }
+.cs-power-frame-hint {
+    font-size: 0.72rem;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+    opacity: 0.85;
+    margin: 0 0 4px 2px;
+    color: var(--pip-green);
+}
+.cs-special-container { display: flex; justify-content: space-between; width: 100%; margin: 0; border: 1px dashed var(--theme-dim); padding: 10px 5px; background: rgba(20, 254, 20, 0.02); gap: 4px; min-width: 0; overflow: hidden;}
+.cs-special-box.is-frame-locked { border-color: var(--pip-green); box-shadow: 0 0 6px rgba(20, 254, 20, 0.25); }
+.cs-special-box.is-frame-locked input { opacity: 0.95; cursor: not-allowed; }
 .cs-special-col { display: flex; flex-direction: column; align-items: center; gap: 5px; flex: 1 1 0; min-width: 0; }
 .cs-special-box { border: 2px solid var(--theme-dim); width: 100%; max-width: 52px; aspect-ratio: 1; display: flex; justify-content: center; align-items: center; padding: 2px; }
 .cs-special-box input { width: 100%; height: 100%; font-size: 1.6rem; border: none; text-align: center; background: rgba(0,0,0,0.4); color: var(--pip-green); font-family: 'Anonymous Pro', monospace; outline: none;}
@@ -1215,7 +1226,7 @@ body.player-playing .char-right-drawer {
     right: 0; left: 0; width: 100%; max-width: none; border-left: none;
 }
 body.player-mode[data-player-panel="inv"] .cs-identity,
-body.player-mode[data-player-panel="inv"] .cs-special-container,
+body.player-mode[data-player-panel="inv"] .cs-special-block,
 body.player-mode[data-player-panel="inv"] .cs-hp-bar,
 body.player-mode[data-player-panel="inv"] .cs-vault-boy,
 body.player-mode[data-player-panel="inv"] .cs-combat-stats,
@@ -1223,7 +1234,7 @@ body.player-mode[data-player-panel="inv"] .cs-framed-box,
 body.player-mode[data-player-panel="inv"] #tab-perks,
 body.player-mode[data-player-panel="inv"] #tab-notes,
 body.player-mode[data-player-panel="notes"] .cs-identity,
-body.player-mode[data-player-panel="notes"] .cs-special-container,
+body.player-mode[data-player-panel="notes"] .cs-special-block,
 body.player-mode[data-player-panel="notes"] .cs-hp-bar,
 body.player-mode[data-player-panel="notes"] .cs-vault-boy,
 body.player-mode[data-player-panel="notes"] .cs-combat-stats,
