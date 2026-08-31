@@ -821,3 +821,5 @@ function weaponDisplayName(item) {
     if (!prefixes.length) return form;
     return prefixes.join(' ') + ' ' + form;
 }
+
+if (typeof applySiteWeaponPackRules === 'function') applySiteWeaponPackRules();

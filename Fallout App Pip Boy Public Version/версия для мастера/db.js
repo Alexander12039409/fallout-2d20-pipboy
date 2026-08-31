@@ -969,8 +969,9 @@ parseCSV(armor_csv).forEach(c => dbItems.push({
     desc: `Физ:${c[2]} Энерг:${c[3]} Рад:${c[4]} | Обл:${c[5]} | Особ:${c[9] || '–'}`
 }));
 parseCSV(consumables_csv).forEach(c => dbItems.push({ name: c[0], type: 'consumable', category: c[2] || 'Расходники', desc: c[1] }));
+if (typeof applySiteWeaponPack === 'function') applySiteWeaponPack();
 
-const BUILTIN_DB_VERSION = 6;
+const BUILTIN_DB_VERSION = 7;
 let masterDB = { weapons: {}, perks: [], items: [], libVersion: 0 };
 const savedDB = localStorage.getItem('pipboy_master_db');
 

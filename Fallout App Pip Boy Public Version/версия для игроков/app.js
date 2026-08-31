@@ -1621,7 +1621,7 @@ function renderInventoryAndPerks(char) {
                 const ammoType = item.ammoType || ((typeof getWeaponAmmoType === 'function') ? getWeaponAmmoType(item.baseId, item) : '') || wData.ammoType || '';
                 
                 let isMelee = (wData.category === 'Холодное' || wData.category === 'Рукопашное' || wData.category === 'Оружие ближнего боя');
-                let ammoHtml = isMelee ? '' : `
+                let ammoHtml = (isMelee && !ammoType) ? '' : `
                     <div class="wep-ammo-panel">
                         <div class="ammo-controls"><span style="font-size: 0.9rem; opacity: 0.8;">КОЛ-ПАТРОН:</span><button class="ammo-btn" onclick="changeAmmo(${index}, -1)">-</button><span class="ammo-text" id="ammo-val-${index}">${item.ammo || 0}</span><button class="ammo-btn" onclick="changeAmmo(${index}, 1)">+</button></div>
                         ${ammoType ? `<div class="ammo-type-label">ТИП: ${escapePipHtml(ammoType)}</div>` : ''}
