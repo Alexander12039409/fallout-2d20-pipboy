@@ -116,11 +116,11 @@ function importModuleJS(event, moduleName) {
             setTimeout(() => {
                 if (window.__pipBoyModLoaded) {
                     masterDB[moduleName] = window.__pipBoyModLoaded; saveMasterDB();
-                    alert(`База ${moduleName} успешно обновлена!`);
+                    pipNotify('База обновлена', 'Модуль «' + moduleName + '» загружен.', { kind: 'ok' });
                     delete window.__pipBoyModLoaded; document.body.removeChild(script);
-                } else { alert("В файле нет корректных данных."); }
+                } else { pipNotify('Нет данных', 'В файле нет корректных данных.', { kind: 'error' }); }
             }, 50);
-        } catch (err) { alert("Ошибка обработки JS файла."); }
+        } catch (err) { pipNotify('Ошибка файла', 'Не удалось обработать JS-файл.', { kind: 'error' }); }
     };
     reader.readAsText(file); event.target.value = '';
 }
@@ -145,11 +145,11 @@ function importCharsJS(event) {
                     closeCharEditor();
                     renderChars();
                     updateMasterStatus();
-                    alert(`Персонажи успешно обновлены!`);
+                    pipNotify('База обновлена', 'Персонажи успешно загружены.', { kind: 'ok' });
                     delete window.__pipBoyCharsLoaded; document.body.removeChild(script);
-                } else { alert("В файле нет корректных данных."); }
+                } else { pipNotify('Нет данных', 'В файле нет корректных данных.', { kind: 'error' }); }
             }, 50);
-        } catch (err) { alert("Ошибка обработки JS файла."); }
+        } catch (err) { pipNotify('Ошибка файла', 'Не удалось обработать JS-файл.', { kind: 'error' }); }
     };
     reader.readAsText(file); event.target.value = '';
 }
@@ -172,11 +172,11 @@ function importMapPOIs(event) {
                     customPOIs = window.__pipBoyMapLoaded; 
                     persistMap();
                     renderAllPOIs(); updateMasterStatus();
-                    alert(`Метки Карты успешно обновлены!`);
+                    pipNotify('База обновлена', 'Метки карты успешно загружены.', { kind: 'ok' });
                     delete window.__pipBoyMapLoaded; document.body.removeChild(script);
-                } else { alert("В файле нет корректных данных."); }
+                } else { pipNotify('Нет данных', 'В файле нет корректных данных.', { kind: 'error' }); }
             }, 50);
-        } catch (err) { alert("Ошибка обработки JS файла."); }
+        } catch (err) { pipNotify('Ошибка файла', 'Не удалось обработать JS-файл.', { kind: 'error' }); }
     };
     reader.readAsText(file); event.target.value = '';
 }
@@ -201,12 +201,12 @@ if (globalImportEl) globalImportEl.addEventListener('change', (e) => {
                     if(data.db) { masterDB = data.db; saveMasterDB(); }
                     if(data.chars) { masterChars = data.chars; localStorage.setItem('pipboy_master_chars', JSON.stringify(masterChars)); renderChars(); }
                     if(data.map) { customPOIs = data.map; persistMap(); renderAllPOIs(); }
-                    alert("Глобальные данные успешно загружены!"); delete window.__pipBoyGlobalLoaded;
+                    pipNotify('База обновлена', 'Глобальные данные успешно загружены.', { kind: 'ok' }); delete window.__pipBoyGlobalLoaded;
                     updateMasterStatus();
                 }
                 document.body.removeChild(script);
             }, 50);
-        } catch(err) { alert("Ошибка чтения файла JS."); } 
+        } catch(err) { pipNotify('Ошибка файла', 'Не удалось прочитать JS-файл.', { kind: 'error' }); } 
         e.target.value = ''; 
     }; reader.readAsText(file);
 });
@@ -398,19 +398,21 @@ function createCharImmediate() {
 
 function deleteChar(e, id) {
     e.stopPropagation();
-    if(!confirm('Удалить этого персонажа навсегда?')) return;
-    if (activeCharId === id) closeCharEditor();
-    if (sessionCharById(id)) {
-        if (typeof PipSession !== 'undefined') PipSession.deleteChar(id, '').then(() => {
-            delete PipSession.state.characters[id];
-            renderChars();
-        }).catch((err) => alert((err && err.message) || 'Не удалось удалить'));
-        return;
-    }
-    masterChars = masterChars.filter(c => c.id !== id);
-    localStorage.setItem('pipboy_master_chars', JSON.stringify(masterChars));
-    renderChars();
-    updateMasterStatus();
+    pipConfirm('Удалить персонажа?', 'Лист будет стёрт навсегда.').then(function (ok) {
+        if (!ok) return;
+        if (activeCharId === id) closeCharEditor();
+        if (sessionCharById(id)) {
+            if (typeof PipSession !== 'undefined') PipSession.deleteChar(id, '').then(() => {
+                delete PipSession.state.characters[id];
+                renderChars();
+            }).catch((err) => pipNotify('Не удалось удалить', (err && err.message) || 'Попробуйте ещё раз.', { kind: 'error' }));
+            return;
+        }
+        masterChars = masterChars.filter(c => c.id !== id);
+        localStorage.setItem('pipboy_master_chars', JSON.stringify(masterChars));
+        renderChars();
+        updateMasterStatus();
+    });
 }
 
 function openChar(id) {
@@ -956,11 +958,11 @@ function confirmEquipArmor(idx, chosenLimb) {
     if (!def) return;
     const origin = document.getElementById('cs-origin') && document.getElementById('cs-origin').value;
     if (origin === 'Супермутант' && def.family !== 'raider' && def.family !== 'clothes') {
-        alert('Супермутанты могут носить только рейдерскую броню.');
+        pipNotify('Нельзя надеть', 'Супермутанты могут носить только рейдерскую броню.', { kind: 'warn' });
         return;
     }
     if (typeof isPowerArmorPiece === 'function' && isPowerArmorPiece(item) && !charHasPowerFrame(char)) {
-        alert('Нельзя надеть элемент силовой брони без надетого каркаса');
+        pipNotify('Нет каркаса', 'Нельзя надеть элемент силовой брони без надетого каркаса.', { kind: 'warn' });
         return;
     }
     const slots = resolveCoverageSlots(def, chosenLimb);
@@ -998,7 +1000,7 @@ function startEquipArmor(idx) {
         return;
     }
     if (typeof isPowerArmorPiece === 'function' && isPowerArmorPiece(item) && !charHasPowerFrame(char)) {
-        alert('Нельзя надеть элемент силовой брони без надетого каркаса');
+        pipNotify('Нет каркаса', 'Нельзя надеть элемент силовой брони без надетого каркаса.', { kind: 'warn' });
         return;
     }
     const limbChoices = {
@@ -1393,7 +1395,7 @@ function filterDbPicker() {
                     const catLabel = (cat || 'Оружие').toUpperCase();
                     div.innerHTML = `${pipGlyph(weaponIconRel(wKey, cat), 'db-item-glyph')}<span>[${catLabel}] ${wKey}</span>`;
                     div.onclick = () => {
-                        if (!char) { alert('Откройте лист персонажа, чтобы добавить предмет.'); return; }
+                        if (!char) { pipNotify('Нет листа', 'Откройте лист персонажа, чтобы добавить предмет.', { kind: 'warn' }); return; }
                         let newWep = { type: 'weapon', baseId: wKey, mods: {}, ammo: 0, totalAmmo: 0 };
                         for (let s in (w.slots || {})) newWep.mods[s] = 0;
                         if (!char.inventory) char.inventory = [];
@@ -1420,7 +1422,7 @@ function filterDbPicker() {
                     div.className = 'db-item-row';
                     div.innerHTML = `${pipGlyph(itemIconRel(i), 'db-item-glyph')}<span>[${(cat || 'Предмет').toUpperCase()}] ${i.name}</span>`;
                     div.onclick = () => {
-                        if (!char) { alert('Откройте лист персонажа, чтобы добавить предмет.'); return; }
+                        if (!char) { pipNotify('Нет листа', 'Откройте лист персонажа, чтобы добавить предмет.', { kind: 'warn' }); return; }
                         if (!char.inventory) char.inventory = [];
                         const isArm = i.type === 'armor' || (typeof getArmorDef === 'function' && getArmorDef({ title: i.name }));
                         const packed = isArm
@@ -1445,7 +1447,7 @@ function filterDbPicker() {
                     const badge = isPass ? 'ДОСТУПНО' : (p.reqStr || 'НЕДОСТУПНО');
                     div.innerHTML = `<div class="db-perk-head"><b class="db-perk-name ${isPass ? 'req-pass' : 'req-fail'}">${escapePipHtml(p.name)}</b><span class="db-perk-badge ${isPass ? 'req-pass' : 'req-fail'}">${escapePipHtml(badge)}</span></div><div class="db-perk-desc">${escapePipHtml(p.desc || '')}</div>`;
                     div.onclick = () => {
-                        if (!char) { alert('Откройте лист персонажа, чтобы добавить перк.'); return; }
+                        if (!char) { pipNotify('Нет листа', 'Откройте лист персонажа, чтобы добавить перк.', { kind: 'warn' }); return; }
                         if (!char.perks) char.perks = [];
                         if (!char.perks.includes(p.name)) { char.perks.push(p.name); persistLiveChar(); renderInventoryAndPerks(char);}
                         closeDbPicker();
@@ -1495,7 +1497,7 @@ function openModPicker(itemIdx, slot) {
         normalizeArmorItem(item);
         const def = getArmorDef(item);
         const choices = getArmorModChoices(item, slot);
-        if (!choices.length) { alert('Для этой брони этот слот недоступен.'); return; }
+        if (!choices.length) { pipNotify('Слот недоступен', 'Для этой брони этот слот недоступен.', { kind: 'warn' }); return; }
         document.getElementById('mod-modal-title').innerText = `СЛОТ: ${(ARMOR_SLOT_LABELS && ARMOR_SLOT_LABELS[slot]) || slot}`;
         let activeIdx = 0;
         if (slot === 'upgrade') {
@@ -1522,7 +1524,7 @@ function openModPicker(itemIdx, slot) {
     }
 
     if (!masterDB.weapons || !masterDB.weapons[item.baseId] || !masterDB.weapons[item.baseId].slots[slot]) {
-        alert('Слот не найден в базе данных.');
+        pipNotify('Нет слота', 'Слот не найден в базе данных.', { kind: 'error' });
         return;
     }
     const mods = masterDB.weapons[item.baseId].slots[slot];
@@ -1936,9 +1938,9 @@ function renderStations() {
 
 document.getElementById('radio-modal-cancel').onclick = () => { radioModal.classList.remove('active'); tempCustomFiles = []; inputFiles.value = ''; inputUrl.value = ''; btnBrowseAudio.textContent = 'ВЫБРАТЬ ПАПКУ'; };
 btnBrowseAudio.onclick = () => inputFiles.click();
-inputFiles.onchange = (e) => { tempCustomFiles = Array.from(e.target.files).filter(f => f.type.startsWith('audio/') || f.name.toLowerCase().endsWith('.mp3') || f.name.toLowerCase().endsWith('.wav') || f.name.toLowerCase().endsWith('.ogg')); if (tempCustomFiles.length > 0) { btnBrowseAudio.textContent = `НАЙДЕНО ТРЕКОВ: ${tempCustomFiles.length}`; inputUrl.value = ''; } else { btnBrowseAudio.textContent = 'АУДИО НЕ НАЙДЕНО'; alert('В выбранной папке нет поддерживаемых аудиофайлов.'); } };
+inputFiles.onchange = (e) => { tempCustomFiles = Array.from(e.target.files).filter(f => f.type.startsWith('audio/') || f.name.toLowerCase().endsWith('.mp3') || f.name.toLowerCase().endsWith('.wav') || f.name.toLowerCase().endsWith('.ogg')); if (tempCustomFiles.length > 0) { btnBrowseAudio.textContent = `НАЙДЕНО ТРЕКОВ: ${tempCustomFiles.length}`; inputUrl.value = ''; } else { btnBrowseAudio.textContent = 'АУДИО НЕ НАЙДЕНО'; pipNotify('Нет аудио', 'В выбранной папке нет поддерживаемых аудиофайлов.', { kind: 'warn' }); } };
 inputUrl.addEventListener('input', () => { if (inputUrl.value.trim() !== '') { tempCustomFiles = []; btnBrowseAudio.textContent = 'ВЫБРАТЬ ПАПКУ'; inputFiles.value = ''; } });
-document.getElementById('radio-modal-save').onclick = () => { if (tempCustomFiles.length > 0) { customPlaylistFiles = tempCustomFiles; stations.find(s => s.id === 'rad3').url = ''; stations.find(s => s.id === 'rad3').desc = `Локальный плейлист (${customPlaylistFiles.length} треков)`; playCustomFile(0); } else if (inputUrl.value.trim() !== '') { customPlaylistFiles = []; stations.find(s => s.id === 'rad3').url = inputUrl.value.trim(); stations.find(s => s.id === 'rad3').desc = 'Пользовательский сетевой поток'; playCustomStream(); } else { alert("ВЫБЕРИТЕ ПАПКУ ИЛИ ВВЕДИТЕ URL!"); return; } radioModal.classList.remove('active'); };
+document.getElementById('radio-modal-save').onclick = () => { if (tempCustomFiles.length > 0) { customPlaylistFiles = tempCustomFiles; stations.find(s => s.id === 'rad3').url = ''; stations.find(s => s.id === 'rad3').desc = `Локальный плейлист (${customPlaylistFiles.length} треков)`; playCustomFile(0); } else if (inputUrl.value.trim() !== '') { customPlaylistFiles = []; stations.find(s => s.id === 'rad3').url = inputUrl.value.trim(); stations.find(s => s.id === 'rad3').desc = 'Пользовательский сетевой поток'; playCustomStream(); } else { pipNotify('Нет источника', 'Выберите папку или введите URL.', { kind: 'warn' }); return; } radioModal.classList.remove('active'); };
 
 function playCustomFile(index) { if (index >= customPlaylistFiles.length) index = 0; currentCustomTrackIndex = index; const file = customPlaylistFiles[index]; if (currentObjectUrl) URL.revokeObjectURL(currentObjectUrl); currentObjectUrl = URL.createObjectURL(file); currentStationId = 'rad3'; audioPlayer.src = currentObjectUrl; npTitle.textContent = file.name.replace(/\.[^/.]+$/, "").toUpperCase(); renderStations(); audioPlayer.play(); }
 function playCustomStream() { currentStationId = 'rad3'; const station = stations.find(s => s.id === 'rad3'); audioPlayer.src = station.url; npTitle.textContent = "ПОЛЬЗОВАТЕЛЬСКИЙ ПОТОК"; renderStations(); audioPlayer.play(); }

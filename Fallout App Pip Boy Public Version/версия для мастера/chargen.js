@@ -786,7 +786,7 @@
             if (typeof PIP_MODE !== 'undefined' && PIP_MODE === 'player' && typeof playerCreateAndOpenChar === 'function') {
                 const sid = (typeof PipSession !== 'undefined' && PipSession.sessionId) || '';
                 playerCreateAndOpenChar(sid, char['cs-name'], char.pin || '', char).catch(err => {
-                    alert((err && err.message) || 'Не удалось создать');
+                    pipNotify('Не удалось создать', (err && err.message) || 'Попробуйте ещё раз.', { kind: 'error' });
                 });
                 return;
             }

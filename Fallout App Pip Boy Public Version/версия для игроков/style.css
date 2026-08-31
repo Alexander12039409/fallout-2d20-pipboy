@@ -1431,3 +1431,81 @@ body.player-playing #player-hub { display: none !important; }
     padding: 8px 0 16px;
 }
 
+/* --- PIP PUSH (in-app toasts) --- */
+.pip-push-host {
+    position: fixed;
+    z-index: 10050;
+    pointer-events: none;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 14px 20px 0;
+    box-sizing: border-box;
+}
+body.telegram-webapp .pip-push-host {
+    padding: calc(10px + var(--tg-content-safe-area-inset-top, var(--tg-safe-area-inset-top, env(safe-area-inset-top, 0px)))) 14px 0;
+}
+.pip-push {
+    pointer-events: auto;
+    width: min(440px, 100%);
+    background: rgba(3, 18, 3, 0.97);
+    border: 1px solid var(--pip-green);
+    box-shadow: 0 0 14px rgba(20, 254, 20, 0.4), inset 0 0 12px rgba(20, 254, 20, 0.06);
+    padding: 10px 38px 10px 12px;
+    position: relative;
+    transform: translateY(-120%);
+    opacity: 0;
+    transition: transform 0.22s ease, opacity 0.22s ease;
+    touch-action: none;
+    cursor: grab;
+}
+.pip-push.is-in { transform: none; opacity: 1; }
+.pip-push.is-out { transform: translateY(-120%); opacity: 0; }
+.pip-push.is-dragging { transition: none; cursor: grabbing; }
+.pip-push-title {
+    font-size: 0.95rem;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+}
+.pip-push-sub {
+    font-size: 0.78rem;
+    opacity: 0.82;
+    margin-top: 4px;
+    text-transform: none;
+    letter-spacing: 0.2px;
+    line-height: 1.35;
+    font-weight: 700;
+}
+.pip-push-x {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 26px;
+    height: 26px;
+    background: transparent;
+    border: 1px solid var(--pip-red);
+    color: var(--pip-red);
+    font-family: monospace;
+    font-size: 0.95rem;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.pip-push-x:hover { background: var(--pip-red); color: #000; }
+.pip-push-error { border-color: var(--pip-red); box-shadow: 0 0 14px rgba(255, 51, 51, 0.35); }
+.pip-push-error .pip-push-title { color: var(--pip-red); }
+.pip-push-warn { border-style: dashed; }
+.pip-push-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+}
+.pip-push-confirm { padding-bottom: 12px; }
+.pip-push-actions .term-btn {
+    flex: 1;
+    min-height: 34px;
+    font-size: 0.85rem;
+}
+

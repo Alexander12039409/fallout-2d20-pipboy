@@ -54,7 +54,7 @@ function commitSessionChar(char) {
         window.__unlockedCharId = char.id;
         renderChars();
         openChar(char.id);
-    }).catch(err => alert(err.message || 'Не удалось создать'));
+    }).catch(err => pipNotify('Не удалось создать', err.message || 'Попробуйте ещё раз.', { kind: 'error' }));
 }
 
 function confirmCreateSessionChar() {
@@ -357,26 +357,32 @@ function copySessionCode() {
     const status = document.getElementById('session-copy-status');
     copyTextToClipboard(code).then(function () {
         if (status) status.textContent = 'Код стола скопирован';
+        pipNotify('Скопировано', 'Код стола скопирован.', { kind: 'ok' });
     }).catch(function () {
         if (status) status.textContent = 'Не удалось скопировать код';
+        pipNotify('Не скопировалось', 'Не удалось скопировать код стола.', { kind: 'error' });
     });
 }
 
 function masterDeleteSession() {
     if (typeof PipSession === 'undefined' || !PipSession.sessionId) return;
-    if (!confirm('Удалить стол ' + PipSession.sessionId + ' и всех персонажей навсегда?')) return;
-    PipSession.deleteSession().then(function () {
-        try { history.replaceState({}, '', location.pathname); } catch (e) {}
-        hideMasterJoinForm();
-        updateSessionUi();
-        renderChars();
-        renderMasterNotes([]);
-        const copy = document.getElementById('session-copy-status');
-        if (copy) copy.textContent = 'Стол удалён.';
-        const modal = document.getElementById('session-modal');
-        if (modal) modal.classList.add('active');
-    }).catch(function (err) {
-        setSessionStatus((err && err.message) || 'Не удалось удалить стол', true);
+    pipConfirm('Удалить стол ' + PipSession.sessionId + '?', 'Все персонажи на этом столе будут стёрты навсегда.').then(function (ok) {
+        if (!ok) return;
+        PipSession.deleteSession().then(function () {
+            try { history.replaceState({}, '', location.pathname); } catch (e) {}
+            hideMasterJoinForm();
+            updateSessionUi();
+            renderChars();
+            renderMasterNotes([]);
+            const copy = document.getElementById('session-copy-status');
+            if (copy) copy.textContent = 'Стол удалён.';
+            const modal = document.getElementById('session-modal');
+            if (modal) modal.classList.add('active');
+            pipNotify('Стол удалён', 'Сессия закрыта навсегда.', { kind: 'ok' });
+        }).catch(function (err) {
+            setSessionStatus((err && err.message) || 'Не удалось удалить стол', true);
+            pipNotify('Не удалось удалить', (err && err.message) || 'Не удалось удалить стол.', { kind: 'error' });
+        });
     });
 }
 
@@ -507,9 +513,11 @@ function copyTelegramLink() {
     if (input) input.value = link;
     copyTextToClipboard(link).then(function () {
         if (status) status.textContent = 'Ссылка Telegram скопирована';
+        pipNotify('Скопировано', 'Ссылка Telegram скопирована.', { kind: 'ok' });
     }).catch(function () {
         if (input) { input.focus(); input.select(); }
         if (status) status.textContent = 'Не удалось скопировать — выделите строку вручную';
+        pipNotify('Не скопировалось', 'Выделите ссылку вручную.', { kind: 'error' });
     });
 }
 
@@ -530,9 +538,11 @@ function copyPlayLink() {
     if (input) input.value = link;
     copyTextToClipboard(link).then(function () {
         if (status) status.textContent = 'Ссылка скопирована';
+        pipNotify('Скопировано', 'Ссылка для игроков скопирована.', { kind: 'ok' });
     }).catch(function () {
         if (input) { input.focus(); input.select(); }
         if (status) status.textContent = 'Не удалось скопировать — выделите строку вручную';
+        pipNotify('Не скопировалось', 'Выделите ссылку вручную.', { kind: 'error' });
     });
 }
 
@@ -621,7 +631,7 @@ async function playerOpenChar(id) {
             window.__unlockedCharId = id;
             openChar(id);
         } catch (e2) {
-            alert('Неверный PIN или нет доступа.');
+            pipNotify('Нет доступа', 'Неверный PIN или нет доступа.', { kind: 'error' });
         }
     }
 }

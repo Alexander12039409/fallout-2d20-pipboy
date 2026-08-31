@@ -233,17 +233,19 @@ function playerOpenVaultChar(charId) {
     if (typeof openChar === 'function') openChar(charId);
 }
 function playerDeleteVaultChar(charId) {
-    if (!confirm('Удалить этого персонажа навсегда? Он не на столе мастера.')) return;
-    if (typeof activeCharId !== 'undefined' && activeCharId === charId) {
-        activeCharId = null;
-        const drawer = document.getElementById('char-drawer');
-        if (drawer) drawer.classList.remove('open');
-        const vc = document.getElementById('view-characters');
-        if (vc) vc.classList.remove('sheet-open');
-        showPlayerHub({ keepSession: true });
-    }
-    vaultRemove(charId);
-    renderPlayerHub();
+    pipConfirm('Удалить персонажа?', 'Он не на столе мастера. Лист будет стёрт навсегда.').then(function (ok) {
+        if (!ok) return;
+        if (typeof activeCharId !== 'undefined' && activeCharId === charId) {
+            activeCharId = null;
+            const drawer = document.getElementById('char-drawer');
+            if (drawer) drawer.classList.remove('open');
+            const vc = document.getElementById('view-characters');
+            if (vc) vc.classList.remove('sheet-open');
+            showPlayerHub({ keepSession: true });
+        }
+        vaultRemove(charId);
+        renderPlayerHub();
+    });
 }
 
 let attachCharId = '';
@@ -325,7 +327,8 @@ async function playerAttachVaultToSession(charId, sessionId) {
 }
 
 async function playerDeleteHubChar(sessionId, charId) {
-    if (!confirm('Удалить этого персонажа навсегда?')) return;
+    const ok = await pipConfirm('Удалить персонажа?', 'Лист будет стёрт навсегда.');
+    if (!ok) return;
     const pin = ((hubFindChar(sessionId, charId) || {}).pin) || '';
     try {
         await ensurePlayerSession(sessionId);
@@ -348,7 +351,8 @@ async function playerDeleteHubChar(sessionId, charId) {
 async function playerDeleteHubSession(sessionId) {
     const id = String(sessionId || '').toUpperCase();
     if (!id) return;
-    if (!confirm('Убрать стол ' + id + ' из вашего списка? Ваши персонажи на этом столе тоже будут удалены. Сам стол останется, пока мастер его не удалит.')) return;
+    const ok = await pipConfirm('Убрать стол ' + id + '?', 'Персонажи в вашем списке тоже будут удалены. Сам стол останется, пока мастер его не удалит.');
+    if (!ok) return;
     const rec = loadPlayerHub().sessions.find(s => s.id === id);
     const chars = ((rec && rec.chars) || []).slice();
     try {
@@ -877,6 +881,7 @@ async function playerOpenChar(id) {
             openChar(id);
         } catch (e2) {
             setPlayerGateStatus('Неверный PIN', true);
+            pipNotify('Нет доступа', 'Неверный PIN или нет доступа.', { kind: 'error' });
             showPlayerHub({ keepSession: true });
         }
     }
