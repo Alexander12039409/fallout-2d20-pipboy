@@ -964,8 +964,9 @@ Object.keys(weaponDB.weapons).forEach(wName => {
 parseCSV(armor_csv).forEach(c => dbItems.push({ name: c[1], type: 'armor', category: c[0], desc: `Физ:${c[2]} Энерг:${c[3]} Рад:${c[4]} | Обл:${c[5]} | Особ:${c[9] || '–'}` }));
 parseCSV(consumables_csv).forEach(c => dbItems.push({ name: c[0], type: 'consumable', category: c[2] || 'Расходники', desc: c[1] }));
 if (typeof applySiteWeaponPack === 'function') applySiteWeaponPack();
+if (typeof applySiteFoodPack === 'function') applySiteFoodPack();
 
-const BUILTIN_DB_VERSION = 7;
+const BUILTIN_DB_VERSION = 8;
 let masterDB = { weapons: {}, perks: [], items: [], libVersion: 0 };
 const savedDB = localStorage.getItem('pipboy_master_db');
 
@@ -987,7 +988,22 @@ if (savedDB) {
     const dropItems = { 'Стимулятор': 1, 'Рейдерский понож/наруч': 1, 'Кожаный понож/наруч': 1 };
     const haveItem = new Set(masterDB.items.map(i => i && i.name));
     dbItems.forEach(it => {
-        if (!it || !it.name || haveItem.has(it.name)) return;
+        if (!it || !it.name) return;
+        if (haveItem.has(it.name)) {
+            if (it.aliases && it.aliases.length) {
+                const dst = masterDB.items.find(x => x && x.name === it.name);
+                if (dst) {
+                    dst.aliases = dst.aliases || [];
+                    it.aliases.forEach(a => {
+                        if (a && dst.aliases.indexOf(a) === -1) {
+                            dst.aliases.push(a);
+                            added = true;
+                        }
+                    });
+                }
+            }
+            return;
+        }
         masterDB.items.push(it);
         haveItem.add(it.name);
         added = true;
@@ -1045,6 +1061,7 @@ if (savedDB) {
                 masterDB.items[i].desc = it.desc;
                 masterDB.items[i].type = it.type;
                 masterDB.items[i].category = it.category;
+                if (it.aliases && it.aliases.length) masterDB.items[i].aliases = it.aliases.slice();
             }
         });
         const seenItem = new Set();

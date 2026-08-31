@@ -1393,7 +1393,7 @@ function weaponPickerHaystack(wKey, w) {
 }
 
 function itemPickerHaystack(i) {
-    return [i && i.name, i && i.category, i && i.desc, i && i.type].join(' ');
+    return [i && i.name, (i && i.aliases || []).join(' '), i && i.category, i && i.desc, i && i.type].join(' ');
 }
 
 function filterDbPicker() {
