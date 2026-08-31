@@ -397,23 +397,12 @@ body.sys-open .sys-menu { display: flex; }
 .qual-sheet { width: 420px; max-width: 95%; }
 .pip-qual {
     display: inline;
-    cursor: help;
+    cursor: pointer;
     border-bottom: 1px dotted var(--pip-green);
     background: none; color: inherit; font: inherit; text-transform: inherit;
-    padding: 0; position: relative;
+    padding: 0;
 }
 .pip-qual:hover, .pip-qual:focus { color: #fff; }
-.qual-tip {
-    position: absolute; left: 0; bottom: calc(100% + 8px);
-    width: min(280px, 70vw); max-width: 100%; padding: 8px 10px;
-    background: rgba(3,18,3,0.96); border: 1px solid var(--pip-green);
-    color: var(--pip-green); font-size: 0.85rem; line-height: 1.35;
-    text-transform: none; white-space: normal; text-align: left;
-    box-shadow: 0 0 12px rgba(20,254,20,0.25); z-index: 40;
-    pointer-events: none; opacity: 0; transform: translateY(4px);
-    transition: opacity 0.12s, transform 0.12s;
-}
-.pip-qual:hover .qual-tip, .pip-qual:focus .qual-tip { opacity: 1; transform: none; }
 .qual-body { font-size: 1.05rem; line-height: 1.45; text-transform: none; opacity: 0.95; }
 .equip-slot-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .ammo-type-label { font-size: 0.8rem; opacity: 0.7; width: 100%; }
@@ -468,7 +457,7 @@ body.sys-open .sys-menu { display: flex; }
 .wep-stat-val { font-size: 1.2rem; font-weight: bold; }
 .wep-stat-val.modified { color: #fff; text-shadow: 0 0 5px var(--pip-green); }
 .wep-qualities { font-size: 0.9rem; opacity: 0.9; position: relative; overflow: visible; }
-.wep-qualities span, .wep-qualities .pip-qual { cursor: help; border-bottom: 1px dotted var(--pip-green); }
+.wep-qualities span, .wep-qualities .pip-qual { cursor: pointer; border-bottom: 1px dotted var(--pip-green); }
 
 .wep-ammo-panel { display: flex; justify-content: space-between; align-items: center; background: rgba(20,254,20,0.05); border: 1px dashed var(--theme-dim); padding: 10px; border-radius: 4px; flex-wrap: wrap; gap: 10px;}
 .ammo-controls { display: flex; align-items: center; gap: 10px; }
@@ -1120,7 +1109,6 @@ body.player-playing #char-drawer {
         font-size: 1rem;
         padding: 10px 16px;
     }
-    .qual-tip { display: none !important; }
     .help-layout { display: flex; flex-direction: column; height: 100%; min-height: 0; }
     .help-burger, .help-scrim { display: none !important; }
     .help-nav {

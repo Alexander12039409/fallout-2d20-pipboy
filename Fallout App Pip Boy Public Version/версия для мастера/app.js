@@ -816,17 +816,20 @@ function renderQualities(qualities) {
     });
     if (!uniq.length) return 'Нет';
     return uniq.map(q => {
-        const text = (typeof getQualEffectText === 'function') ? getQualEffectText(q) : q;
-        return `<button type="button" class="pip-qual" data-qual="${escapePipHtml(q)}">${escapePipHtml(q)}<span class="qual-tip">${escapePipHtml(text)}</span></button>`;
+        return `<button type="button" class="pip-qual" data-qual="${escapePipHtml(q)}">${escapePipHtml(q)}</button>`;
     }).join(', ');
 }
 
 function openQualSheet(rawName) {
+    const modal = document.getElementById('qual-modal');
+    const title = document.getElementById('qual-title');
+    const body = document.getElementById('qual-body');
+    if (!modal || !title || !body) return;
     const name = (typeof normalizeQualName === 'function') ? normalizeQualName(rawName) : String(rawName || '');
     const text = (typeof getQualEffectText === 'function') ? getQualEffectText(rawName) : '';
-    document.getElementById('qual-title').textContent = name || 'СВОЙСТВО';
-    document.getElementById('qual-body').textContent = text;
-    document.getElementById('qual-modal').classList.add('active');
+    title.textContent = name || 'СВОЙСТВО';
+    body.textContent = text;
+    modal.classList.add('active');
 }
 function closeQualSheet() {
     document.getElementById('qual-modal').classList.remove('active');
@@ -1707,7 +1710,7 @@ document.getElementById('cs-inv-list').addEventListener('click', (e) => {
     if (!btn) return;
     e.preventDefault();
     e.stopPropagation();
-    if (typeof isCompactUI === 'function' && isCompactUI()) openQualSheet(btn.getAttribute('data-qual'));
+    openQualSheet(btn.getAttribute('data-qual'));
 });
 
 // ==========================================================================
