@@ -402,7 +402,20 @@ function mergeIncomingCatalog(db) {
     if (!Array.isArray(masterDB.perks)) masterDB.perks = [];
     if (typeof weaponDB !== 'undefined' && weaponDB.weapons) {
         Object.keys(weaponDB.weapons).forEach(name => {
-            if (!masterDB.weapons[name]) masterDB.weapons[name] = weaponDB.weapons[name];
+            if (!masterDB.weapons[name]) {
+                masterDB.weapons[name] = weaponDB.weapons[name];
+                return;
+            }
+            const src = weaponDB.weapons[name];
+            const dst = masterDB.weapons[name];
+            if (!src || !dst || !src.slots || !dst.slots) return;
+            Object.keys(src.slots).forEach(slot => {
+                (src.slots[slot] || []).forEach(m => {
+                    if (!m || !m.name || m.prefix == null) return;
+                    const existing = dst.slots[slot] && dst.slots[slot].find(x => x && x.name === m.name);
+                    if (existing && existing.prefix !== m.prefix) existing.prefix = m.prefix;
+                });
+            });
         });
     }
     if (typeof dbItems !== 'undefined' && Array.isArray(dbItems)) {

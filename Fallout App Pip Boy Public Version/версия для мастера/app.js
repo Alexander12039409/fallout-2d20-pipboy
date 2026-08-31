@@ -1512,7 +1512,7 @@ function renderInventoryAndPerks(char) {
                             <div class="wep-img-box">${wepIcon}</div>
                             <div class="wep-info-v2">
                                 <div class="wep-header-v2">
-                                    <div><h2 class="wep-title-v2">${escapePipHtml(item.title || item.baseId)}</h2><p class="wep-cat-v2">${escapePipHtml(wData.category)}</p></div>
+                                    <div><h2 class="wep-title-v2">${escapePipHtml((typeof weaponDisplayName === 'function' ? weaponDisplayName(item) : null) || item.title || item.baseId)}</h2><p class="wep-cat-v2">${escapePipHtml(wData.category)}</p></div>
                                     <button class="term-btn danger" style="padding: 2px 5px;" onclick="deleteCharItem(${index})">X</button>
                                 </div>
                                 <div class="wep-stats-grid">

@@ -710,3 +710,86 @@ function computeWeaponMagSize(name, fireRate, qualities, item) {
     }
     return Math.max(1, mag);
 }
+
+const WEAPON_SLOT_NAME_ORDER = [
+    'Ресивер', 'Конденсатор', 'Топливо', 'Антенна', 'Ствол', 'Боёк', 'Клинок', 'Цепь', 'Коготь',
+    'Форсунки', 'Рукоять', 'Приклад', 'Ложа', 'Магазин', 'Прицел', 'Насадка', 'Сопло', 'Дуло'
+];
+
+function weaponModNamePrefix(m) {
+    if (!m || !m.name || m.name === 'Стандартный') return '';
+    const map = (typeof MOD_NAME_PREFIX === 'object' && MOD_NAME_PREFIX) ? MOD_NAME_PREFIX : {};
+    if (Object.prototype.hasOwnProperty.call(map, m.name)) return map[m.name] || '';
+    if (m.prefix == null) return '';
+    const p = String(m.prefix);
+    if (p === '–' || p === '-' || p === '—') return '';
+    return p;
+}
+
+function weaponHasStockMod(item, wData) {
+    const mods = (item && item.mods) || {};
+    const slots = (wData && wData.slots) || {};
+    return ['Приклад', 'Ложа'].some(slot => {
+        const arr = slots[slot];
+        const idx = mods[slot];
+        if (!arr || idx == null || idx <= 0) return false;
+        const m = arr[idx];
+        return !!(m && m.name && m.name !== 'Стандартный');
+    });
+}
+
+function weaponFormName(baseName, item, wData) {
+    let name = String(baseName || '');
+    if (!weaponHasStockMod(item, wData)) return name;
+    if (/сигнальн/i.test(name)) return name;
+    if (/лазерный пистолет/i.test(name)) return name.replace(/лазерный пистолет/gi, 'Лазерная винтовка');
+    if (/^лазер института$/i.test(name.trim())) return 'Лазерный карабин Института';
+    if (/пистолет/i.test(name)) return name.replace(/пистолет/gi, 'карабин');
+    return name;
+}
+
+function weaponNamePrefixes(item, wData) {
+    const out = [];
+    const seen = {};
+    const mods = (item && item.mods) || {};
+    const slots = (wData && wData.slots) || {};
+    const slotNames = WEAPON_SLOT_NAME_ORDER.filter(s => slots[s]).concat(Object.keys(slots).filter(s => WEAPON_SLOT_NAME_ORDER.indexOf(s) < 0));
+    slotNames.forEach(slot => {
+        const arr = slots[slot];
+        const idx = mods[slot];
+        if (!arr || idx == null || idx <= 0) return;
+        const m = arr[idx];
+        const p = weaponModNamePrefix(m);
+        if (!p) return;
+        const key = p.toLowerCase();
+        if (seen[key]) return;
+        seen[key] = 1;
+        out.push(p);
+    });
+    return out;
+}
+
+function weaponDisplayName(item) {
+    if (!item) return '';
+    if (item.custom && item.title) return item.title;
+    const base = item.baseId || item.title || item.name || '';
+    let wData = null;
+    if (typeof resolveWeaponData === 'function' && item.type === 'weapon') wData = resolveWeaponData(item);
+    if (!wData && typeof findWeaponByName === 'function') wData = findWeaponByName(base);
+    if (!wData && typeof masterDB !== 'undefined' && masterDB.weapons) wData = masterDB.weapons[base] || null;
+    if (!wData) return item.title || base;
+    let canon = base;
+    if (typeof masterDB !== 'undefined' && masterDB.weapons) {
+        if (masterDB.weapons[base]) canon = base;
+        else {
+            const keys = Object.keys(masterDB.weapons);
+            for (let i = 0; i < keys.length; i++) {
+                if (masterDB.weapons[keys[i]] === wData) { canon = keys[i]; break; }
+            }
+        }
+    }
+    const form = weaponFormName(canon, item, wData);
+    const prefixes = weaponNamePrefixes(item, wData);
+    if (!prefixes.length) return form;
+    return prefixes.join(' ') + ' ' + form;
+}
