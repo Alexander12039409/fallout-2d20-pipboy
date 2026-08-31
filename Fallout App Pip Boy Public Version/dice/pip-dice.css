@@ -225,26 +225,44 @@ body.dice-open { overflow: hidden; }
 .dice-mini-roll { width: 100%; min-height: 40px; }
 
 .dice-nav-btn {
+    appearance: none;
+    -webkit-appearance: none;
     flex-shrink: 0;
-    width: 34px;
-    height: 34px;
-    margin-bottom: 3px;
-    background: rgba(3, 18, 3, 0.85);
-    border: 1px solid var(--pip-green);
+    width: auto;
+    min-width: 34px;
+    height: auto;
+    margin: 0 0 -2px;
+    padding: 5px 12px;
+    background: transparent;
+    border: none;
+    border-radius: 6px 6px 0 0;
     display: flex;
     justify-content: center;
     align-items: center;
     cursor: pointer;
-    box-shadow: 0 0 8px rgba(20, 254, 20, 0.2);
+    box-shadow: none;
+    outline: none;
+    opacity: 0.6;
+    transition: 0.2s;
 }
 .dice-nav-btn svg { width: 18px; height: 18px; fill: var(--pip-green); pointer-events: none; }
-.dice-nav-btn:hover { background: var(--pip-green); }
-.dice-nav-btn:hover svg { fill: #000; }
-.dice-nav-btn:active { transform: scale(0.9); }
-body.dice-pop-open .dice-nav-btn {
-    background: var(--pip-green);
+.dice-nav-btn:hover {
+    background: transparent;
+    opacity: 1;
+    box-shadow: none;
 }
-body.dice-pop-open .dice-nav-btn svg { fill: #000; }
+.dice-nav-btn:hover svg { fill: var(--pip-green); }
+.dice-nav-btn:active { transform: scale(0.95); }
+body.dice-pop-open .dice-nav-btn,
+body.dice-sheet-open .dice-nav-btn {
+    opacity: 1;
+    background-color: var(--pip-bg);
+    border: 2px solid var(--pip-green);
+    border-bottom: 2px solid var(--pip-bg);
+    box-shadow: inset 0 2px 5px rgba(20, 254, 20, 0.2);
+}
+body.dice-pop-open .dice-nav-btn svg,
+body.dice-sheet-open .dice-nav-btn svg { fill: var(--pip-green); }
 
 .player-dice-pop {
     display: none;
@@ -265,6 +283,9 @@ body.dice-pop-open .player-dice-pop { display: block; }
     position: relative;
     flex-shrink: 0;
     z-index: 1600;
+    display: flex;
+    align-items: flex-end;
+    align-self: flex-end;
 }
 
 .dice-ctrl-sheet { display: none; }
@@ -273,7 +294,14 @@ body.player-hub .dice-ctrl-sheet,
 body.player-hub .dice-sheet-scrim { display: none !important; }
 
 @media (max-width: 860px) {
-    .dice-nav-btn { width: 44px; height: 44px; margin-bottom: 0; }
+    .dice-nav-btn {
+        min-width: 44px;
+        min-height: 44px;
+        width: auto;
+        height: auto;
+        margin-bottom: -2px;
+        padding: 7px 13px;
+    }
     .player-dice-pop { display: none !important; }
     body.dice-pop-open .player-dice-pop { display: none !important; }
     .dice-sheet-scrim {

@@ -867,6 +867,9 @@ button, .nav-item, .char-card, .icon-btn { -webkit-tap-highlight-color: rgba(20,
 .enc-add-plus { font-size: 1.6rem; line-height: 1; }
 .npc-sheet { text-transform: none; }
 .npc-sheet-meta { font-size: 0.9rem; opacity: 0.8; margin-bottom: 10px; }
+.npc-ability { margin: 0 0 8px; font-size: 0.92rem; line-height: 1.35; font-weight: 700; text-transform: none; }
+.npc-ability b { display: block; letter-spacing: 0.3px; margin-bottom: 2px; }
+.npc-lore { font-weight: 400; opacity: 0.92; }
 .npc-gear-list { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
 .npc-gear-line {
     display: flex; align-items: flex-start; justify-content: space-between; gap: 8px;
