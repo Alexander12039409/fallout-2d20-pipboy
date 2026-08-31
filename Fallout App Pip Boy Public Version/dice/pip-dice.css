@@ -1,0 +1,196 @@
+/* Pip-Boy chrome around the 3D dice roller. Overlay keeps original HUD. */
+.dice-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 30000;
+    background: #10100f;
+    flex-direction: column;
+    min-height: 0;
+}
+.dice-overlay.is-open { display: flex; }
+.dice-overlay-close {
+    position: absolute;
+    top: calc(10px + env(safe-area-inset-top));
+    right: calc(12px + env(safe-area-inset-right));
+    z-index: 3;
+    width: 44px;
+    height: 44px;
+    background: rgba(16, 16, 15, 0.72);
+    border: 1px solid rgba(243, 236, 226, 0.28);
+    color: #f4efe8;
+    font-family: 'Anonymous Pro', monospace;
+    font-size: 1.3rem;
+    font-weight: 700;
+    cursor: pointer;
+    border-radius: 12px;
+}
+.dice-overlay-close:hover { background: #efe7d8; color: #1a1612; }
+#dice-overlay-root {
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: 0;
+    width: 100%;
+    height: 100%;
+}
+
+body.dice-open { overflow: hidden; }
+.sys-menu {
+    min-width: 268px;
+    max-height: min(80dvh, 640px);
+    overflow-x: hidden;
+    overflow-y: auto;
+}
+.sys-menu-divider {
+    height: 0;
+    border: 0;
+    border-top: 1px solid var(--theme-dim);
+    margin: 4px 2px;
+}
+.dice-mini {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 4px 4px 2px;
+}
+.dice-mini-title {
+    font-size: 0.92rem;
+    letter-spacing: 0.6px;
+    opacity: 0.9;
+}
+.dice-mini-row {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.dice-mini-group { display: flex; flex-direction: column; gap: 4px; }
+.dice-mini-label {
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    opacity: 0.7;
+}
+.dice-mini-step,
+.dice-mini-types {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+.dice-mini-step span {
+    min-width: 1.6rem;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+}
+.dice-mini-step button,
+.dice-mini-types button {
+    background: transparent;
+    border: 1px solid var(--theme-dim);
+    color: var(--pip-green);
+    font-family: inherit;
+    font-size: 0.92rem;
+    min-height: 36px;
+    min-width: 36px;
+    padding: 0 8px;
+    cursor: pointer;
+}
+.dice-mini-types button { flex: 1; min-width: 0; }
+.dice-mini-step button:hover:not(:disabled),
+.dice-mini-types button:hover:not(:disabled):not(.is-on) {
+    border-color: var(--pip-green);
+    background: rgba(20, 254, 20, 0.12);
+}
+.dice-mini-types button.is-on {
+    background: var(--pip-green);
+    color: #000;
+    border-color: var(--pip-green);
+}
+.dice-mini-step button:disabled,
+.dice-mini-types button:disabled { opacity: 0.4; cursor: default; }
+.dice-mini-roll { width: 100%; min-height: 40px; }
+
+.dice-nav-btn {
+    flex-shrink: 0;
+    width: 34px;
+    height: 34px;
+    margin-bottom: 3px;
+    background: rgba(3, 18, 3, 0.85);
+    border: 1px solid var(--pip-green);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    box-shadow: 0 0 8px rgba(20, 254, 20, 0.2);
+}
+.dice-nav-btn svg { width: 18px; height: 18px; fill: var(--pip-green); pointer-events: none; }
+.dice-nav-btn:hover { background: var(--pip-green); }
+.dice-nav-btn:hover svg { fill: #000; }
+.dice-nav-btn:active { transform: scale(0.9); }
+body.dice-pop-open .dice-nav-btn {
+    background: var(--pip-green);
+}
+body.dice-pop-open .dice-nav-btn svg { fill: #000; }
+
+.player-dice-pop {
+    display: none;
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    z-index: 1600;
+    min-width: 268px;
+    background: rgba(3, 18, 3, 0.98);
+    border: 1px solid var(--pip-green);
+    padding: 8px;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.55);
+}
+body.dice-pop-open .player-dice-pop { display: block; }
+.header-dice,
+.dice-nav-btn { touch-action: manipulation; }
+.header-dice {
+    position: relative;
+    flex-shrink: 0;
+    z-index: 1600;
+}
+
+.dice-ctrl-sheet { display: none; }
+.dice-sheet-scrim { display: none; }
+body.player-hub .dice-ctrl-sheet,
+body.player-hub .dice-sheet-scrim { display: none !important; }
+
+@media (max-width: 860px) {
+    .dice-nav-btn { width: 44px; height: 44px; margin-bottom: 0; }
+    .player-dice-pop { display: none !important; }
+    body.dice-pop-open .player-dice-pop { display: none !important; }
+    .dice-sheet-scrim {
+        display: none;
+        position: absolute;
+        inset: 0;
+        z-index: 2400;
+        background: rgba(0, 0, 0, 0.45);
+    }
+    body.dice-sheet-open .dice-sheet-scrim {
+        display: block;
+    }
+    .dice-ctrl-sheet {
+        display: flex;
+        flex-direction: column;
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 2500;
+        width: 100%;
+        max-height: min(70dvh, 70%);
+        background: rgba(3, 18, 3, 0.98);
+        border-top: 2px solid var(--pip-green);
+        border-radius: 16px 16px 0 0;
+        padding: 12px 16px calc(16px + env(safe-area-inset-bottom));
+        transform: translateY(110%);
+        transition: transform 0.32s cubic-bezier(0.2, 0.8, 0.2, 1);
+        box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.8);
+    }
+    body.dice-sheet-open .dice-ctrl-sheet {
+        transform: translateY(0);
+    }
+    .dice-ctrl-sheet .cs-header { margin-bottom: 10px; }
+    .dice-ctrl-sheet .dice-mini-title { display: none; }
+    .dice-ctrl-sheet { overflow-y: auto; }
+}

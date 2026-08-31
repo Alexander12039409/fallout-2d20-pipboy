@@ -10,6 +10,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Anonymous+Pro:wght@700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="leaflet.css">
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="/dice/dice-roller.css">
+    <link rel="stylesheet" href="/dice/pip-dice.css">
 </head>
 <body data-mode="player" class="player-mode player-hub" data-player-panel="main">
     <div class="crt-monitor">
@@ -39,6 +41,12 @@
             </div>
         </div>
         <header class="header">
+            <div class="header-dice">
+                <button class="dice-nav-btn" type="button" title="Бросить кубик" aria-label="Бросить кубик" onclick="togglePlayerDice(event)">
+                    <svg viewBox="0 0 24 24"><path fill-rule="evenodd" d="M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zm3 6.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zm8 0a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM12 13.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM8 18.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zm8 0a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z"/></svg>
+                </button>
+                <div class="player-dice-pop" id="player-dice-pop" data-dice-host></div>
+            </div>
             <div class="nav-scroll-container" id="player-play-nav">
                 <div class="nav-item active" data-player="main">ОСНОВНОЕ</div>
                 <div class="nav-item" data-player="inv">ИНВЕНТАРЬ</div>
@@ -319,6 +327,15 @@
             <div class="footer-group"><span id="session-status-label"></span></div>
             <div class="footer-group footer-geo" id="footer-geo"><span id="geo-scanner">ЛОКАЦИЯ: НЕИЗВЕСТНО</span></div>
         </footer>
+        <div class="dice-sheet-scrim" id="dice-sheet-scrim" onclick="closePlayerDice()"></div>
+        <div class="dice-ctrl-sheet" id="dice-sheet">
+            <div class="sheet-handle" aria-hidden="true"></div>
+            <div class="cs-header">
+                <span style="font-size: 1.2rem; font-weight: bold;">БРОСИТЬ КУБИК</span>
+                <button class="term-btn cs-close-btn" type="button" onclick="closePlayerDice()" style="padding: 5px 10px; font-size: 1rem;"><span class="cs-close-desktop">СВЕРНУТЬ 🡒</span><span class="cs-close-mobile">▼ СВЕРНУТЬ</span></button>
+            </div>
+            <div data-dice-host></div>
+        </div>
     </div>
 
     <!-- ================= МОДАЛЬНЫЕ ОКНА ================= -->
@@ -560,12 +577,17 @@
 
     <div id="pip-push-host" class="pip-push-host" aria-live="polite"></div>
 
+    <div id="dice-overlay" class="dice-overlay" aria-hidden="true">
+        <button type="button" class="dice-overlay-close" onclick="closeDiceOverlay()" aria-label="Закрыть">×</button>
+        <div id="dice-overlay-root"></div>
+    </div>
+
     <script src="telegram-app.js"></script>
     <script src="telegram-storage.js"></script>
     <script src="notify.js"></script>
     <script>
     (function () {
-        var files = ['leaflet.js', 'db.js', 'rules.js', 'icons.js', 'session.js', 'app.js', 'session-ui.js', 'chargen.js'];
+        var files = ['leaflet.js', 'db.js', 'rules.js', 'icons.js', 'session.js', 'app.js', 'session-ui.js', 'chargen.js', '/dice/pip-dice.js'];
         function load(i) {
             if (i >= files.length) return;
             var s = document.createElement('script');

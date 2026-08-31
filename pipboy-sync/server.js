@@ -513,6 +513,13 @@ const server = http.createServer(async (req, res) => {
         return;
     }
 
+    if (u.pathname.startsWith('/dice')) {
+        const rel = u.pathname.replace(/^\/dice\/?/, '/');
+        const DICE_DIR = path.join(ROOT, 'Fallout App Pip Boy Public Version', 'dice');
+        serveDir(res, req.url, DICE_DIR, rel === '/' || rel === '' ? '/dice-roller.js' : rel);
+        return;
+    }
+
     if (u.pathname.startsWith('/master')) {
         const rel = u.pathname.replace(/^\/master\/?/, '/');
         serveDir(res, req.url, MASTER_DIR, rel === '/' ? '/index.html' : rel);

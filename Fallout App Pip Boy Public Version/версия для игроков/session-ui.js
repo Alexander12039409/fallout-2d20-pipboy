@@ -559,6 +559,8 @@ function showPlayerHub(opts) {
     else if (typeof closeNavDrawer === 'function') closeNavDrawer();
     window.__unlockedCharId = null;
     document.body.classList.remove('player-playing', 'nav-open', 'sys-open', 'player-gated', 'player-autolink');
+    if (typeof closeDiceOverlay === 'function') closeDiceOverlay();
+    if (typeof closePlayerDice === 'function') closePlayerDice();
     document.body.classList.add('player-hub');
     document.body.setAttribute('data-player-panel', 'main');
     const drawer = document.getElementById('char-drawer');

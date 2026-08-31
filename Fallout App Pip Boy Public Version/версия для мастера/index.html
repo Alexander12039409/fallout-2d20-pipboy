@@ -9,6 +9,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Anonymous+Pro:wght@700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="leaflet.css">
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="/dice/dice-roller.css">
+    <link rel="stylesheet" href="/dice/pip-dice.css">
 </head>
 <body>
     <div class="crt-monitor">
@@ -45,6 +47,8 @@
                         <svg viewBox="0 0 24 24"><path d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z"/></svg>
                         ИМПОРТ
                     </button>
+                    <hr class="sys-menu-divider" aria-hidden="true">
+                    <div data-dice-host></div>
                 </div>
                 <input type="file" id="global-import" accept=".js" style="display:none">
             </div>
@@ -619,6 +623,11 @@
 
     <div id="pip-push-host" class="pip-push-host" aria-live="polite"></div>
 
+    <div id="dice-overlay" class="dice-overlay" aria-hidden="true">
+        <button type="button" class="dice-overlay-close" onclick="closeDiceOverlay()" aria-label="Закрыть">×</button>
+        <div id="dice-overlay-root"></div>
+    </div>
+
     <script src="notify.js"></script>
     <script src="leaflet.js"></script>
     <script src="db.js"></script>
@@ -630,5 +639,6 @@
     <script src="session-ui.js"></script>
     <script src="chargen.js"></script>
     <script src="npc-gen.js"></script>
+    <script src="/dice/pip-dice.js"></script>
 </body>
 </html>
