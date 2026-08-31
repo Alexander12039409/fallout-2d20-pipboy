@@ -2,8 +2,18 @@
 (function () {
     const DICE_SRC = '/dice/dice-roller.js';
     const prefs = { count: 2, type: 'd6' };
+    const PIP_THEME = {
+        pip: true,
+        dice: '#1ec81e',
+        number: '#021402',
+        background: '#031203',
+        emissive: '#0a5a0a',
+        emissiveIntensity: 0.2,
+        fontFamily: '"Anonymous Pro", monospace'
+    };
     let app = null;
     let loading = null;
+    let closeTimer = null;
 
     function compact() {
         return window.matchMedia('(max-width: 860px)').matches;
@@ -90,17 +100,22 @@
             requestAnimationFrame(function () { requestAnimationFrame(resolve); });
         });
     }
+    function fontsReady() {
+        if (!document.fonts || !document.fonts.load) return Promise.resolve();
+        return document.fonts.load('700 48px "Anonymous Pro"').then(function () {}, function () {});
+    }
     async function ensureApp() {
         if (app) return app;
         if (loading) return loading;
         const root = document.getElementById('dice-overlay-root');
         if (!root) throw new Error('Нет контейнера кубиков');
-        loading = import(DICE_SRC).then(function (mod) {
+        loading = fontsReady().then(function () { return import(DICE_SRC); }).then(function (mod) {
             const mount = mod.mountDiceRoller || (mod.default && mod.default.mount);
             app = mount(root, {
                 count: prefs.count,
                 type: prefs.type,
                 bindKeys: true,
+                theme: PIP_THEME,
                 onChange: function (s) {
                     prefs.count = s.count;
                     prefs.type = s.type;
@@ -121,8 +136,13 @@
     window.openDiceOverlay = async function (doRoll) {
         const overlay = document.getElementById('dice-overlay');
         if (!overlay) return;
+        if (closeTimer) {
+            clearTimeout(closeTimer);
+            closeTimer = null;
+        }
         closeMenus();
         overlay.classList.add('is-open');
+        overlay.classList.remove('is-hud');
         overlay.setAttribute('aria-hidden', 'false');
         document.body.classList.add('dice-open');
         await nextFrame();
@@ -131,20 +151,23 @@
             a.setType(prefs.type);
             if (prefs.type !== 'd20hit') a.setCount(prefs.count);
             if (a.layout) a.layout();
+            await nextFrame();
+            await new Promise(function (r) { setTimeout(r, 40); });
+            overlay.classList.add('is-hud');
             if (doRoll) a.roll();
         } catch (err) {
             console.warn('DiceRoller', err);
             if (typeof pipNotify === 'function') {
                 pipNotify('Кубики', 'Не удалось загрузить модуль броска.', { kind: 'error' });
             }
-            closeDiceOverlay();
+            closeDiceOverlay(true);
         }
     };
 
-    window.closeDiceOverlay = function () {
+    function teardownDice() {
         const overlay = document.getElementById('dice-overlay');
         if (overlay) {
-            overlay.classList.remove('is-open');
+            overlay.classList.remove('is-open', 'is-hud');
             overlay.setAttribute('aria-hidden', 'true');
         }
         document.body.classList.remove('dice-open');
@@ -153,6 +176,23 @@
         loading = null;
         const root = document.getElementById('dice-overlay-root');
         if (root) root.innerHTML = '';
+    }
+
+    window.closeDiceOverlay = function (immediate) {
+        const overlay = document.getElementById('dice-overlay');
+        if (closeTimer) {
+            clearTimeout(closeTimer);
+            closeTimer = null;
+        }
+        if (!overlay || immediate || !overlay.classList.contains('is-open')) {
+            teardownDice();
+            return;
+        }
+        overlay.classList.remove('is-hud');
+        closeTimer = setTimeout(function () {
+            closeTimer = null;
+            teardownDice();
+        }, 400);
     };
 
     window.togglePlayerDice = function (ev) {

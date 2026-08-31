@@ -336,6 +336,10 @@
             </div>
             <div data-dice-host></div>
         </div>
+        <div id="dice-overlay" class="dice-overlay" aria-hidden="true">
+            <button type="button" class="dice-overlay-close" onclick="closeDiceOverlay()" aria-label="Закрыть">×</button>
+            <div id="dice-overlay-root"></div>
+        </div>
     </div>
 
     <!-- ================= МОДАЛЬНЫЕ ОКНА ================= -->
@@ -576,12 +580,6 @@
     </div>
 
     <div id="pip-push-host" class="pip-push-host" aria-live="polite"></div>
-
-    <div id="dice-overlay" class="dice-overlay" aria-hidden="true">
-        <button type="button" class="dice-overlay-close" onclick="closeDiceOverlay()" aria-label="Закрыть">×</button>
-        <div id="dice-overlay-root"></div>
-    </div>
-
     <script src="telegram-app.js"></script>
     <script src="telegram-storage.js"></script>
     <script src="notify.js"></script>

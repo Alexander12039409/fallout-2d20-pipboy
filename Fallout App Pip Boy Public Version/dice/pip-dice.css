@@ -1,38 +1,155 @@
-/* Pip-Boy chrome around the 3D dice roller. Overlay keeps original HUD. */
+/* Pip-Boy chrome around the 3D dice roller. Overlay lives inside .crt-monitor. */
 .dice-overlay {
     display: none;
-    position: fixed;
+    position: absolute;
     inset: 0;
-    z-index: 30000;
-    background: #10100f;
+    z-index: 2800;
+    background: var(--pip-bg, #031203);
     flex-direction: column;
     min-height: 0;
+    overflow: hidden;
+    border-radius: inherit;
 }
 .dice-overlay.is-open { display: flex; }
 .dice-overlay-close {
     position: absolute;
-    top: calc(10px + env(safe-area-inset-top));
-    right: calc(12px + env(safe-area-inset-right));
-    z-index: 3;
+    top: 8px;
+    right: 8px;
+    z-index: 4;
     width: 44px;
     height: 44px;
-    background: rgba(16, 16, 15, 0.72);
-    border: 1px solid rgba(243, 236, 226, 0.28);
-    color: #f4efe8;
+    background: rgba(3, 18, 3, 0.92);
+    border: 1px solid var(--pip-green);
+    color: var(--pip-green);
     font-family: 'Anonymous Pro', monospace;
-    font-size: 1.3rem;
+    font-size: 1.6rem;
     font-weight: 700;
+    line-height: 1;
     cursor: pointer;
-    border-radius: 12px;
+    text-shadow: 0 0 4px rgba(20, 254, 20, 0.7);
 }
-.dice-overlay-close:hover { background: #efe7d8; color: #1a1612; }
+.dice-overlay-close:hover { background: var(--pip-green); color: #000; text-shadow: none; }
 #dice-overlay-root {
     flex: 1 1 auto;
     min-width: 0;
     min-height: 0;
     width: 100%;
     height: 100%;
+    position: relative;
 }
+
+.dice-overlay .dice-roller {
+    --bg: var(--pip-bg, #031203);
+    --panel: rgba(3, 18, 3, 0.96);
+    --stroke: var(--theme-dim, rgba(20, 254, 20, 0.3));
+    --text: var(--pip-green, #14fe14);
+    --muted: rgba(20, 254, 20, 0.65);
+    --dice: var(--pip-green, #14fe14);
+    background: var(--pip-bg, #031203);
+    color: var(--pip-green, #14fe14);
+    font-family: 'Anonymous Pro', monospace;
+    font-weight: 700;
+    text-shadow: 0 0 4px rgba(20, 254, 20, 0.7);
+}
+.dice-overlay .dice-roller__stage {
+    position: absolute;
+    inset: 0;
+    flex: none;
+}
+.dice-overlay .dice-roller__hud {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    z-index: 2;
+    transform: translateY(110%);
+    transition: transform 0.42s cubic-bezier(0.2, 0.8, 0.2, 1);
+    gap: 8px;
+}
+.dice-overlay.is-hud .dice-roller__hud {
+    transform: translateY(0);
+}
+.dice-overlay .dice-roller__hud::before {
+    content: "";
+    display: block;
+    width: 48px;
+    height: 5px;
+    border-radius: 99px;
+    background: var(--pip-green);
+    opacity: 0.45;
+    margin: 8px auto 2px;
+    flex-shrink: 0;
+}
+.dice-overlay .dice-roller__results {
+    min-height: 40px;
+    padding: 0 12px;
+}
+.dice-overlay .dice-roller__result,
+.dice-overlay .dice-roller__summary {
+    border: 1px solid var(--theme-dim);
+    border-radius: 0;
+    background: rgba(20, 254, 20, 0.06);
+    color: var(--pip-green);
+    font-family: inherit;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+.dice-overlay .dice-roller__result.is-in,
+.dice-overlay .dice-roller__summary.is-in {
+    color: var(--pip-green);
+    background: rgba(20, 254, 20, 0.12);
+}
+.dice-overlay .dice-roller__panel {
+    align-items: flex-end;
+    gap: 10px;
+    padding: 10px 12px calc(12px + env(safe-area-inset-bottom));
+    background: rgba(3, 18, 3, 0.97);
+    border: 1px solid var(--pip-green);
+    border-bottom: 0;
+    border-radius: 16px 16px 0 0;
+    backdrop-filter: none;
+}
+.dice-overlay .dice-roller__label {
+    color: var(--pip-green);
+    opacity: 0.7;
+    font-size: 0.72rem;
+}
+.dice-overlay .dice-roller__count {
+    color: var(--pip-green);
+    font-weight: 700;
+}
+.dice-overlay .dice-roller__icon,
+.dice-overlay .dice-roller__seg,
+.dice-overlay .dice-roller__roll {
+    height: 40px;
+    border-radius: 0;
+    border: 1px solid var(--theme-dim);
+    background: transparent;
+    color: var(--pip-green);
+    font-family: inherit;
+    font-weight: 700;
+    text-transform: uppercase;
+    text-shadow: inherit;
+}
+.dice-overlay .dice-roller__icon:hover:not(:disabled),
+.dice-overlay .dice-roller__seg:hover:not(:disabled):not(.is-active) {
+    background: rgba(20, 254, 20, 0.12);
+    border-color: var(--pip-green);
+}
+.dice-overlay .dice-roller__seg.is-active,
+.dice-overlay .dice-roller__roll {
+    background: var(--pip-green);
+    color: #000;
+    border-color: var(--pip-green);
+    text-shadow: none;
+}
+.dice-overlay .dice-roller__roll:hover:not(:disabled) {
+    filter: brightness(1.08);
+}
+.dice-overlay .dice-roller button:disabled { opacity: 0.4; }
 
 body.dice-open { overflow: hidden; }
 .sys-menu {
