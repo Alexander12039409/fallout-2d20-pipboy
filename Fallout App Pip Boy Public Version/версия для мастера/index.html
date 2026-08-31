@@ -254,9 +254,12 @@
                 <div class="notes-board">
                     <div class="notes-board-head">
                         <div class="notes-board-title">ЗАМЕТКИ СТОЛА</div>
-                        <button class="term-btn" type="button" onclick="openMasterNoteSheet()">+ ЗАМЕТКА</button>
+                        <div class="notes-board-actions">
+                            <button class="term-btn" type="button" onclick="openMasterNoteSheet()">+ ЗАМЕТКА</button>
+                            <button class="term-btn" type="button" onclick="createEncounterGroup()">СОЗДАТЬ ГРУППУ ПРОТИВНИКОВ</button>
+                        </div>
                     </div>
-                    <p class="notes-board-hint">Только для мастера. Игроки эти заметки не видят.</p>
+                    <p class="notes-board-hint">Только для мастера. Игроки эти заметки не видят. Группа противников — карточки с ОЗ и статами по книге.</p>
                     <div id="master-notes-list" class="notes-card-list custom-scrollbar"></div>
                 </div>
             </div>
@@ -575,6 +578,23 @@
         </div>
     </div>
 
+    <div class="modal-overlay" id="npc-modal">
+        <div class="terminal-modal chargen-wizard-box npc-wizard-box" role="dialog" aria-modal="true">
+            <div class="sheet-handle" aria-hidden="true"></div>
+            <div class="sheet-head">
+                <h2>НОВЫЙ ПРОТИВНИК</h2>
+                <button type="button" class="sheet-close" onclick="closeNpcWizard()" aria-label="Закрыть">X</button>
+            </div>
+            <div class="chargen-steps" id="npc-steps"></div>
+            <div class="chargen-body custom-scrollbar" id="npc-body"></div>
+            <p class="chargen-hint" id="npc-hint" role="status"></p>
+            <div class="term-actions">
+                <button type="button" class="term-btn danger" id="npc-back" onclick="npcWizBack()">НАЗАД</button>
+                <button type="button" class="term-btn" id="npc-next" onclick="npcWizNext()">ПРОДОЛЖИТЬ</button>
+            </div>
+        </div>
+    </div>
+
     <div class="modal-overlay" id="session-char-modal">
         <div class="terminal-modal" role="dialog" aria-modal="true">
             <div class="sheet-handle" aria-hidden="true"></div>
@@ -600,5 +620,6 @@
     <script src="app.js"></script>
     <script src="session-ui.js"></script>
     <script src="chargen.js"></script>
+    <script src="npc-gen.js"></script>
 </body>
 </html>

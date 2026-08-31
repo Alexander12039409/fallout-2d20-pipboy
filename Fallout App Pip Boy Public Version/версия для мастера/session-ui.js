@@ -292,13 +292,16 @@ function renderMasterNotes(list) {
     if (!host) return;
     const notes = Array.isArray(list) ? list : masterNotesList();
     if (!notes.length) {
-        host.innerHTML = '<div class="notes-empty">Нет заметок стола. Нажмите «+ Заметка».</div>';
+        host.innerHTML = '<div class="notes-empty">Нет заметок стола. Нажмите «+ Заметка» или создайте группу противников.</div>';
         return;
     }
     const esc = (typeof escapePipHtml === 'function') ? escapePipHtml : function (s) {
         return String(s || '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
     };
     host.innerHTML = notes.map(n => {
+        if (n && n.kind === 'encounter' && typeof renderEncounterCard === 'function') {
+            return renderEncounterCard(n);
+        }
         const title = esc(n.title || 'Заметка');
         const text = esc(n.text || '');
         return '<div class="note-card" onclick="openMasterNoteSheet(\'' + n.id + '\')">' +
@@ -329,7 +332,10 @@ function saveMasterNote(noteId, title, text) {
     const notes = masterNotesList().map(n => Object.assign({}, n));
     if (noteId) {
         const note = notes.find(n => n.id === noteId);
-        if (note) { note.title = title; note.text = text; }
+        if (note) {
+            if (note.kind === 'encounter') { note.title = title; }
+            else { note.title = title; note.text = text; }
+        }
         else notes.unshift({ id: noteId, title: title, text: text });
     } else {
         notes.unshift({

@@ -66,6 +66,113 @@ function loadAll() {
     }
 }
 
+function clipStr(s, n) {
+    return String(s == null ? '' : s).slice(0, n);
+}
+function clipInt(n, min, max) {
+    n = parseInt(n, 10);
+    if (!Number.isFinite(n)) n = 0;
+    return Math.max(min, Math.min(max, n));
+}
+function sanitizeFoeGear(g) {
+    if (!g || typeof g !== 'object') return null;
+    const type = ['weapon', 'armor', 'item'].includes(g.type) ? g.type : 'item';
+    const mods = {};
+    if (g.mods && typeof g.mods === 'object') {
+        Object.keys(g.mods).slice(0, 12).forEach((k) => {
+            mods[clipStr(k, 40)] = clipInt(g.mods[k], 0, 40);
+        });
+    }
+    return {
+        type,
+        baseId: clipStr(g.baseId || g.title, 80),
+        title: clipStr(g.title || g.baseId, 120),
+        desc: clipStr(g.desc, 200),
+        qty: g.qty == null ? undefined : clipInt(g.qty, 0, 99),
+        mods
+    };
+}
+function sanitizeFoe(f) {
+    if (!f || typeof f !== 'object') return null;
+    const kind = f.kind === 'character' ? 'character' : 'creature';
+    const rank = ['ordinary', 'powerful', 'known', 'legendary', 'major'].includes(f.rank) ? f.rank : 'ordinary';
+    const special = (f.special && typeof f.special === 'object') ? {
+        str: clipInt(f.special.str, 0, 12),
+        per: clipInt(f.special.per, 0, 12),
+        end: clipInt(f.special.end, 0, 12),
+        cha: clipInt(f.special.cha, 0, 12),
+        int: clipInt(f.special.int, 0, 12),
+        agi: clipInt(f.special.agi, 0, 12),
+        luc: clipInt(f.special.luc, 0, 12)
+    } : undefined;
+    const skills = {};
+    if (f.skills && typeof f.skills === 'object') {
+        Object.keys(f.skills).slice(0, 20).forEach((k) => {
+            skills[clipStr(k, 24)] = clipInt(f.skills[k], 0, 6);
+        });
+    }
+    const dr = (f.dr && typeof f.dr === 'object') ? {
+        phys: clipInt(f.dr.phys, 0, 99),
+        energy: clipInt(f.dr.energy, 0, 99),
+        rad: clipInt(f.dr.rad, 0, 99),
+        tox: clipInt(f.dr.tox, 0, 99)
+    } : { phys: 0, energy: 0, rad: 0, tox: 0 };
+    return {
+        id: clipStr(f.id, 80) || ('foe_' + Date.now()),
+        templateId: clipStr(f.templateId, 40),
+        name: clipStr(f.name, 80) || 'Противник',
+        group: f.group === 'human' ? 'human' : 'monster',
+        kind,
+        rank,
+        level: clipInt(f.level, 1, 30),
+        xp: clipInt(f.xp, 0, 9999),
+        hp: clipInt(f.hp, 0, 999),
+        hpMax: clipInt(f.hpMax, 0, 999),
+        body: f.body == null ? undefined : clipInt(f.body, 0, 12),
+        mind: f.mind == null ? undefined : clipInt(f.mind, 0, 12),
+        melee: f.melee == null ? undefined : clipInt(f.melee, 0, 6),
+        ranged: f.ranged == null ? undefined : clipInt(f.ranged, 0, 6),
+        other: f.other == null ? undefined : clipInt(f.other, 0, 6),
+        special,
+        skills,
+        tagged: Array.isArray(f.tagged) ? f.tagged.slice(0, 6).map((s) => clipStr(s, 24)) : [],
+        def: clipInt(f.def, 0, 5),
+        init: clipInt(f.init, 0, 40),
+        meleeBonus: clipInt(f.meleeBonus, 0, 5),
+        luckPts: clipInt(f.luckPts, 0, 12),
+        wealth: clipInt(f.wealth, 0, 10),
+        size: clipStr(f.size, 16),
+        dr,
+        immune: Array.isArray(f.immune) ? f.immune.slice(0, 6).map((s) => clipStr(s, 16)) : [],
+        traits: Array.isArray(f.traits) ? f.traits.slice(0, 8).map((s) => clipStr(s, 80)) : [],
+        attacks: Array.isArray(f.attacks) ? f.attacks.slice(0, 8).map((a) => ({
+            name: clipStr(a && a.name, 80),
+            tn: clipInt(a && a.tn, 0, 30),
+            dmg: clipInt(a && a.dmg, 0, 30),
+            extra: clipStr(a && a.extra, 120)
+        })) : [],
+        gear: Array.isArray(f.gear) ? f.gear.slice(0, 16).map(sanitizeFoeGear).filter(Boolean) : []
+    };
+}
+function sanitizeMasterNotes(list) {
+    return (Array.isArray(list) ? list : []).slice(0, 80).map((n) => {
+        if (!n || typeof n !== 'object') return null;
+        const id = clipStr(n.id, 80) || ('note_' + Date.now());
+        if (n.kind === 'encounter') {
+            return {
+                id,
+                kind: 'encounter',
+                title: clipStr(n.title, 80) || 'Группа противников',
+                foes: Array.isArray(n.foes) ? n.foes.slice(0, 24).map(sanitizeFoe).filter(Boolean) : []
+            };
+        }
+        const title = clipStr(n.title, 80);
+        const text = clipStr(n.text, 8000);
+        if (!title && !text) return null;
+        return { id, title, text };
+    }).filter(Boolean);
+}
+
 function saveSession(sess) {
     ensureDirs();
     const copy = Object.assign({}, sess);
@@ -307,11 +414,7 @@ async function handleApi(req, res, u) {
             if (!isMaster(req, sess)) return send(res, 403, { error: 'master only' });
             const body = await readBody(req);
             const list = Array.isArray(body.notes) ? body.notes : [];
-            sess.masterNotes = list.map((n) => ({
-                id: String((n && n.id) || ('note_' + Date.now())),
-                title: String((n && n.title) || '').slice(0, 80),
-                text: String((n && n.text) || '').slice(0, 8000)
-            })).filter((n) => n.title || n.text);
+            sess.masterNotes = sanitizeMasterNotes(list);
             saveSession(sess);
             broadcast(id, 'notes', { notes: sess.masterNotes, from: req.headers['x-client-id'] || '' });
             return send(res, 200, { ok: true });

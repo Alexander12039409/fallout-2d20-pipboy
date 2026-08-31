@@ -517,7 +517,8 @@ parseCSV(weapons_csv).forEach(c => {
     let wName = c[1];
     weaponDB.weapons[wName] = {
         category: c[0], baseDamage: parseInt(c[2]) || 0, type: c[4],
-        fireRate: parseInt(c[5]) || 0, range: c[6], qualities: [], slots: {}, aliases: []
+        fireRate: parseInt(c[5]) || 0, range: c[6], qualities: [], slots: {}, aliases: [],
+        rarity: parseInt(c[10], 10) || 0
     };
     if (c[3] && c[3] !== '–') weaponDB.weapons[wName].qualities.push(...c[3].split(',').map(s=>s.trim()));
     if (c[7] && c[7] !== '–') weaponDB.weapons[wName].qualities.push(...c[7].split(',').map(s=>s.trim()));
@@ -961,7 +962,12 @@ Object.keys(weaponDB.weapons).forEach(wName => {
     });
 });
 
-parseCSV(armor_csv).forEach(c => dbItems.push({ name: c[1], type: 'armor', category: c[0], desc: `Физ:${c[2]} Энерг:${c[3]} Рад:${c[4]} | Обл:${c[5]} | Особ:${c[9] || '–'}` }));
+parseCSV(armor_csv).forEach(c => dbItems.push({
+    name: c[1], type: 'armor', category: c[0],
+    rarity: parseInt(c[8], 10) || 0,
+    phys: c[2], energy: c[3], rad: c[4], loc: c[5],
+    desc: `Физ:${c[2]} Энерг:${c[3]} Рад:${c[4]} | Обл:${c[5]} | Особ:${c[9] || '–'}`
+}));
 parseCSV(consumables_csv).forEach(c => dbItems.push({ name: c[0], type: 'consumable', category: c[2] || 'Расходники', desc: c[1] }));
 
 const BUILTIN_DB_VERSION = 6;
@@ -1006,6 +1012,7 @@ if (savedDB) {
             return;
         }
         const dst = masterDB.weapons[name];
+        if (src.rarity != null && dst.rarity == null) { dst.rarity = src.rarity; added = true; }
         if (!dst.slots) dst.slots = {};
         Object.keys(src.slots || {}).forEach(slot => {
             if (!dst.slots[slot]) {
