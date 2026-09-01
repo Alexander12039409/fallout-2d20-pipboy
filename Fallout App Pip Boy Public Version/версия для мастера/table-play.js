@@ -20,7 +20,20 @@
     }
 
     function diceSvg() {
-        return '<svg class="skill-roll-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="8" r="1.5"/><circle cx="16" cy="8" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="8" cy="16" r="1.5"/><circle cx="16" cy="16" r="1.5"/></svg>';
+        /* Диметрический куб: низкая крышка и высокие бока, чтобы не схлопывался в квадрат/шестиугольник. */
+        return '<svg class="skill-roll-ico" viewBox="0 0 24 24" aria-hidden="true">' +
+            '<path fill="currentColor" fill-opacity="0.34" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" d="M12 2.4 L21.6 6.6 L12 10.8 L2.4 6.6 Z"/>' +
+            '<path fill="currentColor" fill-opacity="0.16" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" d="M2.4 6.6 L12 10.8 V21.4 L2.4 17.2 Z"/>' +
+            '<path fill="currentColor" fill-opacity="0.08" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" d="M21.6 6.6 L12 10.8 V21.4 L21.6 17.2 Z"/>' +
+            '<g fill="currentColor">' +
+            '<circle cx="12" cy="6.6" r="1.15"/>' +
+            '<circle cx="6.6" cy="12.2" r="1.05"/>' +
+            '<circle cx="7.7" cy="15.6" r="1.05"/>' +
+            '<circle cx="6.6" cy="18.9" r="1.05"/>' +
+            '<circle cx="16.5" cy="11.6" r="1"/>' +
+            '<circle cx="17.7" cy="14.9" r="1"/>' +
+            '<circle cx="16.4" cy="18.2" r="1"/>' +
+            '</g></svg>';
     }
 
     /* ---------- ОД стола ---------- */
@@ -148,6 +161,38 @@
         window.__dicePlay = false;
     }
 
+    function locMetaOf(key) {
+        const m = (typeof HIT_LOCS !== 'undefined' && HIT_LOCS[key]) ? HIT_LOCS[key] : null;
+        return { label: (m && (m.label || m.title)) || key, title: (m && (m.title || m.label)) || key };
+    }
+
+    function checkStep(id, val, minusFn, plusFn, extraHtml) {
+        return '<div class="check-step"><button type="button" class="caps-btn" onclick="' + minusFn + '">−</button>' +
+            '<span class="check-step-val" id="' + id + '">' + val + '</span>' +
+            '<button type="button" class="caps-btn" onclick="' + plusFn + '">+</button>' +
+            (extraHtml || '') + '</div>';
+    }
+
+    function checkRow(label, note, controlHtml) {
+        return '<div class="check-row"><div class="check-row-text"><div class="check-row-label">' + label + '</div>' +
+            (note ? '<div class="check-row-note">' + note + '</div>' : '') +
+            '</div>' + controlHtml + '</div>';
+    }
+
+    function reportHero(main, where, sub, ok) {
+        return '<div class="dice-report-hero' + (ok ? ' is-ok' : ' is-bad') + '">' +
+            '<div class="dice-report-hero-main">' + main + '</div>' +
+            (where ? '<div class="dice-report-hero-where">' + where + '</div>' : '') +
+            (sub ? '<div class="dice-report-hero-sub">' + sub + '</div>' : '') +
+            '</div>';
+    }
+
+    function reportDetails(lines, extraHtml) {
+        const mods = reportMods(lines);
+        if (!mods && !extraHtml) return '';
+        return '<div class="dice-report-details">' + (mods || '') + (extraHtml || '') + '</div>';
+    }
+
     function skillDiceHtml(detail) {
         return '<div class="check-dice">' + (detail || []).map(function (d) {
             return '<span class="check-die' + (d.ok ? ' is-ok' : '') + (d.note === 'осложнение' ? ' is-bad' : '') + '" title="' + esc(d.note || '') + '">' + esc(String(d.die)) + '</span>';
@@ -215,21 +260,20 @@
         const tagged = typeof taggedSkillsOf === 'function' && taggedSkillsOf(char).indexOf(skillId) !== -1;
         const ap = currentAp();
         openCheckSheet('ПРОВЕРКА: ' + (ruName || skillId).toUpperCase(),
-            '<p class="check-meta">Цель <b>' + tn + '</b> · ранг ' + rank + (tagged ? ' · отмеченный (крит ≤ ранга)' : '') + '</p>' +
-            '<label class="inv-field-label">СЛОЖНОСТЬ</label>' +
-            '<div class="check-step"><button type="button" class="caps-btn" onclick="checkAdjDiff(-1)">−</button>' +
-            '<span id="check-diff">1</span>' +
-            '<button type="button" class="caps-btn" onclick="checkAdjDiff(1)">+</button></div>' +
-            '<label class="inv-field-label">ДОП. D20 ДО БРОСКА</label>' +
-            '<div class="check-step"><button type="button" class="caps-btn" onclick="checkAdjExtra(-1)">−</button>' +
-            '<span id="check-extra">0</span>' +
-            '<button type="button" class="caps-btn" onclick="checkAdjExtra(1)">+</button>' +
-            '<span class="check-hint">стоимость <span id="check-extra-cost">0</span> ОД (1 / 3 / 6)</span></div>' +
-            '<p class="check-hint">В пуле группы сейчас ' + ap.pool + ' ОД. Не хватает — можно дать ОД мастеру (книга стр. 19).</p>' +
-            '<label class="check-opt"><input type="checkbox" id="check-give-gm"> Если своих ОД мало — дать недостающее мастеру</label>' +
+            '<div class="check-lead"><div class="check-lead-num"><div class="check-lead-tn">' + tn + '</div><div class="check-lead-lab">цель</div></div>' +
+            '<div class="check-lead-meta"><div class="check-lead-name">ранг ' + rank + '</div>' +
+            (tagged ? '<div class="check-row-note">отмеченный · крит ≤ ранга</div>' : '') +
+            '</div></div>' +
+            '<div class="check-block"><div class="check-block-title">Бросок</div>' +
+            checkRow('Сложность', 'сколько успехов нужно', checkStep('check-diff', '1', 'checkAdjDiff(-1)', 'checkAdjDiff(1)')) +
+            checkRow('Доп. d20', 'до броска · 1 / 3 / 6 ОД', checkStep('check-extra', '0', 'checkAdjExtra(-1)', 'checkAdjExtra(1)',
+                '<span class="check-step-cost"><span id="check-extra-cost">0</span> ОД</span>')) +
+            '</div>' +
+            '<div class="check-block check-block-muted">' +
+            '<label class="check-opt"><input type="checkbox" id="check-give-gm"> Нехватку ОД отдать мастеру</label>' +
+            '<p class="check-row-note">В пуле группы ' + ap.pool + ' ОД</p></div>' +
             '<div class="term-actions"><button class="term-btn danger" onclick="closeCheckSheet()">ОТМЕНА</button>' +
-            '<button class="term-btn" onclick="runSkillCheck(\'' + skillId + '\')">БРОСИТЬ</button></div>' +
-            '<div id="check-result" class="check-result" hidden></div>');
+            '<button class="term-btn" onclick="runSkillCheck(\'' + skillId + '\')">БРОСИТЬ</button></div>');
         window.__checkDiff = 1;
         window.__checkExtra = 0;
     };
@@ -271,19 +315,20 @@
         const pass = ev.successes >= diff;
         finishDicePlay(
             '<div class="dice-report-kicker">' + esc(title) + '</div>' +
-            skillDiceHtml(ev.detail) +
-            reportMods([
-                'Цель <b>' + tn + '</b> · ранг ' + rank + (tagged ? ' · отмеченный (крит ≤ ранга)' : ''),
-                'Сложность <b>' + diff + '</b>',
-                extra ? ('Доп. d20: ' + extra + ' · стоимость ' + cost + ' ОД' + (pay.given ? ' · мастеру ' + pay.given : '')) : '',
-                (pass ? '<b>УСПЕХ</b>' : '<b>ПРОВАЛ</b>') + ': ' + ev.successes + ' успех(ов) против сложности ' + diff,
+            reportHero(
+                pass ? 'УСПЕХ' : 'ПРОВАЛ',
+                ev.successes + ' успех. · сл. ' + diff,
                 leftover ? '+' + leftover + ' ОД в пул группы' : '',
-                ev.complications ? 'Осложнений: ' + ev.complications : '',
+                pass
+            ) +
+            (ev.complications ? '<p class="dice-report-warn">осложнений: ' + ev.complications + '</p>' : '') +
+            reportDetails([
+                'Цель ' + tn + ' · ранг ' + rank + (tagged ? ' · отмеченный' : ''),
+                extra ? ('Доп. d20: ' + extra + ' · ' + cost + ' ОД' + (pay.given ? ' · мастеру ' + pay.given : '')) : '',
                 pay.given ? 'Мастеру отдано ' + pay.given + ' ОД' : ''
-            ]) +
-            '<p class="check-hint">' + ev.detail.map(function (d) {
+            ], skillDiceHtml(ev.detail) + '<p class="check-hint">' + ev.detail.map(function (d) {
                 return d.die + ' — ' + (d.note || '') + (d.ok ? ' ×' + d.ok : '');
-            }).join(' · ') + '</p>'
+            }).join(' · ') + '</p>')
         );
         renderApBar();
     };
@@ -319,31 +364,49 @@
         const strBonus = melee && typeof meleeDamageBonus === 'function' ? meleeDamageBonus(char) : 0;
         window.__atk = { idx: invIndex, dmg: dmg, fr: fr, quals: quals, melee: melee, gatling: gatling, inaccurate: inaccurate, accurate: accurate, unreliable: unreliable, skillId: skillId, ammo: ammoHave, strBonus: strBonus };
         const locOpts = (typeof HIT_LOCS !== 'undefined' ? Object.keys(HIT_LOCS) : ['head', 'torso', 'larm', 'rarm', 'lleg', 'rleg']).map(function (k) {
-            const meta = (typeof HIT_LOCS !== 'undefined' && HIT_LOCS[k]) ? HIT_LOCS[k] : { title: k };
-            return '<option value="' + k + '">' + esc(meta.title || meta.label || k) + '</option>';
+            const meta = locMetaOf(k);
+            return '<option value="' + k + '">' + esc(meta.title) + '</option>';
         }).join('');
+        const ap = currentAp();
+        const chips = ['<span class="check-chip">' + dmg + ' БК</span>']
+            .concat(fr ? ['<span class="check-chip">СКР ' + fr + '</span>'] : [])
+            .concat(melee ? ['<span class="check-chip">ближний</span>'] : ['<span class="check-chip">' + ammoHave + ' патр.</span>'])
+            .concat(strBonus ? ['<span class="check-chip">СИЛ +' + strBonus + '</span>'] : [])
+            .join('');
+        const qualChips = quals.length
+            ? '<div class="check-chips check-chips-quiet">' + quals.map(function (q) {
+                return '<span class="check-chip">' + esc(q) + '</span>';
+            }).join('') + '</div>'
+            : '';
         openCheckSheet('АТАКА: ' + (typeof weaponDisplayName === 'function' ? weaponDisplayName(item) : (item.title || item.baseId)),
-            '<p class="check-meta">' + esc(skillName[0]) + ' цель <b>' + tn + '</b> · ' + dmg + ' БК · СКР ' + fr +
-            (melee ? ' · ближний/метательное' : ' · патронов ' + ammoHave) +
-            (strBonus ? ' · СИЛ +' + strBonus + ' БК' : '') + '</p>' +
-            '<p class="check-hint">Свойства: ' + esc(quals.join(', ') || '—') + '</p>' +
-            '<label class="inv-field-label">СЛОЖНОСТЬ (защита цели + дальность/укрытие)</label>' +
-            '<div class="check-step"><button type="button" class="caps-btn" onclick="checkAdjDiff(-1)">−</button><span id="check-diff">1</span><button type="button" class="caps-btn" onclick="checkAdjDiff(1)">+</button></div>' +
-            '<label class="inv-field-label">ДОП. D20 ДО БРОСКА</label>' +
-            '<div class="check-step"><button type="button" class="caps-btn" onclick="checkAdjExtra(-1)">−</button><span id="check-extra">0</span><button type="button" class="caps-btn" onclick="checkAdjExtra(1)">+</button>' +
-            '<span class="check-hint">ОД <span id="check-extra-cost">0</span></span></div>' +
+            '<div class="check-lead"><div class="check-lead-num"><div class="check-lead-tn">' + tn + '</div><div class="check-lead-lab">цель</div></div>' +
+            '<div class="check-lead-meta"><div class="check-lead-name">' + esc(skillName[0]) + '</div>' +
+            '<div class="check-chips">' + chips + '</div>' + qualChips +
+            '</div></div>' +
+            '<div class="check-block"><div class="check-block-title">Проверка</div>' +
+            checkRow('Сложность', 'защита цели, дальность, укрытие', checkStep('check-diff', '1', 'checkAdjDiff(-1)', 'checkAdjDiff(1)')) +
+            checkRow('Доп. d20', 'до броска · 1 / 3 / 6 ОД', checkStep('check-extra', '0', 'checkAdjExtra(-1)', 'checkAdjExtra(1)',
+                '<span class="check-step-cost"><span id="check-extra-cost">0</span> ОД</span>')) +
+            '</div>' +
+            '<div class="check-block"><div class="check-block-title">Урон</div>' +
             (melee
-                ? '<label class="inv-field-label">+БК ЗА ОД ПОСЛЕ ПОПАДАНИЯ (макс. 3, только из пула группы)</label><div class="check-step"><button type="button" class="caps-btn" onclick="atkAdjMelee(-1)">−</button><span id="atk-melee">0</span><button type="button" class="caps-btn" onclick="atkAdjMelee(1)">+</button></div>'
-                : '<label class="inv-field-label">ДОП. ПАТРОНЫ НА СКОРОСТРЕЛЬНОСТЬ (0…' + fr + ')</label><div class="check-step"><button type="button" class="caps-btn" onclick="atkAdjAmmo(-1)">−</button><span id="atk-ammo">0</span><button type="button" class="caps-btn" onclick="atkAdjAmmo(1)">+</button></div>' +
-                    (gatling ? '<p class="check-hint">Гатлинг: очередь 10 патронов, доп. очередь +2 БК.</p>' : '')) +
-            '<label class="check-opt"><input type="checkbox" id="atk-aim"' + (inaccurate ? ' disabled' : '') + ' onchange="atkAimChanged()"> Прицеливание (+1 БК' + (accurate ? '; «Точное»: после этого можно ОД вместо патронов' : '') + ')</label>' +
-            (accurate ? '<div id="atk-accurate-wrap" hidden><label class="inv-field-label">ОД НА БК («Точное», макс. 3, не смешивать с СКР)</label><div class="check-step"><button type="button" class="caps-btn" onclick="atkAdjAccurate(-1)">−</button><span id="atk-accurate">0</span><button type="button" class="caps-btn" onclick="atkAdjAccurate(1)">+</button></div></div>' : '') +
-            '<label class="check-opt"><input type="checkbox" id="atk-called"> Прицел в зону (сложность +1, зону выбираете сами)</label>' +
-            '<select id="atk-loc" class="term-input"><option value="">Случайная зона (d20)</option>' + locOpts + '</select>' +
+                ? checkRow('+БК за ОД', 'после попадания, макс. 3, только из пула', checkStep('atk-melee', '0', 'atkAdjMelee(-1)', 'atkAdjMelee(1)'))
+                : checkRow('Очередь СКР', 'доп. патроны 0…' + fr, checkStep('atk-ammo', '0', 'atkAdjAmmo(-1)', 'atkAdjAmmo(1)')) +
+                    (gatling ? '<p class="check-row-note">Гатлинг: очередь 10 патронов, доп. очередь +2 БК</p>' : '')) +
+            '<div class="check-opts"><label class="check-opt"><input type="checkbox" id="atk-aim"' + (inaccurate ? ' disabled' : '') + ' onchange="atkAimChanged()"> Прицеливание (+1 БК' + (accurate ? ', «Точное»)' : ')') + '</label></div>' +
+            (accurate ? '<div id="atk-accurate-wrap" hidden>' +
+                checkRow('ОД на БК', '«Точное», макс. 3, не смешивать с СКР', checkStep('atk-accurate', '0', 'atkAdjAccurate(-1)', 'atkAdjAccurate(1)')) +
+                '</div>' : '') +
+            '</div>' +
+            '<div class="check-block"><div class="check-block-title">Зона</div>' +
+            '<div class="check-opts"><label class="check-opt"><input type="checkbox" id="atk-called"> Прицел в зону (+1 к сложности)</label></div>' +
+            '<select id="atk-loc" class="term-input check-loc"><option value="">Случайная зона (d20)</option>' + locOpts + '</select>' +
+            '</div>' +
+            '<div class="check-block check-block-muted">' +
             '<label class="check-opt"><input type="checkbox" id="check-give-gm"> Нехватку ОД на доп. d20 отдать мастеру</label>' +
+            '<p class="check-row-note">В пуле группы ' + ap.pool + ' ОД</p></div>' +
             '<div class="term-actions"><button class="term-btn danger" onclick="closeCheckSheet()">ОТМЕНА</button>' +
-            '<button class="term-btn" onclick="runAttackCheck()">БРОСИТЬ</button></div>' +
-            '<div id="check-result" class="check-result" hidden></div>');
+            '<button class="term-btn" onclick="runAttackCheck()">БРОСИТЬ</button></div>');
         window.__checkDiff = 1;
         window.__checkExtra = 0;
         window.__atkAmmo = 0;
@@ -445,14 +508,18 @@
         const leftover = pass ? Math.max(0, ev.successes - diff) : 0;
         if (leftover) pushAp({ poolDelta: leftover });
         let locLine = '';
+        let locLabel = '';
         let locChips = '';
         let cdChips = '';
         let cdLine = '';
         let trigHtml = '';
+        let trigSummary = '';
         let usedMelee = 0;
         let usedAccurate = 0;
         let meleeNote = '';
         let accNote = '';
+        let dmgTotal = null;
+        let effectsTotal = 0;
         if (pass) {
             if (meleeExtra) {
                 const meleePay = spendGroupAp(meleeExtra, false);
@@ -473,15 +540,18 @@
             let locKey;
             if (called && chosenLoc) {
                 locKey = chosenLoc;
-                locLine = 'Зона (прицел): ' + esc(((typeof HIT_LOCS !== 'undefined' && HIT_LOCS[locKey]) ? HIT_LOCS[locKey].title : locKey));
+                const meta = locMetaOf(locKey);
+                locLabel = meta.label;
+                locLine = 'Зона (прицел): ' + esc(meta.title);
             } else {
                 dicePlayWait('Зона попадания…');
                 const locRoll = await rollValues('d20', 1);
                 const locN = parseInt(locRoll[0], 10) || 1;
                 locKey = hitLocKeyFromD20(locN);
-                const locMeta = (typeof HIT_LOCS !== 'undefined' && HIT_LOCS[locKey]) ? HIT_LOCS[locKey] : { title: locKey };
+                const meta = locMetaOf(locKey);
+                locLabel = meta.label;
                 locChips = '<div class="check-dice"><span class="check-die">' + locN + '</span></div>';
-                locLine = 'Зона: d20=' + locN + ' → ' + esc(locMeta.title);
+                locLine = 'Зона: d20=' + locN + ' → ' + esc(meta.title);
             }
             const cdCount = Math.max(0, atk.dmg + cdBonus);
             if (cdCount) {
@@ -489,9 +559,12 @@
                 const cdVals = await rollValues('d6', cdCount);
                 const tally = tallyCombatDice(cdVals);
                 const trig = describeTriggeredQuals(atk.quals, tally.effects);
+                dmgTotal = tally.damage;
+                effectsTotal = tally.effects;
                 cdChips = cdDiceHtml(cdVals);
                 cdLine = 'БК ×' + cdCount + ': ' + tally.damage + ' урона' + (tally.effects ? ' + ' + tally.effects + ' эффект(ов)' : '');
                 if (trig.length) {
+                    trigSummary = trig.map(function (t) { return esc(t.name) + ' ×' + t.times; }).join(' · ');
                     trigHtml = '<ul class="check-quals">' + trig.map(function (t) {
                         return '<li><b>' + esc(t.name) + '</b> ×' + t.times + ': ' + esc(t.text) + '</li>';
                     }).join('') + '</ul>';
@@ -516,29 +589,39 @@
         if (usedAccurate) cdParts.push('«Точное» +' + usedAccurate + ' БК');
         if (usedMelee) cdParts.push('ближний ОД +' + usedMelee + ' БК');
         if (atk.strBonus) cdParts.push('СИЛ +' + atk.strBonus + ' БК');
+        let heroMain;
+        let heroWhere = '';
+        let heroSub = '';
+        if (!pass) {
+            heroMain = 'ПРОМАХ';
+            heroSub = ev.successes + ' успех. · сл. ' + diff;
+        } else {
+            heroMain = dmgTotal != null ? (dmgTotal + ' урона') : 'ПОПАДАНИЕ';
+            heroWhere = locLabel ? ('в ' + esc(locLabel)) : '';
+            const subBits = [];
+            if (effectsTotal) subBits.push(effectsTotal + ' эфф.');
+            if (trigSummary) subBits.push(trigSummary);
+            heroSub = subBits.join(' · ');
+        }
         finishDicePlay(
             '<div class="dice-report-kicker">' + esc(title) + '</div>' +
-            skillDiceHtml(ev.detail) +
-            (locChips || '') +
-            (cdChips || '') +
-            reportMods([
-                'Цель <b>' + tn + '</b> · ранг ' + rank + (tagged ? ' · отмеченный' : '') + (atk.unreliable ? ' · осложнение с 19' : ''),
-                'Сложность <b>' + diff + '</b>' + (called ? ' (включая +1 за прицел в зону)' : ''),
-                extra ? ('Доп. d20: ' + extra + ' · стоимость ' + cost + ' ОД' + (pay.given ? ' · мастеру ' + pay.given : '')) : '',
-                (pass ? '<b>ПОПАДАНИЕ</b>' : '<b>ПРОМАХ</b>') + ': ' + ev.successes + ' успех(ов) против сложности ' + diff,
+            reportHero(heroMain, heroWhere, heroSub, pass) +
+            (ev.complications ? '<p class="dice-report-warn">осложнений: ' + ev.complications + '</p>' : '') +
+            reportDetails([
+                pass ? 'Попадание: ' + ev.successes + ' успех. / сл. ' + diff : '',
                 leftover ? '+' + leftover + ' ОД в пул группы' : '',
-                ev.complications ? 'Осложнений: ' + ev.complications : '',
+                'Цель ' + tn + ' · ранг ' + rank + (tagged ? ' · отмеченный' : '') + (atk.unreliable ? ' · осложнение с 19' : ''),
+                extra ? ('Доп. d20: ' + extra + ' · ' + cost + ' ОД' + (pay.given ? ' · мастеру ' + pay.given : '')) : '',
                 locLine,
                 pass ? ('БК: ' + cdParts.join(' + ')) : '',
                 cdLine,
                 ammoNeed ? '−' + ammoNeed + ' патр.' : '',
                 meleeNote,
                 accNote
-            ]) +
-            trigHtml +
-            '<p class="check-hint">' + ev.detail.map(function (d) {
-                return d.die + ' — ' + (d.note || '') + (d.ok ? ' ×' + d.ok : '');
-            }).join(' · ') + (pass ? '. Урон по цели лист не снимает — назовите зону и число мастеру. СУ зоны вычитается из урона.' : '') + '</p>'
+            ], skillDiceHtml(ev.detail) + (locChips || '') + (cdChips || '') + (trigHtml || '') +
+                '<p class="check-hint">' + ev.detail.map(function (d) {
+                    return d.die + ' — ' + (d.note || '') + (d.ok ? ' ×' + d.ok : '');
+                }).join(' · ') + (pass ? '. Урон по цели лист не снимает — назовите зону и число мастеру. СУ зоны вычитается из урона.' : '') + '</p>')
         );
         renderApBar();
     };

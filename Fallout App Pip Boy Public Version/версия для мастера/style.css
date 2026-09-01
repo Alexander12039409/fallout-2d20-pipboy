@@ -1214,6 +1214,8 @@ body.player-playing #char-drawer {
     .chargen-derived { grid-template-columns: repeat(3, 1fr); }
     .chargen-origin-card { min-height: 44px; }
     .skill-tag-dot { width: 36px; height: 36px; min-width: 36px; }
+    .skill-roll-btn { width: 38px; height: 38px; min-width: 38px; }
+    .skill-roll-ico { width: 26px; height: 26px; }
     .term-btn { min-height: 44px; }
     .term-actions { gap: 10px; }
     .term-actions .term-btn { flex: 1; }
@@ -1515,14 +1517,14 @@ body.player-gated #table-ap-bar,
 body.player-hub #table-ap-bar { display: none !important; }
 body.player-playing #table-ap-bar:not([hidden]) { display: flex; }
 .skill-roll-btn {
-    width: 22px;
-    height: 22px;
-    min-width: 22px;
+    width: 34px;
+    height: 34px;
+    min-width: 34px;
     padding: 0;
     border: none;
     background: transparent;
     color: var(--pip-green);
-    opacity: 0.4;
+    opacity: 0.88;
     cursor: pointer;
     display: inline-flex;
     align-items: center;
@@ -1530,9 +1532,9 @@ body.player-playing #table-ap-bar:not([hidden]) { display: flex; }
     flex-shrink: 0;
 }
 .skill-roll-btn:hover,
-.skill-roll-btn:focus { opacity: 0.95; outline: none; }
-.skill-roll-ico { width: 13px; height: 13px; fill: currentColor; }
-.wep-roll-btn { margin-left: 4px; }
+.skill-roll-btn:focus { opacity: 1; outline: none; }
+.skill-roll-ico { width: 26px; height: 26px; display: block; overflow: visible; }
+.wep-roll-btn { margin-left: 6px; margin-top: 1px; }
 .use-item-btn {
     margin-top: 8px;
     padding: 4px 10px;
@@ -1540,10 +1542,100 @@ body.player-playing #table-ap-bar:not([hidden]) { display: flex; }
     width: auto;
     align-self: flex-start;
 }
-.check-sheet { max-width: 540px; }
+.check-sheet { max-width: 540px; width: min(540px, 92vw); max-height: min(86vh, 720px); }
+#check-modal-body {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    min-height: 0;
+    overflow-y: auto;
+    padding-bottom: 4px;
+}
+.check-lead {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    padding-bottom: 2px;
+}
+.check-lead-num { flex-shrink: 0; }
+.check-lead-tn {
+    font-size: 2.4rem;
+    line-height: 0.88;
+    letter-spacing: 0.02em;
+    font-weight: 800;
+}
+.check-lead-lab {
+    font-size: 0.68rem;
+    letter-spacing: 0.18em;
+    opacity: 0.45;
+    margin-top: 6px;
+    text-transform: uppercase;
+}
+.check-lead-meta {
+    flex: 1;
+    min-width: 160px;
+    padding-bottom: 0;
+}
+.check-lead-name {
+    font-size: 1.08rem;
+    letter-spacing: 0.04em;
+    line-height: 1.2;
+}
+.check-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.check-chips-quiet { margin-top: 6px; opacity: 0.62; }
+.check-chip {
+    border: 1px solid var(--theme-dim);
+    padding: 2px 8px;
+    font-size: 0.72rem;
+    letter-spacing: 0.06em;
+    opacity: 0.85;
+    text-transform: uppercase;
+}
+.check-block {
+    border-top: 1px solid var(--theme-dim);
+    padding-top: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+.check-block-title {
+    font-size: 0.78rem;
+    letter-spacing: 0.2em;
+    opacity: 0.7;
+    text-transform: uppercase;
+    margin-bottom: -2px;
+}
+.check-block-muted {
+    opacity: 0.58;
+    gap: 8px;
+}
+.check-block-muted .check-opt { font-size: 0.86rem; }
+.check-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+.check-row-text { flex: 1; min-width: 0; }
+.check-row-label { font-size: 1.05rem; letter-spacing: 0.02em; }
+.check-row-note { font-size: 0.74rem; opacity: 0.5; margin-top: 2px; line-height: 1.35; }
 .check-meta, .check-hint { font-size: 0.95rem; opacity: 0.85; margin: 6px 0; }
-.check-step { display: flex; align-items: center; gap: 8px; margin: 6px 0 12px; flex-wrap: wrap; }
-.check-opt { display: flex; gap: 8px; align-items: flex-start; font-size: 0.95rem; margin: 8px 0; }
+.check-step { display: flex; align-items: center; gap: 6px; margin: 0; flex-shrink: 0; flex-wrap: wrap; }
+.check-step-val {
+    min-width: 1.6rem;
+    text-align: center;
+    font-size: 1.35rem;
+    font-variant-numeric: tabular-nums;
+    font-weight: 800;
+}
+.check-step-cost { font-size: 0.72rem; opacity: 0.55; margin-left: 2px; }
+.check-opts { display: flex; flex-direction: column; gap: 8px; }
+.check-opt { display: flex; gap: 8px; align-items: flex-start; font-size: 0.9rem; margin: 0; opacity: 0.88; }
+.check-opt input { margin-top: 3px; }
+.check-loc { width: 100%; margin: 0; }
+.check-sheet .term-actions { margin-top: 4px; padding-top: 4px; }
+.check-sheet #atk-loc { margin: 0; }
 .check-result { margin-top: 12px; border-top: 1px dashed var(--theme-dim); padding-top: 10px; }
 .check-dice { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
 .check-die {
