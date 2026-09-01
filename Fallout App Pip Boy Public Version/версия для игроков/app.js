@@ -469,6 +469,7 @@ function openChar(id) {
     if (scrollBody) scrollBody.scrollTop = 0;
     if (char.inventory) char.inventory.forEach(it => { if (typeof normalizeArmorItem === 'function' && isArmorItem(it)) normalizeArmorItem(it); });
     ensureDrBase(char);
+    applyOriginSheetFixes(char, { notify: true });
     enforceCharLimits();
     applyEquippedArmor(char, false);
     switchCharTab('perks'); renderInventoryAndPerks(char);
@@ -543,17 +544,44 @@ if (charDrawerEl) {
     charDrawerEl.addEventListener('change', handleCharEdit);
 }
 
+function applyOriginSheetFixes(char, opts) {
+    if (!char) return { armor: false, perks: false, skills: false };
+    const armor = typeof stripIllegalEquippedArmor === 'function' && stripIllegalEquippedArmor(char);
+    const perks = typeof stripIllegalPerks === 'function' && stripIllegalPerks(char);
+    const skills = typeof clampCharSkillsToOrigin === 'function' && clampCharSkillsToOrigin(char);
+    if (skills) {
+        Object.keys(char).forEach(function (key) {
+            if (key.indexOf('cs-skill-') !== 0) return;
+            const el = document.getElementById(key);
+            if (el) el.value = char[key];
+        });
+    }
+    if (armor || perks || skills) persistLiveChar();
+    if ((opts && opts.notify) && (armor || perks)) {
+        pipNotify('Происхождение', 'Сняты броня и перки, недоступные этому происхождению.', { kind: 'warn' });
+    }
+    return { armor: !!armor, perks: !!perks, skills: !!skills };
+}
+
 function handleCharEdit(e) {
     if(e.target.classList.contains('term-input') || e.target.classList.contains('term-textarea') || e.target.classList.contains('cs-skill-val')) {
         if (e.target.id === 'cs-str' && e.target.readOnly) {
             e.target.value = (typeof POWER_FRAME_STR === 'number') ? POWER_FRAME_STR : 11;
             return;
         }
-        if(e.target.id.startsWith('cs-') && !e.target.id.startsWith('cs-skill') && !e.target.id.startsWith('cs-dr') && !e.target.id.startsWith('cs-text')) enforceCharLimits();
+        if(e.target.id.startsWith('cs-') && !e.target.id.startsWith('cs-dr') && !e.target.id.startsWith('cs-text')) enforceCharLimits();
         if(e.target.id === 'cs-hp-cur' || e.target.id === 'cs-hp-max') updateCharVisualHP();
         if(e.target.classList.contains('cs-skill-val')) calcCharTNs();
         if(e.target.id && e.target.id.startsWith('cs-dr-')) updateDrBaseFromInput(e.target);
         saveActiveCharLive();
+        if (e.target.id === 'cs-origin') {
+            const ch = liveChar();
+            const fix = applyOriginSheetFixes(ch, { notify: true });
+            if (fix && (fix.armor || fix.perks) && typeof applyEquippedArmor === 'function') {
+                applyEquippedArmor(ch);
+                renderInventoryAndPerks(ch);
+            }
+        }
     }
 }
 
@@ -576,6 +604,12 @@ function enforceCharLimits() {
     attrs.forEach(a => {
         if (a === 'str' && framed) return;
         let el = document.getElementById('cs-' + a); let max = parseInt(el.max) || 10; let val = parseInt(el.value) || 5; if (val > max) el.value = max;
+    });
+    const skillCap = typeof originSkillCap === 'function' ? originSkillCap(origin) : 6;
+    document.querySelectorAll('#char-drawer .cs-skill-val').forEach(function (el) {
+        el.max = String(skillCap);
+        const v = parseInt(el.value, 10) || 0;
+        if (v > skillCap) el.value = skillCap;
     });
     calcCharSecondary();
 }
@@ -994,9 +1028,9 @@ function confirmEquipArmor(idx, chosenLimb) {
     normalizeArmorItem(item);
     const def = getArmorDef(item) || inferArmorDef(item);
     if (!def) return;
-    const origin = document.getElementById('cs-origin') && document.getElementById('cs-origin').value;
-    if (origin === 'Супермутант' && def.family !== 'raider' && def.family !== 'clothes') {
-        pipNotify('Нельзя надеть', 'Супермутанты могут носить только рейдерскую броню.', { kind: 'warn' });
+    const blocked = typeof originArmorBlockReason === 'function' ? originArmorBlockReason(char, item) : '';
+    if (blocked) {
+        pipNotify('Нельзя надеть', blocked, { kind: 'warn' });
         return;
     }
     if (typeof isPowerArmorPiece === 'function' && isPowerArmorPiece(item) && !charHasPowerFrame(char)) {
@@ -1035,6 +1069,11 @@ function startEquipArmor(idx) {
     if (!def) return;
     if (item.equipped && item.equipped.length) {
         unequipArmor(idx);
+        return;
+    }
+    const blocked = typeof originArmorBlockReason === 'function' ? originArmorBlockReason(char, item) : '';
+    if (blocked) {
+        pipNotify('Нельзя надеть', blocked, { kind: 'warn' });
         return;
     }
     if (typeof isPowerArmorPiece === 'function' && isPowerArmorPiece(item) && !charHasPowerFrame(char)) {
@@ -1486,6 +1525,7 @@ function filterDbPicker() {
                     div.innerHTML = `<div class="db-perk-head"><b class="db-perk-name ${isPass ? 'req-pass' : 'req-fail'}">${escapePipHtml(p.name)}</b><span class="db-perk-badge ${isPass ? 'req-pass' : 'req-fail'}">${escapePipHtml(badge)}</span></div><div class="db-perk-desc">${escapePipHtml(p.desc || '')}</div>`;
                     div.onclick = () => {
                         if (!char) { pipNotify('Нет листа', 'Откройте лист персонажа, чтобы добавить перк.', { kind: 'warn' }); return; }
+                        if (!isPass) { pipNotify('Недоступно', p.reqStr || 'Требования перка не выполнены.', { kind: 'warn' }); return; }
                         if (!char.perks) char.perks = [];
                         if (!char.perks.includes(p.name)) { char.perks.push(p.name); persistLiveChar(); renderInventoryAndPerks(char);}
                         closeDbPicker();

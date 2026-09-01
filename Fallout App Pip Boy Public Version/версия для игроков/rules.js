@@ -74,6 +74,8 @@ const HIT_LOCS = {
 const DR_TYPES = ['phys', 'eng', 'rad'];
 const BODY_COVER = {
     clothes: ['torso', 'larm', 'rarm', 'lleg', 'rleg'],
+    robot: ['head', 'torso', 'larm', 'rarm', 'lleg', 'rleg'],
+    all: ['head', 'torso', 'larm', 'rarm', 'lleg', 'rleg'],
     torso: ['torso'],
     head: ['head'],
     limb: null,
@@ -346,20 +348,22 @@ const ARMOR_CATALOG = {
     ['Нагрудник силовой брони рейдеров', 'power', 'torso', 5, 4, 4, []],
     ['Наруч силовой брони рейдеров', 'power', 'arm', 3, 2, 2, []],
     ['Понож силовой брони рейдеров', 'power', 'leg', 3, 2, 2, []],
-    ['Стандартная обшивка', 'power', 'clothes', 2, 2, 0, []],
-    ['Обшивка Мистера Храбреца', 'power', 'clothes', 2, 4, 0, []],
-    ['Заводская броня', 'power', 'clothes', 4, 4, 0, []],
-    ['Заводская складская броня', 'power', 'clothes', 3, 3, 0, []],
-    ['Примитивная обшивка', 'power', 'clothes', 3, 1, 0, []],
-    ['Зазубренная обшивка', 'power', 'clothes', 3, 1, 0, []],
-    ['Пагубная обшивка', 'power', 'clothes', 2, 2, 0, []],
-    ['Токсичная обшивка', 'power', 'clothes', 2, 2, 0, []],
-    ['Рама с приводом', 'power', 'clothes', 3, 3, 0, []],
-    ['Электризованная рама', 'power', 'clothes', 2, 4, 0, []],
-    ['Гидравлическая рама', 'power', 'clothes', 4, 4, 0, []]
+    ['Стандартная обшивка', 'robot', 'all', 2, 2, 0, []],
+    ['Обшивка Мистера Храбреца', 'robot', 'all', 2, 4, 0, []],
+    ['Заводская броня', 'robot', 'all', 4, 4, 0, []],
+    ['Заводская складская броня', 'robot', 'all', 3, 3, 0, []],
+    ['Примитивная обшивка', 'robot', 'all', 3, 1, 0, []],
+    ['Зазубренная обшивка', 'robot', 'all', 3, 1, 0, []],
+    ['Пагубная обшивка', 'robot', 'all', 2, 2, 0, []],
+    ['Токсичная обшивка', 'robot', 'all', 2, 2, 0, []],
+    ['Рама с приводом', 'robot', 'all', 3, 3, 0, []],
+    ['Электризованная рама', 'robot', 'all', 2, 4, 0, []],
+    ['Гидравлическая рама', 'robot', 'all', 4, 4, 0, []]
 ].forEach(row => {
     ARMOR_CATALOG[row[0]] = { family: row[1], coverage: row[2], phys: row[3], eng: row[4], rad: row[5], mods: row[6] };
 });
+if (ARMOR_CATALOG['Заводская складская броня']) ARMOR_CATALOG['Заводская складская броня'].carry = 25;
+if (ARMOR_CATALOG['Примитивная обшивка']) ARMOR_CATALOG['Примитивная обшивка'].carry = -10;
 
 function normArmorName(s) {
     return String(s || '')
@@ -397,6 +401,9 @@ function inferArmorDef(item) {
     let family = 'leather';
     let mods;
     if (/нельзя с брон/i.test(desc)) { family = 'clothes'; mods = ['lining']; }
+    else if (item && (String(item.category || '') === 'Одежда' || String(item.category || '') === 'Обмундирование')) { family = 'clothes'; mods = ['lining']; }
+    else if (item && String(item.category || '') === 'Головной убор') { family = 'clothes'; mods = []; }
+    else if ((item && String(item.category || '') === 'Роботы') || /обшивк|рама с приводом|электризованная рама|гидравлическая рама|заводская складская/.test(n)) { family = 'robot'; mods = []; }
     else if (/собач/.test(n)) { family = 'leather'; mods = []; }
     else if (/силов|x-01|t-45|t-51|t-60|каркас/.test(n)) { family = 'power'; mods = []; }
     else if (/рейдер/.test(n)) family = 'raider';
@@ -409,10 +416,13 @@ function inferArmorDef(item) {
     let coverage = 'torso';
     if (/шлем|голов|капюшон|маска|шляпа|каска|противогаз|щиток/.test(n) || /обл:\s*голов/i.test(desc)) coverage = 'head';
     else if (/понож\s*\/\s*наруч|нога\s*\/\s*рука/.test(n) || /обл:\s*нога\/рука/i.test(desc)) coverage = 'limb';
-    else if ((/наруч/.test(n) && !/понож/.test(n)) || /обл:\s*рука/i.test(desc)) coverage = 'arm';
-    else if (/понож/.test(n) || /обл:\s*нога/i.test(desc)) coverage = 'leg';
+    else if ((/наруч/.test(n) && !/понож/.test(n)) || /обл:\s*рука(?:\s*\||\s*$)/i.test(desc)) coverage = 'arm';
+    else if (/понож/.test(n) || /обл:\s*нога(?:\s*\||\s*$)/i.test(desc)) coverage = 'leg';
     else if (/нагрудн/.test(n) || /обл:\s*торс/i.test(desc)) coverage = 'torso';
     else if (family === 'clothes' || /торс,\s*рук/i.test(desc)) coverage = 'clothes';
+    if (family === 'robot') coverage = 'all';
+    else if (item && String(item.category || '') === 'Головной убор') coverage = 'head';
+    else if (family === 'clothes' && coverage !== 'head') coverage = 'clothes';
     let phys = 0, eng = 0, rad = 0;
     const pm = desc.match(/физ:?\s*(\d+)/i); if (pm) phys = parseInt(pm[1], 10);
     const em = desc.match(/энерг:?\s*(\d+)/i); if (em) eng = parseInt(em[1], 10);
@@ -422,7 +432,7 @@ function inferArmorDef(item) {
     if (item && item.rad != null) rad = parseInt(item.rad, 10) || 0;
     if (item && item.custom) mods = [];
     if (mods === undefined) {
-        if (family === 'power') mods = [];
+        if (family === 'power' || family === 'robot') mods = [];
         else if (family === 'clothes') mods = coverage === 'head' ? [] : ['lining'];
         else mods = coverage === 'head' ? ['material'] : ['material', 'upgrade'];
     }
@@ -434,7 +444,7 @@ function looksLikeArmor(item) {
     if (item.type === 'weapon' || item.itemType === 'weapon') return false;
     if (item.type === 'armor' || item.itemType === 'armor') return true;
     const cat = String(item.category || '');
-    if (cat === 'Одежда' || /брон/i.test(cat)) return true;
+    if (cat === 'Одежда' || cat === 'Обмундирование' || cat === 'Головной убор' || cat === 'Роботы' || /брон/i.test(cat)) return true;
     const raw = (item.baseId || item.title || item.name || '');
     if (ARMOR_CATALOG[raw] || ARMOR_LOOKUP[normArmorName(raw)] || ARMOR_LOOKUP_COMPACT[compactArmorName(raw)]) return true;
     return false;
@@ -457,6 +467,9 @@ function isArmorItem(item) {
 
 function resolveCoverageSlots(def, chosen) {
     if (!def) return [];
+    if (def.family === 'robot' || def.coverage === 'all') {
+        return (BODY_COVER.robot || BODY_COVER.all).slice();
+    }
     if (def.coverage === 'limb' || def.coverage === 'arm' || def.coverage === 'leg') {
         return chosen ? [chosen] : [];
     }
@@ -568,9 +581,130 @@ function occupyingKind(item) {
     const def = getArmorDef(item);
     if (!def) return 'armor';
     if (isPowerArmorFrame(item)) return 'power-frame';
+    if (def.family === 'robot') return 'robot';
     if (def.coverage === 'head') return 'head';
     if (def.family === 'clothes') return 'clothes';
     return 'armor';
+}
+
+function normOriginName(s) {
+    return String(s || '').toLowerCase().replace(/ё/g, 'е').replace(/\s+/g, ' ').trim();
+}
+
+function charOriginOf(char) {
+    const el = typeof document !== 'undefined' ? document.getElementById('cs-origin') : null;
+    const fromForm = el ? String(el.value || '') : '';
+    const fromChar = char && char['cs-origin'] ? String(char['cs-origin']) : '';
+    return fromForm || fromChar;
+}
+
+function isRobotOrigin(origin) {
+    return /мистер помощник/.test(normOriginName(origin));
+}
+
+function isMutantOrigin(origin) {
+    return /супермутант/.test(normOriginName(origin));
+}
+
+function originSkillCap(origin) {
+    return isMutantOrigin(origin) ? 4 : 6;
+}
+
+function isRobotArmorItem(item) {
+    if (!item) return false;
+    const def = typeof getArmorDef === 'function' ? getArmorDef(item) : null;
+    if (def && def.family === 'robot') return true;
+    return String(item.category || '') === 'Роботы';
+}
+
+function isDogArmorItem(item) {
+    if (!item) return false;
+    if (String(item.category || '') === 'Собака') return true;
+    const raw = String((item.baseId || item.title || item.name) || '');
+    return /собач/i.test(raw);
+}
+
+function isHumanOutfitItem(item) {
+    if (!item) return false;
+    const cat = String(item.category || '');
+    if (cat === 'Одежда' || cat === 'Обмундирование' || cat === 'Головной убор') return true;
+    const def = typeof getArmorDef === 'function' ? getArmorDef(item) : null;
+    if (def && def.family === 'clothes') return true;
+    return false;
+}
+
+function isRaiderArmorForMutant(item) {
+    if (!item || isHumanOutfitItem(item) || isRobotArmorItem(item) || isDogArmorItem(item)) return false;
+    const def = (typeof getArmorDef === 'function' && getArmorDef(item)) || (typeof inferArmorDef === 'function' ? inferArmorDef(item) : null);
+    return !!(def && def.family === 'raider');
+}
+
+function originArmorBlockReason(char, item) {
+    const el = typeof document !== 'undefined' ? document.getElementById('cs-origin') : null;
+    const origins = [];
+    if (char && char['cs-origin']) origins.push(char['cs-origin']);
+    if (el && el.value && origins.indexOf(el.value) === -1) origins.push(el.value);
+    const robot = origins.some(isRobotOrigin);
+    const mutant = origins.some(isMutantOrigin);
+    if (isDogArmorItem(item)) return 'Собачья броня только для компаньона «Псина».';
+    if (robot) {
+        if (isRobotArmorItem(item)) return '';
+        return 'Мистер Помощник носит только обшивку робота.';
+    }
+    if (isRobotArmorItem(item)) return 'Обшивка робота только для Мистера Помощника.';
+    if (mutant) {
+        if (isRaiderArmorForMutant(item)) return '';
+        return 'Супермутант носит только броню для супермутантов — рейдерскую. Одежду и чужие наручи надеть нельзя.';
+    }
+    return '';
+}
+
+function stripIllegalEquippedArmor(char) {
+    if (!char || !Array.isArray(char.inventory)) return false;
+    let n = 0;
+    char.inventory.forEach(function (it) {
+        if (!isArmorItem(it) || !it.equipped || !it.equipped.length) return;
+        if (originArmorBlockReason(char, it)) {
+            it.equipped = [];
+            n += 1;
+        }
+    });
+    return n > 0;
+}
+
+function clampCharSkillsToOrigin(char) {
+    if (!char) return false;
+    const cap = originSkillCap(charOriginOf(char));
+    let changed = false;
+    Object.keys(char).forEach(function (k) {
+        if (k.indexOf('cs-skill-') !== 0) return;
+        const v = parseInt(char[k], 10) || 0;
+        if (v > cap) {
+            char[k] = String(cap);
+            changed = true;
+        }
+    });
+    return changed;
+}
+
+function stripIllegalPerks(char) {
+    if (!char || !Array.isArray(char.perks) || !char.perks.length) return false;
+    const fn = typeof perkMeetsChar === 'function' ? perkMeetsChar
+        : (typeof checkRequirements === 'function' ? checkRequirements : null);
+    if (!fn) return false;
+    const list = (typeof masterDB !== 'undefined' && Array.isArray(masterDB.perks)) ? masterDB.perks : [];
+    const keep = [];
+    let changed = false;
+    char.perks.forEach(function (name) {
+        const p = list.find(function (x) { return x && x.name === name; });
+        if (p && p.reqStr && !fn(p.reqStr, char)) {
+            changed = true;
+            return;
+        }
+        keep.push(name);
+    });
+    if (changed) char.perks = keep;
+    return changed;
 }
 
 function upgradeApplies(u, def, equippedSlots) {
