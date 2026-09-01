@@ -10,11 +10,12 @@ const PipSession = (function () {
     api.masterToken = '';
     api.syncUrl = '';
     api.clientId = 'c' + Math.random().toString(36).slice(2, 10);
-    api.state = { characters: {}, map: [], db: null, masterNotes: [] };
+    api.state = { characters: {}, map: [], db: null, masterNotes: [], tableAP: { pool: 0, gm: 0, max: 6, sceneAt: 0 } };
     api.onChar = null;
     api.onMap = null;
     api.onDb = null;
     api.onNotes = null;
+    api.onAp = null;
     api.onSessionEnd = null;
     api.onHello = null;
     api.onStatus = null;
@@ -88,11 +89,16 @@ const PipSession = (function () {
     function applyHello(state) {
         if (!state) return;
         const keepNotes = api.state && api.state.masterNotes;
+        const keepGm = api.state && api.state.tableAP && api.state.tableAP.gm;
         api.state = state;
         if (!Array.isArray(state.masterNotes) && keepNotes) api.state.masterNotes = keepNotes;
+        if (state.tableAP && state.tableAP.gm == null && keepGm != null) {
+            api.state.tableAP = Object.assign({}, state.tableAP, { gm: keepGm });
+        }
         try { if (state.db && typeof api.onDb === 'function') api.onDb(state.db); } catch (e) { console.warn('session db', e); }
         try { if (state.map && typeof api.onMap === 'function') api.onMap(state.map); } catch (e) { console.warn('session map', e); }
         try { if (Array.isArray(api.state.masterNotes) && typeof api.onNotes === 'function') api.onNotes(api.state.masterNotes); } catch (e) { console.warn('session notes', e); }
+        try { if (api.state.tableAP && typeof api.onAp === 'function') api.onAp(api.state.tableAP); } catch (e) { console.warn('session ap', e); }
         try { if (typeof api.onHello === 'function') api.onHello(state); } catch (e) { console.warn('session hello', e); }
     }
 
@@ -135,6 +141,21 @@ const PipSession = (function () {
             api.state.masterNotes = data.notes || [];
             if (data.from === api.clientId) return;
             if (typeof api.onNotes === 'function') api.onNotes(api.state.masterNotes);
+        });
+        es.addEventListener('ap', (ev) => {
+            const data = JSON.parse(ev.data);
+            const prevGm = api.state.tableAP && api.state.tableAP.gm;
+            api.state.tableAP = {
+                pool: data.pool || 0,
+                max: data.max || 6,
+                sceneAt: data.sceneAt || 0,
+                gm: data.gm != null ? data.gm : prevGm
+            };
+            if (data.from === api.clientId) {
+                if (typeof api.onAp === 'function') api.onAp(api.state.tableAP);
+                return;
+            }
+            if (typeof api.onAp === 'function') api.onAp(api.state.tableAP);
         });
         es.addEventListener('session-end', () => {
             const sid = api.sessionId;
@@ -246,7 +267,7 @@ const PipSession = (function () {
         api.connected = false;
         api.sessionId = '';
         api.masterToken = '';
-        api.state = { characters: {}, map: [], db: null, masterNotes: [] };
+        api.state = { characters: {}, map: [], db: null, masterNotes: [], tableAP: { pool: 0, gm: 0, max: 6, sceneAt: 0 } };
         try {
             localStorage.removeItem(credsKey());
             localStorage.removeItem('pipboy_session');
@@ -297,6 +318,23 @@ const PipSession = (function () {
         if (!api.sessionId || api.role !== 'master') return;
         api.state.masterNotes = Array.isArray(notes) ? notes : [];
         return req('POST', '/api/sessions/' + api.sessionId + '/notes', { notes: api.state.masterNotes });
+    };
+
+    api.pushAp = function (payload) {
+        if (!api.sessionId) return Promise.resolve();
+        return req('POST', '/api/sessions/' + api.sessionId + '/ap', payload || {}).then(function (data) {
+            if (data) {
+                const prevGm = api.state.tableAP && api.state.tableAP.gm;
+                api.state.tableAP = {
+                    pool: data.pool || 0,
+                    max: data.max || 6,
+                    sceneAt: data.sceneAt || 0,
+                    gm: data.gm != null ? data.gm : prevGm
+                };
+                if (typeof api.onAp === 'function') api.onAp(api.state.tableAP);
+            }
+            return data;
+        });
     };
 
     api.deleteSession = async function () {

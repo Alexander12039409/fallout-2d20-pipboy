@@ -120,6 +120,9 @@
                     prefs.count = s.count;
                     prefs.type = s.type;
                     syncChrome();
+                },
+                onSettled: function (payload) {
+                    if (window.__pipDiceSettled) window.__pipDiceSettled(payload);
                 }
             });
             if (app.ready) return Promise.resolve(app.ready).then(function () { return app; });
@@ -161,6 +164,68 @@
                 pipNotify('Кубики', 'Не удалось загрузить модуль броска.', { kind: 'error' });
             }
             closeDiceOverlay(true);
+        }
+    };
+
+    function localDiceValues(type, count) {
+        const values = [];
+        const n = Math.max(1, Math.min(10, count || 1));
+        for (let i = 0; i < n; i++) {
+            if (type === 'd6') {
+                values.push(['one', 'two', 'effect', 'effect', 'blank', 'blank'][Math.floor(Math.random() * 6)]);
+            } else {
+                values.push(1 + Math.floor(Math.random() * 20));
+            }
+        }
+        return { type: type, values: values };
+    }
+
+    window.pipRollDice = async function (opts) {
+        opts = opts || {};
+        const type = opts.type || 'd20';
+        const count = type === 'd20hit' ? 1 : Math.max(1, Math.min(10, parseInt(opts.count, 10) || 2));
+        const fallback = function () { return localDiceValues(type, count); };
+        try {
+            prefs.type = type;
+            prefs.count = count;
+            const overlay = document.getElementById('dice-overlay');
+            if (!overlay) return fallback();
+            if (closeTimer) { clearTimeout(closeTimer); closeTimer = null; }
+            closeMenus();
+            overlay.classList.add('is-open');
+            overlay.classList.remove('is-hud');
+            overlay.setAttribute('aria-hidden', 'false');
+            document.body.classList.add('dice-open');
+            await nextFrame();
+            const a = await ensureApp();
+            a.setType(type);
+            if (type !== 'd20hit') a.setCount(count);
+            if (a.layout) a.layout();
+            await nextFrame();
+            overlay.classList.add('is-hud');
+            const settled = new Promise(function (resolve) {
+                const timer = setTimeout(function () {
+                    if (window.__pipDiceSettled === onDone) window.__pipDiceSettled = null;
+                    resolve(fallback());
+                }, 6000);
+                function onDone(payload) {
+                    clearTimeout(timer);
+                    if (window.__pipDiceSettled === onDone) window.__pipDiceSettled = null;
+                    resolve(payload || fallback());
+                }
+                window.__pipDiceSettled = onDone;
+            });
+            const rolled = a.roll();
+            if (rolled && typeof rolled.then === 'function') {
+                const fromApp = await Promise.race([rolled, settled]);
+            const payload = fromApp && fromApp.values ? fromApp : fallback();
+            setTimeout(function () { window.closeDiceOverlay(); }, 700);
+            return payload;
+            }
+            return await settled;
+        } catch (err) {
+            console.warn('pipRollDice', err);
+            return fallback();
         }
     };
 

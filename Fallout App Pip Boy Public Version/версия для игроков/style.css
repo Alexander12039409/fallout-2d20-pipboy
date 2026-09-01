@@ -1497,3 +1497,81 @@ body.telegram-webapp .pip-push-host {
     font-size: 0.85rem;
 }
 
+.table-ap-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 6px 8px;
+    padding: 4px 8px;
+    margin-top: 8px;
+    font-size: 1rem;
+    letter-spacing: 0.4px;
+    border: 1px dashed var(--theme-dim);
+    background: rgba(0, 0, 0, 0.45);
+    flex-shrink: 0;
+}
+.table-ap-bar[hidden] { display: none !important; }
+.table-ap-lab { opacity: 0.75; font-size: 0.85rem; }
+.table-ap-slash { opacity: 0.7; }
+.table-ap-scene { padding: 2px 8px; font-size: 0.78rem; min-height: 28px; }
+body[data-mode="player"] .table-ap-scene { display: none !important; }
+body.player-gated #table-ap-bar,
+body.player-hub #table-ap-bar { display: none !important; }
+body.player-playing #table-ap-bar:not([hidden]) { display: flex; }
+.skill-roll-btn {
+    width: 22px;
+    height: 22px;
+    min-width: 22px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: var(--pip-green);
+    opacity: 0.4;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+.skill-roll-btn:hover,
+.skill-roll-btn:focus { opacity: 0.95; outline: none; }
+.skill-roll-ico { width: 13px; height: 13px; fill: currentColor; }
+.wep-roll-btn { margin-left: 4px; }
+.use-item-btn {
+    margin-top: 8px;
+    padding: 4px 10px;
+    font-size: 0.82rem;
+    width: auto;
+    align-self: flex-start;
+}
+.check-sheet { max-width: 540px; }
+.check-meta, .check-hint { font-size: 0.95rem; opacity: 0.85; margin: 6px 0; }
+.check-step { display: flex; align-items: center; gap: 8px; margin: 6px 0 12px; flex-wrap: wrap; }
+.check-opt { display: flex; gap: 8px; align-items: flex-start; font-size: 0.95rem; margin: 8px 0; }
+.check-result { margin-top: 12px; border-top: 1px dashed var(--theme-dim); padding-top: 10px; }
+.check-dice { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+.check-die {
+    border: 1px solid var(--pip-green);
+    min-width: 32px;
+    text-align: center;
+    padding: 4px 6px;
+}
+.check-die.is-ok { box-shadow: 0 0 8px var(--pip-green); }
+.check-die.is-bad { border-color: var(--pip-red, #ff3333); color: var(--pip-red, #ff3333); }
+.check-quals { margin: 8px 0 0; padding-left: 18px; font-size: 0.92rem; }
+.cs-rad-block { align-items: flex-end; min-width: 72px; }
+.cs-rad-note, .cs-addictions { font-size: 0.72rem; opacity: 0.7; max-width: 140px; }
+.companion-box { margin-top: 12px; }
+.companion-stats { display: flex; flex-wrap: wrap; gap: 8px 14px; font-size: 0.95rem; margin-top: 12px; }
+.companion-row { margin-top: 10px; }
+.help-search { margin: 8px 0 10px; width: 100%; }
+@media (max-width: 860px) and (orientation: landscape) {
+    #table-ap-bar:not([hidden]) {
+        position: sticky;
+        bottom: 0;
+        z-index: 80;
+        margin-top: 4px;
+    }
+}
+

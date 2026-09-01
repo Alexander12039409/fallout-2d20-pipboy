@@ -20,7 +20,7 @@ function applyRemoteChar(char) {
     const keepFocusId = (focused && drawer.contains(focused) && focused.id) ? focused.id : '';
     const keepTabBtn = document.querySelector('.cs-tab-btn.active');
     const keepTabId = keepTabBtn && keepTabBtn.id ? keepTabBtn.id.replace(/^btn-tab-/, '') : '';
-    const skip = { inventory: 1, perks: 1, notes: 1, drBase: 1, pin: 1, _session: 1, _vault: 1, updatedAt: 1, caps: 1, 'cs-luck-cur': 1, taggedSkills: 1, survivorTraits: 1, extraPerk: 1, giftedAttrs: 1, bosTagSkill: 1 };
+    const skip = { inventory: 1, perks: 1, notes: 1, drBase: 1, pin: 1, _session: 1, _vault: 1, updatedAt: 1, caps: 1, 'cs-luck-cur': 1, taggedSkills: 1, survivorTraits: 1, extraPerk: 1, giftedAttrs: 1, bosTagSkill: 1, rads: 1, companion: 1, addictions: 1, chemDoses: 1, sceneUse: 1, sceneUseAt: 1 };
     for (const key in char) {
         if (skip[key]) continue;
         const el = document.getElementById(key);
@@ -1037,6 +1037,11 @@ function startEquipArmor(idx) {
         unequipArmor(idx);
         return;
     }
+    if (typeof isDogArmorItem === 'function' && isDogArmorItem(item)) {
+        if (typeof toggleDogArmor === 'function') toggleDogArmor(idx);
+        else pipNotify('Псина', 'Собачья броня только для компаньона «Псина».', { kind: 'warn' });
+        return;
+    }
     const blocked = typeof originArmorBlockReason === 'function' ? originArmorBlockReason(char, item) : '';
     if (blocked) {
         pipNotify('Нельзя надеть', blocked, { kind: 'warn' });
@@ -1394,6 +1399,7 @@ function findWeaponByName(name) {
 
 function pickerQueryMatch(q, parts) {
     if (!q) return true;
+    if (typeof pipFuzzyMatch === 'function') return pipFuzzyMatch(q, parts);
     const hay = String(parts || '');
     const nq = pickerNorm(q);
     if (nq && pickerNorm(hay).indexOf(nq) !== -1) return true;
@@ -1664,7 +1670,7 @@ function renderInventoryAndPerks(char) {
 
                 const wepIcon = pipGlyph(item.iconRel || weaponIconRel(item.baseId || item.title, wData.category));
                 let html = `
-                    <div class="wep-card-v2">
+                    <div class="wep-card-v2" data-inv="${index}">
                         <div class="wep-top-v2">
                             <div class="wep-img-box">${wepIcon}</div>
                             <div class="wep-info-v2">
@@ -1730,7 +1736,7 @@ function renderInventoryAndPerks(char) {
                     ? `<div class="wep-qualities">${escapePipHtml(tot.special)}</div>`
                     : '';
                 invList.insertAdjacentHTML('beforeend', `
-                    <div class="wep-card-v2 armor-card ${worn ? 'is-equipped' : ''}">
+                    <div class="wep-card-v2 armor-card ${worn ? 'is-equipped' : ''}" data-inv="${index}">
                         <div class="wep-top-v2">
                             <div class="wep-img-box">${pipGlyph(itemIconRel(item))}</div>
                             <div class="wep-info-v2">
@@ -1753,7 +1759,7 @@ function renderInventoryAndPerks(char) {
                         ${slotsHtml ? `<div class="wep-slots-v2">${slotsHtml}</div>` : ''}
                     </div>`);
             } else {
-                invList.insertAdjacentHTML('beforeend', `<div class="cs-inv-card"><button class="cs-inv-del" onclick="deleteCharItem(${index})">X</button><div class="cs-inv-icon">${pipGlyph(itemIconRel(item))}</div><div class="cs-inv-body"><div class="cs-inv-title">${escapePipHtml(item.title || item.name || item.baseId)}</div><div class="cs-inv-desc">${escapePipHtml(item.desc || '')}</div>${item.qty != null ? `<div class="caps-controls"><button type="button" class="caps-btn" onclick="event.stopPropagation(); changeCustomQty(${index}, -1)">−</button><span class="caps-val" id="custom-qty-${index}">${parseInt(item.qty, 10) || 0}</span><button type="button" class="caps-btn" onclick="event.stopPropagation(); changeCustomQty(${index}, 1)">+</button></div>` : ''}</div></div>`);
+                invList.insertAdjacentHTML('beforeend', `<div class="cs-inv-card" data-inv="${index}"><button class="cs-inv-del" onclick="deleteCharItem(${index})">X</button><div class="cs-inv-icon">${pipGlyph(itemIconRel(item))}</div><div class="cs-inv-body"><div class="cs-inv-title">${escapePipHtml(item.title || item.name || item.baseId)}</div><div class="cs-inv-desc">${escapePipHtml(item.desc || '')}</div>${item.qty != null ? `<div class="caps-controls"><button type="button" class="caps-btn" onclick="event.stopPropagation(); changeCustomQty(${index}, -1)">−</button><span class="caps-val" id="custom-qty-${index}">${parseInt(item.qty, 10) || 0}</span><button type="button" class="caps-btn" onclick="event.stopPropagation(); changeCustomQty(${index}, 1)">+</button></div>` : ''}</div></div>`);
             }
             } catch (invErr) {
                 console.warn('inv card', index, invErr);

@@ -138,6 +138,16 @@
                                     <button type="button" class="hp-step" onclick="nudgeLuck(1)" aria-label="Плюс удача">+</button>
                                 </div>
                             </div>
+                            <div class="cs-luck-block cs-rad-block">
+                                <span class="cs-luck-label">РАД</span>
+                                <div class="cs-luck-controls">
+                                    <button type="button" class="hp-step" onclick="nudgeRads(-1)" aria-label="Минус рады">−</button>
+                                    <span id="cs-rad-cur">0</span>
+                                    <button type="button" class="hp-step" onclick="nudgeRads(1)" aria-label="Плюс рады">+</button>
+                                </div>
+                                <span class="cs-rad-note" id="cs-rad-note"></span>
+                                <span class="cs-addictions" id="cs-addictions" hidden></span>
+                            </div>
                         </div>
                         <div class="cs-hp-bar">
                             <button type="button" class="hp-step" onclick="nudgeHp(-1)" aria-label="Минус HP">−</button>
@@ -166,6 +176,7 @@
                             <div>УРОН ББ<span class="val" id="cs-stat-melee">+0 БК</span></div>
                             <div>ВЕС<span class="val" id="cs-stat-carry">200 Ф.</span></div>
                         </div>
+                        <div id="cs-companion" class="cs-framed-box companion-box" hidden></div>
 
                         <!-- Навыки -->
                         <div class="cs-framed-box">
@@ -322,6 +333,20 @@
                 </div>
             </div>
         </main>
+        <div class="footer-group table-ap-bar" id="table-ap-bar" hidden>
+            <span class="table-ap-lab">ОД</span>
+            <button type="button" class="caps-btn" onclick="nudgeTableAp(-1)" aria-label="Минус ОД группы">−</button>
+            <span id="table-ap-pool">0</span><span class="table-ap-slash">/<span id="table-ap-max">6</span></span>
+            <button type="button" class="caps-btn" onclick="nudgeTableAp(1)" aria-label="Плюс ОД группы">+</button>
+            <span id="table-ap-gm-wrap" hidden>
+                <span class="table-ap-lab">ГМ</span>
+                <button type="button" class="caps-btn" onclick="nudgeMasterAp(-1)" aria-label="Минус ОД мастера">−</button>
+                <span id="table-ap-gm">0</span>
+                <button type="button" class="caps-btn" onclick="nudgeMasterAp(1)" aria-label="Плюс ОД мастера">+</button>
+            </span>
+            <button type="button" class="term-btn table-ap-scene" id="btn-table-scene" onclick="startTableScene()">СЦЕНА</button>
+            <button type="button" class="term-btn table-ap-scene" id="btn-table-session-ap" onclick="startTableSessionAp()">СЕССИЯ ОД</button>
+        </div>
         <footer class="footer">
             <div class="footer-group"><span id="real-time">--:--:--</span><span id="real-date">--.--.----</span></div>
             <div class="footer-group"><span id="session-status-label"></span></div>
@@ -585,7 +610,7 @@
     <script src="notify.js"></script>
     <script>
     (function () {
-        var files = ['leaflet.js', 'weapon-extra.js', 'food-extra.js', 'db.js', 'rules.js', 'icons.js', 'session.js', 'app.js', 'session-ui.js', 'chargen.js', '/dice/pip-dice.js'];
+        var files = ['leaflet.js', 'weapon-extra.js', 'food-extra.js', 'db.js', 'rules.js', 'rules-play.js', 'icons.js', 'session.js', 'app.js', 'session-ui.js', 'chargen.js', '/dice/pip-dice.js', 'table-play.js'];
         function load(i) {
             if (i >= files.length) return;
             var s = document.createElement('script');

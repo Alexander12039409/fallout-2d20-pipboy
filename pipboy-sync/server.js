@@ -196,6 +196,31 @@ function publicState(sess, req) {
         isMaster: !!(req && isMaster(req, sess))
     };
     if (out.isMaster) out.masterNotes = Array.isArray(sess.masterNotes) ? sess.masterNotes : [];
+    const ap = sess.tableAP || { pool: 0, gm: 0, max: 6, sceneAt: 0 };
+    out.tableAP = {
+        pool: clipInt(ap.pool, 0, 12),
+        max: clipInt(ap.max, 6, 8) || 6,
+        sceneAt: clipInt(ap.sceneAt, 0, Number.MAX_SAFE_INTEGER)
+    };
+    if (out.isMaster) out.tableAP.gm = clipInt(ap.gm, 0, 999);
+    return out;
+}
+
+function ensureTableAP(sess) {
+    if (!sess.tableAP || typeof sess.tableAP !== 'object') {
+        sess.tableAP = { pool: 0, gm: 0, max: 6, sceneAt: 0 };
+    }
+    sess.tableAP.max = clipInt(sess.tableAP.max, 6, 8) || 6;
+    sess.tableAP.pool = clipInt(sess.tableAP.pool, 0, sess.tableAP.max);
+    sess.tableAP.gm = clipInt(sess.tableAP.gm, 0, 999);
+    sess.tableAP.sceneAt = clipInt(sess.tableAP.sceneAt, 0, Number.MAX_SAFE_INTEGER);
+    return sess.tableAP;
+}
+
+function publicAp(sess, includeGm) {
+    const ap = ensureTableAP(sess);
+    const out = { pool: ap.pool, max: ap.max, sceneAt: ap.sceneAt };
+    if (includeGm) out.gm = ap.gm;
     return out;
 }
 
@@ -335,7 +360,8 @@ async function handleApi(req, res, u) {
             map: Array.isArray(body.map) ? body.map : [],
             db: body.db || null,
             characters: {},
-            masterNotes: []
+            masterNotes: [],
+            tableAP: { pool: 0, gm: 0, max: 6, sceneAt: 0 }
         };
         sessions.set(id, sess);
         saveSession(sess);
@@ -460,6 +486,41 @@ async function handleApi(req, res, u) {
             saveSession(sess);
             broadcast(id, 'char-delete', { id: parts[4], from: req.headers['x-client-id'] || '' });
             return send(res, 200, { ok: true });
+        }
+
+        if (req.method === 'POST' && parts[3] === 'ap') {
+            const body = await readBody(req);
+            const ap = ensureTableAP(sess);
+            const masterOk = isMaster(req, sess);
+            if (body.max != null && masterOk) ap.max = clipInt(body.max, 6, 8) || 6;
+            if (body.scene) {
+                if (!masterOk) return send(res, 403, { error: 'master only' });
+                const n = clipInt(body.players, 1, 12);
+                const overflow = Math.max(0, n - ap.max);
+                ap.pool = Math.min(ap.max, n);
+                ap.sceneAt = Date.now();
+                if (body.resetGm) ap.gm = n;
+                else ap.gm += overflow;
+            } else {
+                if (masterOk && body.pool != null) ap.pool = clipInt(body.pool, 0, ap.max);
+                if (body.poolDelta) {
+                    let next = ap.pool + clipInt(body.poolDelta, -20, 20);
+                    if (next > ap.max) {
+                        ap.gm += next - ap.max;
+                        next = ap.max;
+                    }
+                    if (next < 0) next = 0;
+                    ap.pool = next;
+                }
+                if (body.giveGm) ap.gm += clipInt(body.giveGm, 0, 20);
+                if (masterOk && body.gm != null) ap.gm = clipInt(body.gm, 0, 999);
+                if (masterOk && body.gmDelta) ap.gm = Math.max(0, ap.gm + clipInt(body.gmDelta, -20, 20));
+            }
+            sess.tableAP = ap;
+            saveSession(sess);
+            const payload = Object.assign({ from: req.headers['x-client-id'] || '' }, publicAp(sess, true));
+            broadcast(id, 'ap', payload);
+            return send(res, 200, publicAp(sess, masterOk));
         }
 
         if (req.method === 'POST' && parts[3] === 'unlock') {

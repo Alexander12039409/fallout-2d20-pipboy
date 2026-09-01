@@ -136,6 +136,16 @@
                                     <button type="button" class="hp-step" onclick="nudgeLuck(1)" aria-label="Плюс удача">+</button>
                                 </div>
                             </div>
+                            <div class="cs-luck-block cs-rad-block">
+                                <span class="cs-luck-label">РАД</span>
+                                <div class="cs-luck-controls">
+                                    <button type="button" class="hp-step" onclick="nudgeRads(-1)" aria-label="Минус рады">−</button>
+                                    <span id="cs-rad-cur">0</span>
+                                    <button type="button" class="hp-step" onclick="nudgeRads(1)" aria-label="Плюс рады">+</button>
+                                </div>
+                                <span class="cs-rad-note" id="cs-rad-note"></span>
+                                <span class="cs-addictions" id="cs-addictions" hidden></span>
+                            </div>
                         </div>
                         <div class="cs-hp-bar">
                             <button type="button" class="hp-step" onclick="nudgeHp(-1)" aria-label="Минус HP">−</button>
@@ -164,6 +174,7 @@
                             <div>УРОН ББ<span class="val" id="cs-stat-melee">+0 БК</span></div>
                             <div>ВЕС<span class="val" id="cs-stat-carry">200 Ф.</span></div>
                         </div>
+                        <div id="cs-companion" class="cs-framed-box companion-box" hidden></div>
 
                         <!-- Навыки -->
                         <div class="cs-framed-box">
@@ -261,6 +272,7 @@
                         <div class="notes-board-title">ЗАМЕТКИ СТОЛА</div>
                         <div class="notes-board-actions">
                             <button class="term-btn" type="button" onclick="openMasterNoteSheet()">+ ЗАМЕТКА</button>
+                            <button class="term-btn" type="button" onclick="openLootSheet()">ОБЫСКАТЬ</button>
                             <button class="term-btn" type="button" onclick="createEncounterGroup()">СОЗДАТЬ ГРУППУ ПРОТИВНИКОВ</button>
                         </div>
                     </div>
@@ -316,6 +328,7 @@
                     <div class="help-scrim" onclick="closeHelpNav()"></div>
                     <aside class="help-nav" id="help-nav">
                         <div class="help-nav-title">ПРАВИЛА</div>
+                        <input type="search" id="help-search" class="term-input help-search" placeholder="ПОИСК…" oninput="filterHelpNav()" autocomplete="off">
                         <div class="help-nav-list custom-scrollbar" id="help-nav-list"></div>
                     </aside>
                     <div class="help-body custom-scrollbar" id="help-body"></div>
@@ -344,6 +357,20 @@
                 </div>
             </div>
         </main>
+        <div class="footer-group table-ap-bar" id="table-ap-bar" hidden>
+            <span class="table-ap-lab">ОД</span>
+            <button type="button" class="caps-btn" onclick="nudgeTableAp(-1)" aria-label="Минус ОД группы">−</button>
+            <span id="table-ap-pool">0</span><span class="table-ap-slash">/<span id="table-ap-max">6</span></span>
+            <button type="button" class="caps-btn" onclick="nudgeTableAp(1)" aria-label="Плюс ОД группы">+</button>
+            <span id="table-ap-gm-wrap" hidden>
+                <span class="table-ap-lab">ГМ</span>
+                <button type="button" class="caps-btn" onclick="nudgeMasterAp(-1)" aria-label="Минус ОД мастера">−</button>
+                <span id="table-ap-gm">0</span>
+                <button type="button" class="caps-btn" onclick="nudgeMasterAp(1)" aria-label="Плюс ОД мастера">+</button>
+            </span>
+            <button type="button" class="term-btn table-ap-scene" id="btn-table-scene" onclick="startTableScene()">СЦЕНА</button>
+            <button type="button" class="term-btn table-ap-scene" id="btn-table-session-ap" onclick="startTableSessionAp()">СЕССИЯ ОД</button>
+        </div>
         <footer class="footer">
             <div class="footer-group"><span id="real-time">--:--:--</span><span id="real-date">--.--.----</span></div>
             <div class="footer-group"><span id="session-status-label"></span></div>
@@ -625,6 +652,39 @@
         </div>
     </div>
 
+    <div class="modal-overlay" id="loot-modal">
+        <div class="terminal-modal" role="dialog" aria-modal="true">
+            <div class="sheet-handle" aria-hidden="true"></div>
+            <div class="sheet-head">
+                <h2>ОБЫСК ЛОКАЦИИ</h2>
+                <button type="button" class="sheet-close" onclick="closeLootSheet()" aria-label="Закрыть">X</button>
+            </div>
+            <p class="check-hint">Таблицы 2d20 книги, глава 5. Результат пишется в заметки стола. Сложность обыска (ВСП+Выживание) мастер ставит сам.</p>
+            <label class="inv-field-label">МЕСТО</label>
+            <select id="loot-place" class="term-input">
+                <option value="house">Дом / поселение</option>
+                <option value="corpse">Труп</option>
+                <option value="crate">Ящик / сейф</option>
+                <option value="shop">Магазин</option>
+                <option value="military">Военный объект</option>
+                <option value="raider">Рейдерский лагерь</option>
+                <option value="nuka">Автомат Нюка-Колы</option>
+                <option value="wild">Дикая местность</option>
+            </select>
+            <label class="inv-field-label">ЦЕННОСТЬ</label>
+            <select id="loot-tier" class="term-input">
+                <option value="junk">Мелочь</option>
+                <option value="common" selected>Обычно</option>
+                <option value="good">Ценно</option>
+                <option value="great">Очень ценно</option>
+            </select>
+            <div class="term-actions">
+                <button class="term-btn danger" onclick="closeLootSheet()">ОТМЕНА</button>
+                <button class="term-btn" onclick="runLootSearch()">БРОСИТЬ ТАБЛИЦЫ</button>
+            </div>
+        </div>
+    </div>
+
     <div id="pip-push-host" class="pip-push-host" aria-live="polite"></div>
     <script src="notify.js"></script>
     <script src="leaflet.js"></script>
@@ -632,6 +692,7 @@
     <script src="food-extra.js"></script>
     <script src="db.js"></script>
     <script src="rules.js"></script>
+    <script src="rules-play.js"></script>
     <script src="icons.js"></script>
     <script src="help.js"></script>
     <script src="session.js"></script>
@@ -640,5 +701,7 @@
     <script src="chargen.js"></script>
     <script src="npc-gen.js"></script>
     <script src="/dice/pip-dice.js"></script>
+    <script src="loot-tables.js"></script>
+    <script src="table-play.js"></script>
 </body>
 </html>
