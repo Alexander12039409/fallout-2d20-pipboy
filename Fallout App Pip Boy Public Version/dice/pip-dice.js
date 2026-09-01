@@ -14,6 +14,74 @@
     let app = null;
     let loading = null;
     let closeTimer = null;
+    let overlayHome = null;
+    let placeBound = false;
+
+    function bindOverlayPlace() {
+        if (placeBound) return;
+        placeBound = true;
+        window.addEventListener('resize', function () {
+            const overlay = document.getElementById('dice-overlay');
+            if (overlay && overlay.classList.contains('is-open')) placeOverlayTop();
+        });
+    }
+
+    function placeOverlayTop() {
+        const overlay = document.getElementById('dice-overlay');
+        const crt = document.querySelector('.crt-monitor');
+        if (!overlay || !crt) return;
+        bindOverlayPlace();
+        if (!overlayHome) overlayHome = overlay.parentNode;
+        if (overlay.parentNode !== document.body) document.body.appendChild(overlay);
+        const r = crt.getBoundingClientRect();
+        overlay.style.position = 'fixed';
+        overlay.style.inset = 'auto';
+        overlay.style.top = Math.round(r.top) + 'px';
+        overlay.style.left = Math.round(r.left) + 'px';
+        overlay.style.width = Math.round(r.width) + 'px';
+        overlay.style.height = Math.round(r.height) + 'px';
+        overlay.style.right = 'auto';
+        overlay.style.bottom = 'auto';
+        overlay.style.zIndex = '5200';
+        overlay.style.borderRadius = getComputedStyle(crt).borderRadius;
+        overlay.style.overflow = 'hidden';
+    }
+
+    function restoreOverlayHome() {
+        const overlay = document.getElementById('dice-overlay');
+        if (!overlay) return;
+        ['position', 'inset', 'top', 'left', 'width', 'height', 'right', 'bottom', 'zIndex', 'borderRadius', 'overflow'].forEach(function (k) {
+            overlay.style[k] = '';
+        });
+        if (overlayHome && overlay.parentNode !== overlayHome) overlayHome.appendChild(overlay);
+    }
+
+    function ensureReport() {
+        const overlay = document.getElementById('dice-overlay');
+        if (!overlay) return null;
+        let el = document.getElementById('dice-overlay-report');
+        if (!el) {
+            el = document.createElement('div');
+            el.id = 'dice-overlay-report';
+            el.className = 'dice-overlay-report';
+            el.hidden = true;
+            overlay.appendChild(el);
+        }
+        return el;
+    }
+
+    window.pipDicePlace = placeOverlayTop;
+    window.pipDiceReport = function (html) {
+        const el = ensureReport();
+        if (!el) return;
+        if (html == null || html === false) {
+            el.hidden = true;
+            el.innerHTML = '';
+            return;
+        }
+        el.hidden = false;
+        el.innerHTML = html;
+    };
 
     function compact() {
         return window.matchMedia('(max-width: 860px)').matches;
@@ -145,9 +213,11 @@
         }
         closeMenus();
         overlay.classList.add('is-open');
-        overlay.classList.remove('is-hud');
+        overlay.classList.remove('is-hud', 'is-play');
         overlay.setAttribute('aria-hidden', 'false');
         document.body.classList.add('dice-open');
+        if (typeof pipDiceReport === 'function') pipDiceReport(null);
+        placeOverlayTop();
         await nextFrame();
         try {
             const a = await ensureApp();
@@ -184,6 +254,8 @@
         opts = opts || {};
         const type = opts.type || 'd20';
         const count = type === 'd20hit' ? 1 : Math.max(1, Math.min(10, parseInt(opts.count, 10) || 2));
+        const keepOpen = !!opts.keepOpen;
+        const play = !!opts.play;
         const fallback = function () { return localDiceValues(type, count); };
         try {
             prefs.type = type;
@@ -192,10 +264,13 @@
             if (!overlay) return fallback();
             if (closeTimer) { clearTimeout(closeTimer); closeTimer = null; }
             closeMenus();
+            const already = overlay.classList.contains('is-open');
+            overlay.classList.toggle('is-play', play);
             overlay.classList.add('is-open');
-            overlay.classList.remove('is-hud');
             overlay.setAttribute('aria-hidden', 'false');
             document.body.classList.add('dice-open');
+            placeOverlayTop();
+            if (!already) overlay.classList.remove('is-hud');
             await nextFrame();
             const a = await ensureApp();
             a.setType(type);
@@ -207,7 +282,7 @@
                 const timer = setTimeout(function () {
                     if (window.__pipDiceSettled === onDone) window.__pipDiceSettled = null;
                     resolve(fallback());
-                }, 6000);
+                }, 8000);
                 function onDone(payload) {
                     clearTimeout(timer);
                     if (window.__pipDiceSettled === onDone) window.__pipDiceSettled = null;
@@ -216,13 +291,20 @@
                 window.__pipDiceSettled = onDone;
             });
             const rolled = a.roll();
+            let payload;
             if (rolled && typeof rolled.then === 'function') {
                 const fromApp = await Promise.race([rolled, settled]);
-            const payload = fromApp && fromApp.values ? fromApp : fallback();
-            setTimeout(function () { window.closeDiceOverlay(); }, 700);
-            return payload;
+                payload = fromApp && fromApp.values ? fromApp : fallback();
+            } else {
+                payload = await settled;
             }
-            return await settled;
+            if (!keepOpen) {
+                closeTimer = setTimeout(function () {
+                    closeTimer = null;
+                    window.closeDiceOverlay();
+                }, 900);
+            }
+            return payload;
         } catch (err) {
             console.warn('pipRollDice', err);
             return fallback();
@@ -232,9 +314,11 @@
     function teardownDice() {
         const overlay = document.getElementById('dice-overlay');
         if (overlay) {
-            overlay.classList.remove('is-open', 'is-hud');
+            overlay.classList.remove('is-open', 'is-hud', 'is-play');
             overlay.setAttribute('aria-hidden', 'true');
         }
+        if (typeof pipDiceReport === 'function') pipDiceReport(null);
+        restoreOverlayHome();
         document.body.classList.remove('dice-open');
         if (app && app.destroy) app.destroy();
         app = null;

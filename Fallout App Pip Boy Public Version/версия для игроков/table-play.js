@@ -116,6 +116,62 @@
         document.getElementById('check-modal').classList.add('active');
     }
 
+    function playTitle() {
+        const el = document.getElementById('check-modal-title');
+        return (el && el.textContent) || 'ПРОВЕРКА';
+    }
+
+    function dicePlayWait(wait) {
+        if (!window.__dicePlay || typeof pipDiceReport !== 'function') return;
+        pipDiceReport(
+            '<div class="dice-report-kicker">' + esc(window.__dicePlayTitle || '') + '</div>' +
+            '<p class="dice-report-wait">' + esc(wait || 'Бросок…') + '</p>'
+        );
+    }
+
+    function liftDiceSheet(title, wait) {
+        window.__dicePlay = true;
+        window.__dicePlayTitle = title || playTitle();
+        closeCheckSheet();
+        const overlay = document.getElementById('dice-overlay');
+        if (overlay) {
+            overlay.classList.add('is-open', 'is-play', 'is-hud');
+            overlay.setAttribute('aria-hidden', 'false');
+            document.body.classList.add('dice-open');
+        }
+        if (typeof pipDicePlace === 'function') pipDicePlace();
+        dicePlayWait(wait || 'Бросок…');
+    }
+
+    function finishDicePlay(html) {
+        if (typeof pipDiceReport === 'function') pipDiceReport(html);
+        window.__dicePlay = false;
+    }
+
+    function skillDiceHtml(detail) {
+        return '<div class="check-dice">' + (detail || []).map(function (d) {
+            return '<span class="check-die' + (d.ok ? ' is-ok' : '') + (d.note === 'осложнение' ? ' is-bad' : '') + '" title="' + esc(d.note || '') + '">' + esc(String(d.die)) + '</span>';
+        }).join('') + '</div>';
+    }
+
+    function cdDiceHtml(values) {
+        const map = { one: '1', two: '2', blank: '—', effect: '5–6' };
+        return '<div class="check-dice">' + (values || []).map(function (v) {
+            const key = String(v);
+            const label = map[key] || key;
+            const hit = key === 'effect' || key === 'one' || key === 'two' || v === 1 || v === 2 || v === 5 || v === 6;
+            return '<span class="check-die' + (hit ? ' is-ok' : '') + '">' + esc(label) + '</span>';
+        }).join('') + '</div>';
+    }
+
+    function reportMods(lines) {
+        const bits = (lines || []).filter(Boolean);
+        if (!bits.length) return '';
+        return '<ul class="dice-report-mods">' + bits.map(function (s) {
+            return '<li>' + s + '</li>';
+        }).join('') + '</ul>';
+    }
+
     async function rollValues(type, count) {
         count = Math.max(0, parseInt(count, 10) || 0);
         if (!count) return [];
@@ -125,7 +181,12 @@
             const n = Math.min(cap, count - out.length);
             let chunk = [];
             if (typeof pipRollDice === 'function') {
-                const r = await pipRollDice({ type: type, count: n });
+                const r = await pipRollDice({
+                    type: type,
+                    count: n,
+                    keepOpen: !!window.__dicePlay,
+                    play: !!window.__dicePlay
+                });
                 if (r && r.values && r.values.length) chunk = r.values.slice();
             }
             while (chunk.length < n) {
@@ -133,7 +194,6 @@
                 else chunk.push(1 + Math.floor(Math.random() * 20));
             }
             out.push.apply(out, chunk.slice(0, n));
-            if (typeof closeDiceOverlay === 'function') closeDiceOverlay();
         }
         return out.slice(0, count);
     }
@@ -202,22 +262,29 @@
         const rank = parseInt(char['cs-skill-' + skillId], 10) || 0;
         const tagged = typeof taggedSkillsOf === 'function' && taggedSkillsOf(char).indexOf(skillId) !== -1;
         const diff = window.__checkDiff || 1;
+        const title = playTitle();
+        liftDiceSheet(title, 'Проверка навыка…');
         const values = await rollValues('d20', 2 + extra);
         const ev = evaluateSkillDice(values, tn, rank, tagged, 20);
         const leftover = Math.max(0, ev.successes - diff);
         if (leftover) pushAp({ poolDelta: leftover });
-        const box = document.getElementById('check-result');
-        if (box) {
-            box.hidden = false;
-            const pass = ev.successes >= diff;
-            box.innerHTML = '<div class="check-dice">' + ev.detail.map(function (d) {
-                return '<span class="check-die' + (d.ok ? ' is-ok' : '') + (d.note === 'осложнение' ? ' is-bad' : '') + '">' + d.die + '</span>';
-            }).join('') + '</div>' +
-                '<p>' + (pass ? 'УСПЕХ' : 'ПРОВАЛ') + ': ' + ev.successes + ' при сложности ' + diff +
-                (leftover ? ' · +' + leftover + ' ОД в пул' : '') +
-                (ev.complications ? ' · осложнений: ' + ev.complications : '') +
-                (pay.given ? ' · мастеру отдано ' + pay.given + ' ОД' : '') + '</p>';
-        }
+        const pass = ev.successes >= diff;
+        finishDicePlay(
+            '<div class="dice-report-kicker">' + esc(title) + '</div>' +
+            skillDiceHtml(ev.detail) +
+            reportMods([
+                'Цель <b>' + tn + '</b> · ранг ' + rank + (tagged ? ' · отмеченный (крит ≤ ранга)' : ''),
+                'Сложность <b>' + diff + '</b>',
+                extra ? ('Доп. d20: ' + extra + ' · стоимость ' + cost + ' ОД' + (pay.given ? ' · мастеру ' + pay.given : '')) : '',
+                (pass ? '<b>УСПЕХ</b>' : '<b>ПРОВАЛ</b>') + ': ' + ev.successes + ' успех(ов) против сложности ' + diff,
+                leftover ? '+' + leftover + ' ОД в пул группы' : '',
+                ev.complications ? 'Осложнений: ' + ev.complications : '',
+                pay.given ? 'Мастеру отдано ' + pay.given + ' ОД' : ''
+            ]) +
+            '<p class="check-hint">' + ev.detail.map(function (d) {
+                return d.die + ' — ' + (d.note || '') + (d.ok ? ' ×' + d.ok : '');
+            }).join(' · ') + '</p>'
+        );
         renderApBar();
     };
 
@@ -363,6 +430,8 @@
         const rank = parseInt(char['cs-skill-' + skillId], 10) || 0;
         const tagged = typeof taggedSkillsOf === 'function' && taggedSkillsOf(char).indexOf(skillId) !== -1;
         const compAt = atk.unreliable ? 19 : 20;
+        const title = playTitle();
+        liftDiceSheet(title, 'Проверка атаки…');
         const values = await rollValues('d20', 2 + extra);
         const ev = evaluateSkillDice(values, tn, rank, tagged, compAt);
         if (weaponHasQual(atk.quals, 'надеж') && ev.complications) {
@@ -375,42 +444,53 @@
         const pass = ev.successes >= diff;
         const leftover = pass ? Math.max(0, ev.successes - diff) : 0;
         if (leftover) pushAp({ poolDelta: leftover });
-        let locHtml = '';
-        let cdHtml = '';
+        let locLine = '';
+        let locChips = '';
+        let cdChips = '';
+        let cdLine = '';
         let trigHtml = '';
+        let usedMelee = 0;
+        let usedAccurate = 0;
+        let meleeNote = '';
+        let accNote = '';
         if (pass) {
             if (meleeExtra) {
                 const meleePay = spendGroupAp(meleeExtra, false);
                 if (meleePay.blocked) {
                     cdBonus -= meleeExtra;
-                    if (typeof pipNotify === 'function') pipNotify('ОД на БК', 'Не хватило ОД на доп. кубы ближнего — бьём без них. Генерировать ОД мастеру для этого нельзя.', { kind: 'warn' });
-                }
+                    meleeNote = 'Не хватило ОД на доп. БК ближнего — бьём без них';
+                    if (typeof pipNotify === 'function') pipNotify('ОД на БК', meleeNote + '. Генерировать ОД мастеру для этого нельзя.', { kind: 'warn' });
+                } else usedMelee = meleeExtra;
             }
             if (accurateExtra) {
                 const accPay = spendGroupAp(accurateExtra, false);
                 if (accPay.blocked) {
                     cdBonus -= accurateExtra;
-                    if (typeof pipNotify === 'function') pipNotify('ОД на БК', 'Не хватило ОД на «Точное» — без доп. кубов от ОД.', { kind: 'warn' });
-                }
+                    accNote = 'Не хватило ОД на «Точное» — без доп. кубов от ОД';
+                    if (typeof pipNotify === 'function') pipNotify('ОД на БК', accNote + '.', { kind: 'warn' });
+                } else usedAccurate = accurateExtra;
             }
             let locKey;
-            let locN = '';
             if (called && chosenLoc) {
                 locKey = chosenLoc;
-                locHtml = '<p>Зона (прицел): ' + esc(((typeof HIT_LOCS !== 'undefined' && HIT_LOCS[locKey]) ? HIT_LOCS[locKey].title : locKey)) + '</p>';
+                locLine = 'Зона (прицел): ' + esc(((typeof HIT_LOCS !== 'undefined' && HIT_LOCS[locKey]) ? HIT_LOCS[locKey].title : locKey));
             } else {
+                dicePlayWait('Зона попадания…');
                 const locRoll = await rollValues('d20', 1);
-                locN = parseInt(locRoll[0], 10) || 1;
+                const locN = parseInt(locRoll[0], 10) || 1;
                 locKey = hitLocKeyFromD20(locN);
                 const locMeta = (typeof HIT_LOCS !== 'undefined' && HIT_LOCS[locKey]) ? HIT_LOCS[locKey] : { title: locKey };
-                locHtml = '<p>Зона: d20=' + locN + ' → ' + esc(locMeta.title) + '</p>';
+                locChips = '<div class="check-dice"><span class="check-die">' + locN + '</span></div>';
+                locLine = 'Зона: d20=' + locN + ' → ' + esc(locMeta.title);
             }
             const cdCount = Math.max(0, atk.dmg + cdBonus);
             if (cdCount) {
+                dicePlayWait('Кубы урона · ' + cdCount + ' БК…');
                 const cdVals = await rollValues('d6', cdCount);
                 const tally = tallyCombatDice(cdVals);
                 const trig = describeTriggeredQuals(atk.quals, tally.effects);
-                cdHtml = '<p>БК ×' + cdCount + ': ' + tally.damage + ' урона' + (tally.effects ? ' + ' + tally.effects + ' эффект(ов)' : '') + '</p>';
+                cdChips = cdDiceHtml(cdVals);
+                cdLine = 'БК ×' + cdCount + ': ' + tally.damage + ' урона' + (tally.effects ? ' + ' + tally.effects + ' эффект(ов)' : '');
                 if (trig.length) {
                     trigHtml = '<ul class="check-quals">' + trig.map(function (t) {
                         return '<li><b>' + esc(t.name) + '</b> ×' + t.times + ': ' + esc(t.text) + '</li>';
@@ -427,19 +507,39 @@
             persist();
             if (typeof renderInventoryAndPerks === 'function') renderInventoryAndPerks(char);
         }
-        const box = document.getElementById('check-result');
-        if (box) {
-            box.hidden = false;
-            box.innerHTML = '<div class="check-dice">' + ev.detail.map(function (d) {
-                return '<span class="check-die' + (d.ok ? ' is-ok' : '') + (d.note === 'осложнение' ? ' is-bad' : '') + '">' + d.die + '</span>';
-            }).join('') + '</div>' +
-                '<p>' + (pass ? 'ПОПАДАНИЕ' : 'ПРОМАХ') + ': ' + ev.successes + ' vs сложность ' + diff +
-                (leftover ? ' · +' + leftover + ' ОД' : '') +
-                (ev.complications ? ' · осложнений ' + ev.complications : '') +
-                (ammoNeed ? ' · −' + ammoNeed + ' патр.' : '') + '</p>' +
-                locHtml + cdHtml + trigHtml +
-                '<p class="check-hint">Урон по цели лист не снимает — назовите зону и число мастеру. СУ зоны вычитается из урона.</p>';
+        const cdParts = ['оружие ' + atk.dmg + ' БК'];
+        if (aim) cdParts.push('прицеливание +1');
+        if (!atk.melee && ammoExtra) {
+            if (atk.gatling) cdParts.push('гатлинг +' + (ammoExtra * 2) + ' БК (' + ammoExtra + ' доп. очередь)');
+            else cdParts.push('скорострельность +' + ammoExtra + ' БК');
         }
+        if (usedAccurate) cdParts.push('«Точное» +' + usedAccurate + ' БК');
+        if (usedMelee) cdParts.push('ближний ОД +' + usedMelee + ' БК');
+        if (atk.strBonus) cdParts.push('СИЛ +' + atk.strBonus + ' БК');
+        finishDicePlay(
+            '<div class="dice-report-kicker">' + esc(title) + '</div>' +
+            skillDiceHtml(ev.detail) +
+            (locChips || '') +
+            (cdChips || '') +
+            reportMods([
+                'Цель <b>' + tn + '</b> · ранг ' + rank + (tagged ? ' · отмеченный' : '') + (atk.unreliable ? ' · осложнение с 19' : ''),
+                'Сложность <b>' + diff + '</b>' + (called ? ' (включая +1 за прицел в зону)' : ''),
+                extra ? ('Доп. d20: ' + extra + ' · стоимость ' + cost + ' ОД' + (pay.given ? ' · мастеру ' + pay.given : '')) : '',
+                (pass ? '<b>ПОПАДАНИЕ</b>' : '<b>ПРОМАХ</b>') + ': ' + ev.successes + ' успех(ов) против сложности ' + diff,
+                leftover ? '+' + leftover + ' ОД в пул группы' : '',
+                ev.complications ? 'Осложнений: ' + ev.complications : '',
+                locLine,
+                pass ? ('БК: ' + cdParts.join(' + ')) : '',
+                cdLine,
+                ammoNeed ? '−' + ammoNeed + ' патр.' : '',
+                meleeNote,
+                accNote
+            ]) +
+            trigHtml +
+            '<p class="check-hint">' + ev.detail.map(function (d) {
+                return d.die + ' — ' + (d.note || '') + (d.ok ? ' ×' + d.ok : '');
+            }).join(' · ') + (pass ? '. Урон по цели лист не снимает — назовите зону и число мастеру. СУ зоны вычитается из урона.' : '') + '</p>'
+        );
         renderApBar();
     };
 
