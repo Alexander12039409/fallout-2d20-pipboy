@@ -166,11 +166,11 @@
         return { label: (m && (m.label || m.title)) || key, title: (m && (m.title || m.label)) || key };
     }
 
-    function checkStep(id, val, minusFn, plusFn, extraHtml) {
-        return '<div class="check-step"><button type="button" class="caps-btn" onclick="' + minusFn + '">−</button>' +
+    function checkStep(id, val, minusFn, plusFn, costHtml) {
+        return '<div class="check-ctrl"><span class="check-step-cost">' + (costHtml || '') + '</span>' +
+            '<div class="check-step"><button type="button" class="caps-btn" onclick="' + minusFn + '">−</button>' +
             '<span class="check-step-val" id="' + id + '">' + val + '</span>' +
-            '<button type="button" class="caps-btn" onclick="' + plusFn + '">+</button>' +
-            (extraHtml || '') + '</div>';
+            '<button type="button" class="caps-btn" onclick="' + plusFn + '">+</button></div></div>';
     }
 
     function checkRow(label, note, controlHtml) {
@@ -266,8 +266,8 @@
             '</div></div>' +
             '<div class="check-block"><div class="check-block-title">Бросок</div>' +
             checkRow('Сложность', 'сколько успехов нужно', checkStep('check-diff', '1', 'checkAdjDiff(-1)', 'checkAdjDiff(1)')) +
-            checkRow('Доп. d20', 'до броска · 1 / 3 / 6 ОД', checkStep('check-extra', '0', 'checkAdjExtra(-1)', 'checkAdjExtra(1)',
-                '<span class="check-step-cost"><span id="check-extra-cost">0</span> ОД</span>')) +
+            checkRow('Доп. d20', '1 / 3 / 6 ОД до броска', checkStep('check-extra', '0', 'checkAdjExtra(-1)', 'checkAdjExtra(1)',
+                '<span id="check-extra-cost">0</span>&nbsp;ОД')) +
             '</div>' +
             '<div class="check-block check-block-muted">' +
             '<label class="check-opt"><input type="checkbox" id="check-give-gm"> Нехватку ОД отдать мастеру</label>' +
@@ -363,6 +363,7 @@
         const tn = skillTn(skillId);
         const strBonus = melee && typeof meleeDamageBonus === 'function' ? meleeDamageBonus(char) : 0;
         window.__atk = { idx: invIndex, dmg: dmg, fr: fr, quals: quals, melee: melee, gatling: gatling, inaccurate: inaccurate, accurate: accurate, unreliable: unreliable, skillId: skillId, ammo: ammoHave, strBonus: strBonus };
+        const weaponName = typeof weaponDisplayName === 'function' ? weaponDisplayName(item) : (item.title || item.baseId);
         const locOpts = (typeof HIT_LOCS !== 'undefined' ? Object.keys(HIT_LOCS) : ['head', 'torso', 'larm', 'rarm', 'lleg', 'rleg']).map(function (k) {
             const meta = locMetaOf(k);
             return '<option value="' + k + '">' + esc(meta.title) + '</option>';
@@ -373,37 +374,33 @@
             .concat(melee ? ['<span class="check-chip">ближний</span>'] : ['<span class="check-chip">' + ammoHave + ' патр.</span>'])
             .concat(strBonus ? ['<span class="check-chip">СИЛ +' + strBonus + '</span>'] : [])
             .join('');
-        const qualChips = quals.length
-            ? '<div class="check-chips check-chips-quiet">' + quals.map(function (q) {
-                return '<span class="check-chip">' + esc(q) + '</span>';
-            }).join('') + '</div>'
-            : '';
-        openCheckSheet('АТАКА: ' + (typeof weaponDisplayName === 'function' ? weaponDisplayName(item) : (item.title || item.baseId)),
+        openCheckSheet('АТАКА',
             '<div class="check-lead"><div class="check-lead-num"><div class="check-lead-tn">' + tn + '</div><div class="check-lead-lab">цель</div></div>' +
-            '<div class="check-lead-meta"><div class="check-lead-name">' + esc(skillName[0]) + '</div>' +
-            '<div class="check-chips">' + chips + '</div>' + qualChips +
+            '<div class="check-lead-meta"><div class="check-lead-name">' + esc(weaponName) + '</div>' +
+            '<div class="check-lead-skill">' + esc(skillName[0]) + '</div>' +
+            '<div class="check-chips">' + chips + '</div>' +
+            (quals.length ? '<div class="check-lead-quals">' + esc(quals.join(' · ')) + '</div>' : '') +
             '</div></div>' +
             '<div class="check-block"><div class="check-block-title">Проверка</div>' +
-            checkRow('Сложность', 'защита цели, дальность, укрытие', checkStep('check-diff', '1', 'checkAdjDiff(-1)', 'checkAdjDiff(1)')) +
-            checkRow('Доп. d20', 'до броска · 1 / 3 / 6 ОД', checkStep('check-extra', '0', 'checkAdjExtra(-1)', 'checkAdjExtra(1)',
-                '<span class="check-step-cost"><span id="check-extra-cost">0</span> ОД</span>')) +
+            checkRow('Сложность', 'защита, дальность, укрытие', checkStep('check-diff', '1', 'checkAdjDiff(-1)', 'checkAdjDiff(1)')) +
+            checkRow('Доп. d20', '1 / 3 / 6 ОД до броска', checkStep('check-extra', '0', 'checkAdjExtra(-1)', 'checkAdjExtra(1)',
+                '<span id="check-extra-cost">0</span>&nbsp;ОД')) +
             '</div>' +
             '<div class="check-block"><div class="check-block-title">Урон</div>' +
             (melee
-                ? checkRow('+БК за ОД', 'после попадания, макс. 3, только из пула', checkStep('atk-melee', '0', 'atkAdjMelee(-1)', 'atkAdjMelee(1)'))
-                : checkRow('Очередь СКР', 'доп. патроны 0…' + fr, checkStep('atk-ammo', '0', 'atkAdjAmmo(-1)', 'atkAdjAmmo(1)')) +
-                    (gatling ? '<p class="check-row-note">Гатлинг: очередь 10 патронов, доп. очередь +2 БК</p>' : '')) +
-            '<div class="check-opts"><label class="check-opt"><input type="checkbox" id="atk-aim"' + (inaccurate ? ' disabled' : '') + ' onchange="atkAimChanged()"> Прицеливание (+1 БК' + (accurate ? ', «Точное»)' : ')') + '</label></div>' +
+                ? checkRow('+БК за ОД', 'после попадания, макс. 3', checkStep('atk-melee', '0', 'atkAdjMelee(-1)', 'atkAdjMelee(1)'))
+                : checkRow('Очередь СКР', gatling ? '10 патр. / очередь, +2 БК' : ('доп. патроны 0…' + fr), checkStep('atk-ammo', '0', 'atkAdjAmmo(-1)', 'atkAdjAmmo(1)'))) +
+            '<label class="check-opt"><input type="checkbox" id="atk-aim"' + (inaccurate ? ' disabled' : '') + ' onchange="atkAimChanged()"> Прицеливание (+1 БК' + (accurate ? ', «Точное»)' : ')') + '</label>' +
             (accurate ? '<div id="atk-accurate-wrap" hidden>' +
-                checkRow('ОД на БК', '«Точное», макс. 3, не смешивать с СКР', checkStep('atk-accurate', '0', 'atkAdjAccurate(-1)', 'atkAdjAccurate(1)')) +
+                checkRow('ОД на БК', '«Точное», макс. 3', checkStep('atk-accurate', '0', 'atkAdjAccurate(-1)', 'atkAdjAccurate(1)')) +
                 '</div>' : '') +
             '</div>' +
             '<div class="check-block"><div class="check-block-title">Зона</div>' +
-            '<div class="check-opts"><label class="check-opt"><input type="checkbox" id="atk-called"> Прицел в зону (+1 к сложности)</label></div>' +
+            '<label class="check-opt"><input type="checkbox" id="atk-called"> Прицел в зону (+1 сл.)</label>' +
             '<select id="atk-loc" class="term-input check-loc"><option value="">Случайная зона (d20)</option>' + locOpts + '</select>' +
             '</div>' +
             '<div class="check-block check-block-muted">' +
-            '<label class="check-opt"><input type="checkbox" id="check-give-gm"> Нехватку ОД на доп. d20 отдать мастеру</label>' +
+            '<label class="check-opt"><input type="checkbox" id="check-give-gm"> Нехватку ОД на d20 отдать мастеру</label>' +
             '<p class="check-row-note">В пуле группы ' + ap.pool + ' ОД</p></div>' +
             '<div class="term-actions"><button class="term-btn danger" onclick="closeCheckSheet()">ОТМЕНА</button>' +
             '<button class="term-btn" onclick="runAttackCheck()">БРОСИТЬ</button></div>');
@@ -493,7 +490,7 @@
         const rank = parseInt(char['cs-skill-' + skillId], 10) || 0;
         const tagged = typeof taggedSkillsOf === 'function' && taggedSkillsOf(char).indexOf(skillId) !== -1;
         const compAt = atk.unreliable ? 19 : 20;
-        const title = playTitle();
+        const title = 'АТАКА: ' + (typeof weaponDisplayName === 'function' ? weaponDisplayName(item) : (item.title || 'оружие'));
         liftDiceSheet(title, 'Проверка атаки…');
         const values = await rollValues('d20', 2 + extra);
         const ev = evaluateSkillDice(values, tn, rank, tagged, compAt);
