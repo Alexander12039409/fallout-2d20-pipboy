@@ -1546,7 +1546,7 @@ body.player-playing #table-ap-bar:not([hidden]) { display: flex; }
     overflow: hidden;
     gap: 10px;
     max-width: 540px;
-    width: min(540px, 92vw);
+    width: min(540px, 100%);
     max-height: min(86vh, 720px);
 }
 .check-sheet .sheet-head { padding-bottom: 8px; }
@@ -1698,7 +1698,14 @@ body.player-playing #table-ap-bar:not([hidden]) { display: flex; }
 @media (max-width: 860px) {
     .terminal-modal.check-sheet {
         overflow: hidden;
-        max-height: min(88dvh, 88%);
+        width: 100%;
+        max-width: none;
+        max-height: min(92dvh, 100%);
+        margin: 0;
+        border-radius: 16px 16px 0 0;
+        border-left: none;
+        border-right: none;
+        border-bottom: none;
     }
 }
 .check-result { margin-top: 12px; border-top: 1px dashed var(--theme-dim); padding-top: 10px; }
