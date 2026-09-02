@@ -332,8 +332,8 @@ body.sys-open .sys-menu { display: flex; }
     position: static;
     transform: none;
     object-fit: contain; pointer-events: none; z-index: 1;
-    filter: brightness(0) invert(72%) sepia(80%) saturate(900%) hue-rotate(70deg) brightness(1.02);
-    opacity: 0.38;
+    filter: brightness(0) invert(72%) sepia(93%) saturate(1100%) hue-rotate(70deg) brightness(1.12) contrast(1.08);
+    opacity: 0.72;
     margin: 0;
 }
 .cs-hit-loc {

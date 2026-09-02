@@ -23,12 +23,12 @@ const PIP_ICONS = {
     },
     armor: 'armor/броня.svg',
     origin: {
-        'Выживший': 'origin/survivor.svg',
-        'Братство Стали': 'origin/brotherhood.svg',
-        'Гуль': 'origin/ghoul.svg',
-        'Супермутант': 'origin/mutant.svg',
-        'Мистер Помощник': 'origin/handy.svg',
-        'Выходец из Убежища': 'origin/vault.svg'
+        'Выживший': 'vault boy full/vault.svg',
+        'Братство Стали': 'origin/Братство стали.svg',
+        'Гуль': 'origin/Гуль.svg',
+        'Супермутант': 'origin/Супермутант.svg',
+        'Мистер Помощник': 'origin/Мистер помощник.svg',
+        'Выходец из Убежища': 'origin/Выходец из убежища.svg'
     },
     inventory: {
         stimpak: 'inventory/стимпак.svg',
@@ -49,6 +49,17 @@ const PIP_ICONS = {
 
 function iconUrl(relPath) {
     return 'icons/' + String(relPath).split('/').map(encodeURIComponent).join('/');
+}
+
+function originIconRel(origin) {
+    const map = (PIP_ICONS && PIP_ICONS.origin) || {};
+    if (origin && map[origin]) return map[origin];
+    const want = String(origin || '').toLowerCase().replace(/ё/g, 'е').replace(/\s+/g, ' ').trim();
+    if (!want) return PIP_ICONS.vaultFull;
+    const key = Object.keys(map).find(function (k) {
+        return String(k).toLowerCase().replace(/ё/g, 'е').replace(/\s+/g, ' ').trim() === want;
+    });
+    return (key && map[key]) || PIP_ICONS.vaultFull;
 }
 
 function pipGlyph(relPath, extraClass) {

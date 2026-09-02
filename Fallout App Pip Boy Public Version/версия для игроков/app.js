@@ -557,6 +557,9 @@ function applyOriginSheetFixes(char, opts) {
         });
     }
     if (armor || perks || skills) persistLiveChar();
+    if (typeof applyHitLocSheet === 'function') {
+        applyHitLocSheet(typeof charOriginOf === 'function' ? charOriginOf(char) : (char['cs-origin'] || ''));
+    }
     if ((opts && opts.notify) && (armor || perks)) {
         pipNotify('Происхождение', 'Сняты броня и перки, недоступные этому происхождению.', { kind: 'warn' });
     }

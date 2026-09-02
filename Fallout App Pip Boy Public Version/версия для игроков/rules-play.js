@@ -92,12 +92,13 @@ function applyHitLocSheet(origin) {
         if (meta && name) name.textContent = meta.title;
     });
     const boy = document.getElementById('cs-vb-full');
-    if (boy && handy) {
-        const handySrc = (document.body.getAttribute('data-mode') === 'player' ? '' : '') + 'icons/origin/handy.svg';
-        if (!boy.getAttribute('data-human-src')) boy.setAttribute('data-human-src', boy.getAttribute('src') || '');
-        boy.setAttribute('src', handySrc);
-    } else if (boy && boy.getAttribute('data-human-src')) {
-        boy.setAttribute('src', boy.getAttribute('data-human-src'));
+    if (boy) {
+        const rel = (typeof originIconRel === 'function')
+            ? originIconRel(origin)
+            : ((PIP_ICONS && PIP_ICONS.vaultFull) || 'vault boy full/vault.svg');
+        const src = (typeof iconUrl === 'function') ? iconUrl(rel) : ('icons/' + rel);
+        if (boy.getAttribute('src') !== src) boy.setAttribute('src', src);
+        boy.removeAttribute('data-human-src');
     }
 }
 
