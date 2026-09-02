@@ -833,16 +833,16 @@
                 return p.kind === 'food' || p.kind === 'drink' || p.kind === 'chem' || p.kind === 'med' || p.hp || p.radsHeal || p.ap || p.alcohol;
             })();
             const isDog = typeof isDogArmorItem === 'function' && isDogArmorItem(item);
-            if (IS_PLAYER && isWep && !card.querySelector('.skill-roll-btn')) {
+            if (IS_PLAYER && isWep && !card.querySelector('.wep-roll-btn')) {
                 const btn = document.createElement('button');
                 btn.type = 'button';
-                btn.className = 'skill-roll-btn wep-roll-btn';
+                btn.className = 'pip-ico-btn wep-roll-btn';
                 btn.title = 'Атака';
                 btn.setAttribute('aria-label', 'Бросить атаку');
                 btn.innerHTML = diceSvg();
                 btn.onclick = function (e) { e.preventDefault(); e.stopPropagation(); openAttackCheck(index); };
-                const head = card.querySelector('.wep-header-v2 > div') || card.querySelector('.wep-header-v2');
-                if (head) head.appendChild(btn);
+                const actions = card.querySelector('.wep-header-actions');
+                if (actions) actions.insertBefore(btn, actions.firstChild);
             }
             if (isUse && !card.querySelector('.use-item-btn')) {
                 const b = document.createElement('button');

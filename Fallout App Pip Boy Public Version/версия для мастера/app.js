@@ -1620,7 +1620,15 @@ function openModPicker(itemIdx, slot) {
 
 function invModsToggleHtml(index, open) {
     const label = open ? 'Свернуть моды' : 'Развернуть моды';
-    return `<button type="button" class="wep-mods-toggle${open ? ' is-open' : ''}" title="${label}" aria-label="${label}" aria-expanded="${open ? 'true' : 'false'}" onclick="event.stopPropagation(); toggleInvMods(${index})"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.8"/></svg></button>`;
+    return `<button type="button" class="pip-ico-btn wep-mods-toggle${open ? ' is-open' : ''}" title="${label}" aria-label="${label}" aria-expanded="${open ? 'true' : 'false'}" onclick="event.stopPropagation(); toggleInvMods(${index})"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.8"/></svg></button>`;
+}
+
+function invCardDelHtml(index) {
+    return `<button type="button" class="pip-ico-btn pip-ico-btn-danger" title="Удалить" aria-label="Удалить" onclick="event.stopPropagation(); deleteCharItem(${index})">X</button>`;
+}
+
+function invHeaderActionsHtml(index, modsToggle) {
+    return `<div class="wep-header-actions">${modsToggle || ''}${invCardDelHtml(index)}</div>`;
 }
 
 function invModsSummaryHtml(names) {
@@ -1710,8 +1718,8 @@ function renderInventoryAndPerks(char) {
                             <div class="wep-img-box">${wepIcon}</div>
                             <div class="wep-info-v2">
                                 <div class="wep-header-v2">
-                                    <div><h2 class="wep-title-v2">${escapePipHtml((typeof weaponDisplayName === 'function' ? weaponDisplayName(item) : null) || item.title || item.baseId)}</h2><p class="wep-cat-v2">${escapePipHtml(wData.category)}</p></div>
-                                    <div class="wep-header-actions">${modsToggle}<button class="term-btn danger" style="padding: 2px 5px;" onclick="deleteCharItem(${index})">X</button></div>
+                                    <div class="wep-header-text"><h2 class="wep-title-v2">${escapePipHtml((typeof weaponDisplayName === 'function' ? weaponDisplayName(item) : null) || item.title || item.baseId)}</h2><p class="wep-cat-v2">${escapePipHtml(wData.category)}</p></div>
+                                    ${invHeaderActionsHtml(index, modsToggle)}
                                 </div>
                                 <div class="wep-stats-grid">
                                     <div class="wep-stat-box"><span class="wep-stat-label">УРОН</span><span class="wep-stat-val ${cDmg !== wData.baseDamage ? 'modified':''}">${cDmg} БК</span></div>
@@ -1769,8 +1777,8 @@ function renderInventoryAndPerks(char) {
                             <div class="wep-img-box">${pipGlyph(itemIconRel(item))}</div>
                             <div class="wep-info-v2">
                                 <div class="wep-header-v2">
-                                    <div><h2 class="wep-title-v2">${escapePipHtml(item.title || item.baseId)}</h2><p class="wep-cat-v2">${escapePipHtml(item.category || 'Броня')}</p></div>
-                                    <div class="wep-header-actions">${armorModsToggle}<button class="term-btn danger" style="padding: 2px 5px;" onclick="deleteCharItem(${index})">X</button></div>
+                                    <div class="wep-header-text"><h2 class="wep-title-v2">${escapePipHtml(item.title || item.baseId)}</h2><p class="wep-cat-v2">${escapePipHtml(item.category || 'Броня')}</p></div>
+                                    ${invHeaderActionsHtml(index, armorModsToggle)}
                                 </div>
                                 <div class="wep-stats-grid">
                                     <div class="wep-stat-box"><span class="wep-stat-label">ФИЗ</span><span class="wep-stat-val">${tot.phys}</span></div>
@@ -1788,11 +1796,11 @@ function renderInventoryAndPerks(char) {
                         ${slotsHtml ? `<div class="wep-slots-v2">${slotsHtml}</div>` : ''}
                     </div>`);
             } else {
-                invList.insertAdjacentHTML('beforeend', `<div class="cs-inv-card" data-inv="${index}"><button class="cs-inv-del" onclick="deleteCharItem(${index})">X</button><div class="cs-inv-icon">${pipGlyph(itemIconRel(item))}</div><div class="cs-inv-body"><div class="cs-inv-title">${escapePipHtml(item.title || item.name || item.baseId)}</div><div class="cs-inv-desc">${escapePipHtml(item.desc || '')}</div>${item.qty != null ? `<div class="caps-controls"><button type="button" class="caps-btn" onclick="event.stopPropagation(); changeCustomQty(${index}, -1)">−</button><span class="caps-val" id="custom-qty-${index}">${parseInt(item.qty, 10) || 0}</span><button type="button" class="caps-btn" onclick="event.stopPropagation(); changeCustomQty(${index}, 1)">+</button></div>` : ''}</div></div>`);
+                invList.insertAdjacentHTML('beforeend', `<div class="cs-inv-card" data-inv="${index}"><button class="cs-inv-del pip-ico-btn pip-ico-btn-danger" onclick="deleteCharItem(${index})">X</button><div class="cs-inv-icon">${pipGlyph(itemIconRel(item))}</div><div class="cs-inv-body"><div class="cs-inv-title">${escapePipHtml(item.title || item.name || item.baseId)}</div><div class="cs-inv-desc">${escapePipHtml(item.desc || '')}</div>${item.qty != null ? `<div class="caps-controls"><button type="button" class="caps-btn" onclick="event.stopPropagation(); changeCustomQty(${index}, -1)">−</button><span class="caps-val" id="custom-qty-${index}">${parseInt(item.qty, 10) || 0}</span><button type="button" class="caps-btn" onclick="event.stopPropagation(); changeCustomQty(${index}, 1)">+</button></div>` : ''}</div></div>`);
             }
             } catch (invErr) {
                 console.warn('inv card', index, invErr);
-                invList.insertAdjacentHTML('beforeend', `<div class="cs-inv-card"><button class="cs-inv-del" onclick="deleteCharItem(${index})">X</button><div class="cs-inv-body"><div class="cs-inv-title">${escapePipHtml((item && (item.title || item.name || item.baseId)) || 'Предмет')}</div><div class="cs-inv-desc">Карточка не собралась — предмет на листе сохранён.</div></div></div>`);
+                invList.insertAdjacentHTML('beforeend', `<div class="cs-inv-card"><button class="cs-inv-del pip-ico-btn pip-ico-btn-danger" onclick="deleteCharItem(${index})">X</button><div class="cs-inv-body"><div class="cs-inv-title">${escapePipHtml((item && (item.title || item.name || item.baseId)) || 'Предмет')}</div><div class="cs-inv-desc">Карточка не собралась — предмет на листе сохранён.</div></div></div>`);
             }
         });
     }
@@ -1804,7 +1812,7 @@ function renderInventoryAndPerks(char) {
             const pData = (masterDB.perks && Array.isArray(masterDB.perks)) ? masterDB.perks.find(p => p.name === pName) : null;
             const req = (pData && pData.reqStr && pData.reqStr !== 'Нет') ? `<div class="perk-card-req">${escapePipHtml(pData.reqStr)}</div>` : '';
             const desc = pData ? `<div class="perk-card-desc">${escapePipHtml(pData.desc || '')}</div>` : '';
-            perksList.insertAdjacentHTML('beforeend', `<div class="perk-card"><div class="perk-card-head"><div class="perk-card-title">${escapePipHtml(pName)}</div><button type="button" class="perk-card-del" onclick="deleteCharPerk(${index})" aria-label="Удалить">X</button></div>${req}${desc}</div>`);
+            perksList.insertAdjacentHTML('beforeend', `<div class="perk-card"><div class="perk-card-head"><div class="perk-card-title">${escapePipHtml(pName)}</div><button type="button" class="perk-card-del pip-ico-btn pip-ico-btn-danger" onclick="deleteCharPerk(${index})" aria-label="Удалить">X</button></div>${req}${desc}</div>`);
         });
     }
 }

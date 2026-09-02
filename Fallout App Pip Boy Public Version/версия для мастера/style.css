@@ -423,9 +423,9 @@ body.sys-open .sys-menu { display: flex; }
 .cs-inv-icon { width: 36px; height: 36px; flex-shrink: 0; margin-top: 2px; }
 .cs-inv-icon .pip-glyph { width: 36px; height: 36px; }
 .cs-inv-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px; }
-.cs-inv-title { font-weight: bold; font-size: 1.05rem; color: var(--pip-green); padding-right: 25px; word-wrap: break-word; }
+.cs-inv-title { font-weight: bold; font-size: 1.05rem; color: var(--pip-green); padding-right: 36px; word-wrap: break-word; }
 .cs-inv-desc { font-size: 1rem; opacity: 0.8; white-space: pre-wrap; word-wrap: break-word; text-transform: none; }
-.cs-inv-del { position: absolute; top: 8px; right: 8px; background: transparent; border: 1px solid var(--pip-red); color: var(--pip-red); width: 24px; height: 24px; display: flex; justify-content: center; align-items: center; cursor: pointer; transition: 0.2s; font-family: monospace; }
+.cs-inv-del { position: absolute; top: 8px; right: 8px; }
 .cs-inv-del:hover { background: var(--pip-red); color: #000; }
 .cs-inv-actions { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
 .cs-inv-actions .term-btn { font-size: 0.95rem; padding: 4px 10px; }
@@ -491,15 +491,24 @@ body.sys-open .sys-menu { display: flex; }
 .wep-info-v2 { flex: 1; display: flex; flex-direction: column; position: relative; min-width: 0; overflow: visible; }
 .wep-title-v2 { font-size: 1.12rem; color: var(--pip-green); margin: 0; font-weight: bold; word-break: break-word; min-width: 0; line-height: 1.2; }
 .wep-header-v2 { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px dashed var(--theme-dim); padding-bottom: 5px; margin-bottom: 10px; gap: 8px; min-width: 0; }
-.wep-header-actions { display: flex; align-items: flex-start; gap: 4px; flex-shrink: 0; }
-.wep-mods-toggle {
-    width: 26px; height: 26px; min-width: 26px; padding: 0;
+.wep-header-text { flex: 1; min-width: 0; }
+.wep-header-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.pip-ico-btn {
+    width: 28px; height: 28px; min-width: 28px; min-height: 28px; padding: 0; margin: 0;
+    box-sizing: border-box;
+    display: inline-flex; align-items: center; justify-content: center;
     background: transparent; border: 1px solid var(--theme-dim); color: var(--pip-green);
-    cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
+    cursor: pointer; flex-shrink: 0;
+    font-family: inherit; font-size: 0.95rem; line-height: 1; text-transform: none;
 }
+.pip-ico-btn:hover, .pip-ico-btn:focus {
+    border-color: var(--pip-green); background: rgba(20,254,20,0.12); outline: none;
+}
+.pip-ico-btn-danger { border-color: var(--pip-red); color: var(--pip-red); }
+.pip-ico-btn-danger:hover, .pip-ico-btn-danger:focus { background: var(--pip-red); color: #000; border-color: var(--pip-red); }
 .wep-mods-toggle svg { width: 14px; height: 14px; display: block; transform: rotate(-90deg); }
 .wep-mods-toggle.is-open svg { transform: rotate(0deg); }
-.wep-mods-toggle:hover, .wep-mods-toggle:focus { border-color: var(--pip-green); background: rgba(20,254,20,0.12); outline: none; }
+.wep-header-actions .skill-roll-ico { width: 16px; height: 16px; }
 .wep-mods-summary { font-size: 0.78rem; opacity: 0.72; letter-spacing: 0.04em; margin-top: 6px; }
 .wep-card-v2.is-mods-collapsed .wep-slots-v2 { display: none; }
 .wep-cat-v2 { font-size: 0.9rem; color: #88aa88; margin: 0; text-transform: uppercase; }
@@ -634,8 +643,7 @@ body.sys-open .sys-menu { display: flex; }
 .chargen-empty { text-transform: none; opacity: 0.8; }
 .perk-card { border: 1px solid var(--pip-green); padding: 12px 14px; background: rgba(3, 15, 3, 0.9); box-shadow: inset 0 0 10px rgba(0,0,0,0.5); }
 .perk-card-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px dashed var(--theme-dim); }
-.perk-card-del { flex-shrink: 0; background: transparent; border: 1px solid var(--pip-red); color: var(--pip-red); width: 24px; height: 24px; display: flex; justify-content: center; align-items: center; cursor: pointer; font-family: monospace; }
-.perk-card-del:hover { background: var(--pip-red); color: #000; }
+.perk-card-del { flex-shrink: 0; }
 .perk-card-title { flex: 1; text-align: left; font-weight: bold; font-size: 1.22rem; letter-spacing: 0.8px; color: var(--pip-green); word-wrap: break-word; padding-right: 4px; }
 .perk-card-req { font-size: 0.78rem; opacity: 0.7; text-align: left; margin-bottom: 6px; letter-spacing: 0.4px; }
 .perk-card-desc { font-size: 0.95rem; opacity: 0.88; text-transform: none; line-height: 1.4; word-wrap: break-word; }
@@ -1269,6 +1277,7 @@ body.player-playing #char-drawer {
     .skill-roll-btn { width: 38px; height: 38px; min-width: 38px; }
     .skill-roll-ico { width: 26px; height: 26px; }
     .term-btn { min-height: 44px; }
+    .pip-ico-btn { width: 28px; height: 28px; min-width: 28px; min-height: 28px; }
     .term-actions { gap: 10px; }
     .term-actions .term-btn { flex: 1; }
     #db-picker-list { max-height: 45dvh !important; }
@@ -1586,7 +1595,6 @@ body.player-playing #table-ap-bar:not([hidden]) { display: flex; }
 .skill-roll-btn:hover,
 .skill-roll-btn:focus { opacity: 1; outline: none; }
 .skill-roll-ico { width: 26px; height: 26px; display: block; overflow: visible; }
-.wep-roll-btn { margin-left: 6px; margin-top: 1px; }
 .use-item-btn {
     margin-top: 8px;
     padding: 4px 10px;
