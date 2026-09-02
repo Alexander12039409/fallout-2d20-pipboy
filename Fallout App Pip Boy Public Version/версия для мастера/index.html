@@ -124,10 +124,15 @@
 
                         <!-- HP и CND -->
                         <div class="cs-hp-row">
-                            <div class="cs-hp-block">
-                                HP <input type="number" id="cs-hp-cur" class="term-input cs-input-num" value="10"> / <input type="number" id="cs-hp-max" class="term-input cs-input-num" value="10" readonly>
+                            <div class="cs-hp-block cs-vital-col">
+                                <span class="cs-luck-label">HP</span>
+                                <div class="cs-luck-controls">
+                                    <input type="number" id="cs-hp-cur" class="term-input cs-input-num" value="10">
+                                    <span class="cs-luck-max">/</span>
+                                    <input type="number" id="cs-hp-max" class="term-input cs-input-num" value="10" readonly>
+                                </div>
                             </div>
-                            <div class="cs-luck-block">
+                            <div class="cs-luck-block cs-vital-col">
                                 <span class="cs-luck-label">ОЧКИ УДАЧИ</span>
                                 <div class="cs-luck-controls">
                                     <button type="button" class="hp-step" onclick="nudgeLuck(-1)" aria-label="Минус удача">−</button>
@@ -136,7 +141,7 @@
                                     <button type="button" class="hp-step" onclick="nudgeLuck(1)" aria-label="Плюс удача">+</button>
                                 </div>
                             </div>
-                            <div class="cs-luck-block cs-rad-block">
+                            <div class="cs-luck-block cs-rad-block cs-vital-col">
                                 <span class="cs-luck-label">РАД</span>
                                 <div class="cs-luck-controls">
                                     <button type="button" class="hp-step" onclick="nudgeRads(-1)" aria-label="Минус рады">−</button>

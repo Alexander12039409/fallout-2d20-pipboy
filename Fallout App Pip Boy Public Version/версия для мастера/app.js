@@ -1618,6 +1618,24 @@ function openModPicker(itemIdx, slot) {
     modal.classList.add('active');
 }
 
+function invModsToggleHtml(index, open) {
+    const label = open ? 'Свернуть моды' : 'Развернуть моды';
+    return `<button type="button" class="wep-mods-toggle${open ? ' is-open' : ''}" title="${label}" aria-label="${label}" aria-expanded="${open ? 'true' : 'false'}" onclick="event.stopPropagation(); toggleInvMods(${index})"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.8"/></svg></button>`;
+}
+
+function invModsSummaryHtml(names) {
+    const text = names && names.length ? names.join(' · ') : 'стандарт';
+    return `<div class="wep-mods-summary">МОДЫ: ${escapePipHtml(text)}</div>`;
+}
+
+window.toggleInvMods = function (index) {
+    const char = liveChar();
+    if (!char || !Array.isArray(char.inventory) || !char.inventory[index]) return;
+    char.inventory[index].modsOpen = !char.inventory[index].modsOpen;
+    persistLiveChar();
+    renderInventoryAndPerks(char);
+};
+
 function renderInventoryAndPerks(char) {
     const invList = document.getElementById('cs-inv-list');
     invList.innerHTML = '';
@@ -1669,14 +1687,31 @@ function renderInventoryAndPerks(char) {
                     </div>`;
 
                 const wepIcon = pipGlyph(item.iconRel || weaponIconRel(item.baseId || item.title, wData.category));
+                let slotsInner = '';
+                const installedMods = [];
+                for (let slot in (wData.slots || {})) {
+                    const modsArray = wData.slots[slot];
+                    if (!modsArray || modsArray.length === 0) continue;
+                    const modIdx = (item.mods && item.mods[slot] !== undefined && item.mods[slot] < modsArray.length) ? item.mods[slot] : 0;
+                    const mData = modsArray[modIdx];
+                    if (modIdx > 0 && mData && mData.name) installedMods.push(mData.name);
+                    slotsInner += `<div class="slot-card-v2 ${modIdx > 0 ? 'active' : ''}" onclick="openModPicker(${index}, '${slot}')">
+                                <div class="slot-icon-v2">${getIconForSlot(slot)}</div>
+                                <div class="slot-title-v2">${escapePipHtml(slot)}</div>
+                                <div class="slot-desc-v2">${modIdx > 0 && mData ? escapePipHtml(mData.name) : '<i>Нажмите для выбора</i>'}</div>
+                             </div>`;
+                }
+                const modsOpen = !!item.modsOpen;
+                const modsToggle = slotsInner ? invModsToggleHtml(index, modsOpen) : '';
+                const modsSummary = (slotsInner && !modsOpen) ? invModsSummaryHtml(installedMods) : '';
                 let html = `
-                    <div class="wep-card-v2" data-inv="${index}">
+                    <div class="wep-card-v2${slotsInner && !modsOpen ? ' is-mods-collapsed' : ''}" data-inv="${index}">
                         <div class="wep-top-v2">
                             <div class="wep-img-box">${wepIcon}</div>
                             <div class="wep-info-v2">
                                 <div class="wep-header-v2">
                                     <div><h2 class="wep-title-v2">${escapePipHtml((typeof weaponDisplayName === 'function' ? weaponDisplayName(item) : null) || item.title || item.baseId)}</h2><p class="wep-cat-v2">${escapePipHtml(wData.category)}</p></div>
-                                    <button class="term-btn danger" style="padding: 2px 5px;" onclick="deleteCharItem(${index})">X</button>
+                                    <div class="wep-header-actions">${modsToggle}<button class="term-btn danger" style="padding: 2px 5px;" onclick="deleteCharItem(${index})">X</button></div>
                                 </div>
                                 <div class="wep-stats-grid">
                                     <div class="wep-stat-box"><span class="wep-stat-label">УРОН</span><span class="wep-stat-val ${cDmg !== wData.baseDamage ? 'modified':''}">${cDmg} БК</span></div>
@@ -1685,22 +1720,10 @@ function renderInventoryAndPerks(char) {
                                     <div class="wep-stat-box"><span class="wep-stat-label">ДИСТАНЦИЯ</span><span class="wep-stat-val">${escapePipHtml(cRng)}</span></div>
                                 </div>
                                 <div class="wep-qualities">Свойства: ${renderQualities(cQual)}</div>
+                                ${modsSummary}
                             </div>
                         </div>
                         ${ammoHtml}`;
-                
-                let slotsInner = '';
-                for (let slot in (wData.slots || {})) {
-                    const modsArray = wData.slots[slot];
-                    if (!modsArray || modsArray.length === 0) continue;
-                    const modIdx = (item.mods && item.mods[slot] !== undefined && item.mods[slot] < modsArray.length) ? item.mods[slot] : 0;
-                    const mData = modsArray[modIdx];
-                    slotsInner += `<div class="slot-card-v2 ${modIdx > 0 ? 'active' : ''}" onclick="openModPicker(${index}, '${slot}')">
-                                <div class="slot-icon-v2">${getIconForSlot(slot)}</div>
-                                <div class="slot-title-v2">${escapePipHtml(slot)}</div>
-                                <div class="slot-desc-v2">${modIdx > 0 && mData ? escapePipHtml(mData.name) : '<i>Нажмите для выбора</i>'}</div>
-                             </div>`;
-                }
                 if (slotsInner) html += `<div class="wep-slots-v2">${slotsInner}</div>`;
                 html += `</div>`;
                 invList.insertAdjacentHTML('beforeend', html);
@@ -1711,6 +1734,7 @@ function renderInventoryAndPerks(char) {
                 const worn = item.equipped && item.equipped.length;
                 const wornLabel = worn ? item.equipped.map(s => (HIT_LOCS[s] && HIT_LOCS[s].label) || s).join(', ') : '';
                 let slotsHtml = '';
+                const armorModNames = [];
                 if (def && def.mods) {
                     def.mods.forEach(slot => {
                         const choices = getArmorModChoices(item, slot);
@@ -1724,6 +1748,7 @@ function renderInventoryAndPerks(char) {
                             const m = arr[armorModIndex(item, slot)];
                             selectedName = (m && m.name && m.name !== 'Нет') ? m.name : '';
                         }
+                        if (selectedName) armorModNames.push(selectedName);
                         const label = (ARMOR_SLOT_LABELS && ARMOR_SLOT_LABELS[slot]) || slot;
                         slotsHtml += `<div class="slot-card-v2 ${selectedName ? 'active' : ''}" onclick="openModPicker(${index}, '${slot}')">
                                 <div class="slot-icon-v2">${getIconForSlot(label)}</div>
@@ -1735,14 +1760,17 @@ function renderInventoryAndPerks(char) {
                 const specialHtml = tot.special
                     ? `<div class="wep-qualities">${escapePipHtml(tot.special)}</div>`
                     : '';
+                const armorModsOpen = !!item.modsOpen;
+                const armorModsToggle = slotsHtml ? invModsToggleHtml(index, armorModsOpen) : '';
+                const armorModsSummary = (slotsHtml && !armorModsOpen) ? invModsSummaryHtml(armorModNames) : '';
                 invList.insertAdjacentHTML('beforeend', `
-                    <div class="wep-card-v2 armor-card ${worn ? 'is-equipped' : ''}" data-inv="${index}">
+                    <div class="wep-card-v2 armor-card ${worn ? 'is-equipped' : ''}${slotsHtml && !armorModsOpen ? ' is-mods-collapsed' : ''}" data-inv="${index}">
                         <div class="wep-top-v2">
                             <div class="wep-img-box">${pipGlyph(itemIconRel(item))}</div>
                             <div class="wep-info-v2">
                                 <div class="wep-header-v2">
                                     <div><h2 class="wep-title-v2">${escapePipHtml(item.title || item.baseId)}</h2><p class="wep-cat-v2">${escapePipHtml(item.category || 'Броня')}</p></div>
-                                    <button class="term-btn danger" style="padding: 2px 5px;" onclick="deleteCharItem(${index})">X</button>
+                                    <div class="wep-header-actions">${armorModsToggle}<button class="term-btn danger" style="padding: 2px 5px;" onclick="deleteCharItem(${index})">X</button></div>
                                 </div>
                                 <div class="wep-stats-grid">
                                     <div class="wep-stat-box"><span class="wep-stat-label">ФИЗ</span><span class="wep-stat-val">${tot.phys}</span></div>
@@ -1751,6 +1779,7 @@ function renderInventoryAndPerks(char) {
                                 </div>
                                 ${worn ? `<div class="armor-worn">НАДЕТО: ${escapePipHtml(wornLabel)}</div>` : ''}
                                 ${specialHtml}
+                                ${armorModsSummary}
                                 <div class="cs-inv-actions">
                                     <button class="term-btn" onclick="startEquipArmor(${index})">${worn ? 'СНЯТЬ' : 'НАДЕТЬ'}</button>
                                 </div>
